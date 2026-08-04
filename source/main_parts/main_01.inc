@@ -1,10 +1,14 @@
-        return 0;
-    }
-    return 1 + (int) (((phase - 144u) / 9u) % 4u);
 }
 
-static void systems_reset(SystemsState *systems)
+static void systems_reset(SystemsState *systems, int night_number)
 {
+    const NightConfig *config = night_config(night_number);
+    systems->night_number = config->number;
+    systems->night_phase = NIGHT_PHASE_INTRO;
+    systems->phase_frames = 0u;
+    systems->current_hour = 12;
+    systems->hour_frames = 0u;
+    systems->attack_frames = 0u;
     systems->maintenance_open = false;
     systems->maintenance_selection = 0;
     systems->repairing = false;
@@ -17,7 +21,7 @@ static void systems_reset(SystemsState *systems)
     systems->camera_failure_triggered = false;
     systems->audio_failure_triggered = false;
     systems->ventilation_failure_triggered = false;
-    systems->springtrap_camera = 2;
+    systems->springtrap_camera = config->springtrap_enabled ? 2 : -1;
     systems->springtrap_move_frames = 0u;
     systems->audio_lure_active = false;
     systems->audio_lure_target = 2;
@@ -73,6 +77,15 @@ static void trigger_audio_lure(SystemsState *systems,
                                App *app,
                                int selected_camera)
 {
+    const NightConfig *config = night_config(systems->night_number);
+    if (systems->night_phase != NIGHT_PHASE_ACTIVE) {
+        return;
+    }
+    if (!config->springtrap_enabled) {
+        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_NO_TARGET);
+        app->needs_redraw = true;
+        return;
+    }
     if (systems->audio_failed) {
         systems->audio_lure_active = false;
         set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_ERROR);
@@ -98,9 +111,52 @@ static void trigger_audio_lure(SystemsState *systems,
 
 static uint32_t springtrap_move_interval(const SystemsState *systems)
 {
-    return systems->ventilation_failed
-        ? SPRINGTRAP_MOVE_FRAMES_VENT_ERROR
-        : SPRINGTRAP_MOVE_FRAMES;
+    const NightConfig *config = night_config(systems->night_number);
+    uint32_t interval = config->springtrap_move_frames;
+
+    if (systems->current_hour >= 4 && interval > 0u) {
+        interval = (interval * 3u) / 4u;
+    }
+    if (systems->ventilation_failed && interval > 0u) {
+        interval = (interval * 3u) / 5u;
+    }
+    return interval > 0u ? interval : 1u;
+}
+
+static void begin_victory(SystemsState *systems, App *app)
+{
+    systems->night_phase = NIGHT_PHASE_VICTORY;
+    systems->phase_frames = 0u;
+    systems->current_hour = 6;
+    systems->hour_frames = 0u;
+    systems->maintenance_open = false;
+    systems->repairing = false;
+    systems->audio_lure_active = false;
+    app->camera_panel_open = false;
+    app->needs_redraw = true;
+}
+
+static void begin_game_over(SystemsState *systems, App *app)
+{
+    systems->night_phase = NIGHT_PHASE_GAME_OVER;
+    systems->phase_frames = 0u;
+    systems->maintenance_open = false;
+    systems->repairing = false;
+    systems->audio_lure_active = false;
+    app->camera_panel_open = false;
+    app->needs_redraw = true;
+}
+
+static void advance_hour(SystemsState *systems, App *app)
+{
+    systems->hour_frames = 0u;
+    systems->current_hour = systems->current_hour == 12
+        ? 1
+        : systems->current_hour + 1;
+    app->needs_redraw = true;
+    if (systems->current_hour >= 6) {
+        begin_victory(systems, app);
+    }
 }
 
 static void update_systems(SystemsState *systems, App *app)
@@ -109,25 +165,26 @@ static void update_systems(SystemsState *systems, App *app)
         return;
     }
 
-    ++systems->night_frames;
+    ++systems->phase_frames;
 
-    if (!systems->camera_failure_triggered &&
-        systems->night_frames >= CAMERA_FAILURE_FRAME) {
-        systems->camera_failure_triggered = true;
-        systems->camera_failed = true;
-        app->needs_redraw = true;
+    if (systems->night_phase == NIGHT_PHASE_INTRO) {
+        if (systems->phase_frames >= NIGHT_INTRO_FRAMES) {
+            systems->night_phase = NIGHT_PHASE_ACTIVE;
+            systems->phase_frames = 0u;
+            app->needs_redraw = true;
+        } else if ((systems->phase_frames % 15u) == 0u) {
+            app->needs_redraw = true;
+        }
+        return;
     }
-    if (!systems->ventilation_failure_triggered &&
-        systems->night_frames >= VENTILATION_FAILURE_FRAME) {
-        systems->ventilation_failure_triggered = true;
-        systems->ventilation_failed = true;
-        app->needs_redraw = true;
+
+    if (systems->night_phase == NIGHT_PHASE_VICTORY ||
+        systems->night_phase == NIGHT_PHASE_GAME_OVER) {
+        if ((systems->phase_frames % 6u) == 0u) {
+            app->needs_redraw = true;
+        }
+        return;
     }
-    if (!systems->audio_failure_triggered &&
-        systems->night_frames >= AUDIO_FAILURE_FRAME) {
-        systems->audio_failure_triggered = true;
-        systems->audio_failed = true;
-        systems->audio_lure_active = false;
-        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_ERROR);
-        app->needs_redraw = true;
-    }
+
+    const NightConfig *config = night_config(systems->night_number);
+    ++systems->night_frames;
