@@ -31,8 +31,9 @@ The code cannot simply be recompiled with `wut`. Its game logic must be separate
 - [x] Add an initial sprite-mask renderer.
 - [x] Add a row-compressed indexed texture renderer.
 - [x] Add a converter for indexed PlayStation `.TIM` files.
-- [x] Display the first converted PSX texture on TV and GamePad.
-- [x] Reduce `main.c` to platform initialization, the game loop and temporary texture composition.
+- [x] Display converted PSX textures on TV and GamePad.
+- [x] Render the real PSX Springtrap title image.
+- [x] Render and horizontally scroll the real PSX office panorama.
 - [ ] Add portable audio API.
 - [ ] Add portable storage/save API.
 - [ ] Replace the software backend with a GX2 texture renderer.
@@ -52,16 +53,17 @@ Initial replacements:
 ## Phase 2 — Minimal playable loop
 
 - [x] title/menu state;
-- [x] temporary office background;
+- [x] real title character texture;
+- [x] real office panorama;
 - [x] horizontal office movement;
 - [x] open/close camera panel;
 - [x] separate TV and GamePad views;
 - [x] first sprite rendered through the renderer module;
-- [x] first converted PSX texture displayed;
+- [x] converted warning, title and office textures;
 - [ ] selectable real camera feed;
 - [ ] fixed-step update timing independent of rendering cost;
-- [ ] full-size background texture loading;
-- [ ] real office visual layout.
+- [ ] animated title frames (`MENU1` to `MENU5`);
+- [ ] real camera-map visuals;
 
 ## Phase 3 — Game systems
 
@@ -83,4 +85,4 @@ Initial replacements:
 
 ## Immediate next task
 
-Move from the small validation texture to a full-size visual. The preferred next milestone is a GX2 or otherwise efficient background path capable of displaying the converted title image or office panorama without thousands of software pixel writes. Then replace the procedural title character or temporary office background one asset at a time.
+Convert one real camera feed and make `CAM 01` selectable on the GamePad. The TV should keep the office view while the GamePad shows the converted feed, static overlay and camera label. After that, add the remaining title frames and begin the maintenance-panel state.
