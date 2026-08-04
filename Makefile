@@ -23,9 +23,9 @@ SOURCES     := source source/game source/platform source/renderer
 DATA        := data
 INCLUDES    := include
 CONTENT     :=
-ICON        :=
-TV_SPLASH   :=
-DRC_SPLASH  :=
+ICON        := icon.jpg
+TV_SPLASH   := boot-tv.jpg
+DRC_SPLASH  := boot-drc.jpg
 
 #-------------------------------------------------------------------------------
 # Compiler and linker options
