@@ -8,24 +8,24 @@
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
 
-extern const uint8_t vent_quiet1_bin[];
-extern const uint32_t vent_quiet1_bin_size;
-extern const uint8_t vent_quiet2_bin[];
-extern const uint32_t vent_quiet2_bin_size;
-extern const uint8_t vent_closer1_bin[];
-extern const uint32_t vent_closer1_bin_size;
-extern const uint8_t vent_louder2_bin[];
-extern const uint32_t vent_louder2_bin_size;
-extern const uint8_t alarm_bin[];
-extern const uint32_t alarm_bin_size;
-extern const uint8_t breathing_bin[];
-extern const uint32_t breathing_bin_size;
-extern const uint8_t wait_bin[];
-extern const uint32_t wait_bin_size;
-extern const uint8_t static_sound_bin[];
-extern const uint32_t static_sound_bin_size;
-extern const uint8_t scream3_bin[];
-extern const uint32_t scream3_bin_size;
+#define DECLARE_AUDIO_BIN(name) \
+    extern const uint8_t name##_bin[]; \
+    extern const uint32_t name##_bin_size
+
+DECLARE_AUDIO_BIN(vent_quiet1);
+DECLARE_AUDIO_BIN(vent_quiet2);
+DECLARE_AUDIO_BIN(vent_closer1);
+DECLARE_AUDIO_BIN(vent_louder2);
+DECLARE_AUDIO_BIN(alarm);
+DECLARE_AUDIO_BIN(breathing);
+DECLARE_AUDIO_BIN(wait);
+DECLARE_AUDIO_BIN(static_sound);
+DECLARE_AUDIO_BIN(scream3);
+DECLARE_AUDIO_BIN(garble1);
+DECLARE_AUDIO_BIN(mask);
+DECLARE_AUDIO_BIN(echo1);
+DECLARE_AUDIO_BIN(echo3b);
+DECLARE_AUDIO_BIN(echo4b);
 
 typedef struct AudioClip {
     const uint8_t *data;
@@ -47,6 +47,11 @@ static const AudioClip kClips[AUDIO_CUE_COUNT] = {
     {wait_bin, &wait_bin_size},
     {static_sound_bin, &static_sound_bin_size},
     {scream3_bin, &scream3_bin_size},
+    {garble1_bin, &garble1_bin_size},
+    {mask_bin, &mask_bin_size},
+    {echo1_bin, &echo1_bin_size},
+    {echo3b_bin, &echo3b_bin_size},
+    {echo4b_bin, &echo4b_bin_size},
 };
 
 static AudioVoiceSlot sVoices[AUDIO_CUE_COUNT];
@@ -54,20 +59,14 @@ static bool sAvailable = false;
 
 static uint16_t volume_to_ax(float volume)
 {
-    if (volume < 0.0f) {
-        volume = 0.0f;
-    }
-    if (volume > 1.0f) {
-        volume = 1.0f;
-    }
+    if (volume < 0.0f) volume = 0.0f;
+    if (volume > 1.0f) volume = 1.0f;
     return (uint16_t) (volume * 49152.0f);
 }
 
 static void configure_voice(AudioCue cue, bool loop, float volume)
 {
-    if (cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) {
-        return;
-    }
+    if (cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
 
     AXVoice *voice = sVoices[cue].voice;
     const AudioClip *clip = &kClips[cue];
@@ -79,14 +78,10 @@ static void configure_voice(AudioCue cue, bool loop, float volume)
     mix[0].bus[0].volume = 0xC000;
     mix[1].bus[0].volume = 0xC000;
 
-    AXVoiceVeData ve = {
-        .volume = volume_to_ax(volume),
-        .delta = 0,
-    };
+    AXVoiceVeData ve = {.volume = volume_to_ax(volume), .delta = 0};
     AXVoiceOffsets offsets = {
         .dataType = AX_VOICE_FORMAT_LPCM16,
-        .loopingEnabled = loop ? AX_VOICE_LOOP_ENABLED
-                               : AX_VOICE_LOOP_DISABLED,
+        .loopingEnabled = loop ? AX_VOICE_LOOP_ENABLED : AX_VOICE_LOOP_DISABLED,
         .loopOffset = 0u,
         .endOffset = sample_count,
         .currentOffset = 0u,
@@ -114,11 +109,8 @@ bool audio_init(void)
         .pipeline = AX_INIT_PIPELINE_SINGLE,
     };
     AXInitWithParams(&params);
-
     sAvailable = AXIsInit() != 0;
-    if (!sAvailable) {
-        return false;
-    }
+    if (!sAvailable) return false;
 
     for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) {
         sVoices[cue].voice = AXAcquireVoice(31u, NULL, NULL);
@@ -128,9 +120,7 @@ bool audio_init(void)
         }
         configure_voice((AudioCue) cue, false, 1.0f);
     }
-    if (!sAvailable) {
-        audio_shutdown();
-    }
+    if (!sAvailable) audio_shutdown();
     return sAvailable;
 }
 
@@ -144,18 +134,13 @@ void audio_shutdown(void)
             sVoices[cue].configured = false;
         }
     }
-    if (AXIsInit()) {
-        AXQuit();
-    }
+    if (AXIsInit()) AXQuit();
     sAvailable = false;
 }
 
 void audio_play(AudioCue cue, float volume, bool loop)
 {
-    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT ||
-        sVoices[cue].voice == NULL) {
-        return;
-    }
+    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
     configure_voice(cue, loop, volume);
     AXSetVoiceCurrentOffset(sVoices[cue].voice, 0u);
     AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_PLAYING);
@@ -169,19 +154,14 @@ void audio_restart(AudioCue cue, float volume, bool loop)
 
 void audio_stop(AudioCue cue)
 {
-    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT ||
-        sVoices[cue].voice == NULL) {
-        return;
-    }
+    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
     AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_STOPPED);
     AXSetVoiceCurrentOffset(sVoices[cue].voice, 0u);
 }
 
 void audio_stop_all(void)
 {
-    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) {
-        audio_stop((AudioCue) cue);
-    }
+    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) audio_stop((AudioCue) cue);
 }
 
 bool audio_is_available(void)
