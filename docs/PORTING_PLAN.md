@@ -2,93 +2,70 @@
 
 ## Source audit
 
-The PSX project is the appropriate technical reference because it is written in C and already contains the complete game flow. The audit found:
-
-- `fnaf3.c`: about 905 lines;
-- most implementation is placed in large headers under `objects/`;
-- direct PlayStation APIs for graphics, controller input, CD access, memory cards and SPU audio;
-- PSX-native `.TIM`, `.VAG` and XA/CD resources;
-- no clear source-code or asset licence in the supplied archive.
-
-The code cannot simply be recompiled with `wut`; game logic must be separated from the PSX hardware layer.
+The PSX project is the main technical reference because it is written in C and already contains the complete game flow. Its PlayStation-specific graphics, controller, storage and SPU/CD calls must be replaced rather than recompiled directly.
 
 ## Phase 0 — Wii U bootstrap
 
-- [x] Create a native `wut` project.
-- [x] Produce `.elf`, `.rpx` and `.wuhb` outputs.
-- [x] Initialize and shut down cleanly through `WHBProc`.
-- [x] Display output on TV and GamePad.
-- [x] Read GamePad buttons with VPAD.
-- [x] Add a GitHub Actions build.
+- [x] Native `wut` project;
+- [x] `.elf`, `.rpx` and `.wuhb` outputs;
+- [x] clean `WHBProc` lifecycle;
+- [x] TV and GamePad output;
+- [x] VPAD input;
+- [x] GitHub Actions build;
+- [x] custom application icon and TV/GamePad boot splashes.
 
 ## Phase 1 — Platform abstraction
 
-- [x] Add a portable input API.
-- [x] Move `VPADRead` logic out of game code.
-- [x] Add a graphics API targeting TV, GamePad or both.
-- [x] Move `OSScreen` allocation and drawing out of game code.
-- [x] Add a frame-clock wrapper.
-- [x] Add sprite-mask and row-compressed indexed texture renderers.
-- [x] Add a converter for indexed PlayStation `.TIM` files.
-- [x] Display converted PSX textures on TV and GamePad.
-- [ ] Add portable audio API.
-- [ ] Add portable storage/save API.
-- [ ] Replace the software backend with a GX2 texture renderer.
+- [x] portable input API;
+- [x] shared TV/GamePad graphics API;
+- [x] frame-clock wrapper;
+- [x] sprite-mask and indexed RLE texture renderers;
+- [x] PlayStation TIM converter;
+- [ ] portable audio API;
+- [ ] portable storage/save API;
+- [ ] GX2 texture renderer.
 
-| PSX dependency | Wii U replacement |
-| --- | --- |
-| `PadRead`, `PAD*` | portable input API backed by `VPADRead` |
-| `FntPrint` | portable Wii U UI text renderer |
-| indexed `.TIM` images | converter plus row-RLE texture API |
-| `Gs*`, `DrawOTag`, `LoadImage` | current `OSScreen` backend, later GX2 |
-| `Spu*` | future AX/AX2 audio layer |
-| `Cd*` | future bundled-content or SD file API |
-| memory-card functions | future Wii U save directory / SD fallback |
+## Phase 2 — Playable office loop
 
-## Phase 2 — Minimal playable loop
+- [x] warning and animated title menu;
+- [x] real office panorama;
+- [x] separate TV office and GamePad systems;
+- [x] CAM 01–03 feeds and Springtrap composites;
+- [x] Play Audio lure prototype;
+- [x] maintenance panel and repair progress;
+- [x] camera, audio and ventilation failures;
+- [x] 12 AM → 6 AM clock;
+- [x] night introduction screen;
+- [x] 5:59 → 6:00 AM victory transition;
+- [x] Game Over, retry and menu return;
+- [x] sequential session progression through Nights 1–5;
+- [x] Night 1 orientation rules with Springtrap inactive;
+- [x] per-night Springtrap speed, failure schedule and attack grace;
+- [x] increased aggression at 4 AM and 5 AM;
+- [ ] fixed-step timing independent of rendering cost;
+- [ ] CAM 04–10 and real map layout;
+- [ ] vent-camera mode and vent sealing.
 
-- [x] title/menu state;
-- [x] all five real title frames (`MENU1` to `MENU5`);
-- [x] real office panorama and horizontal movement;
-- [x] separate TV and GamePad views;
-- [x] open/close camera panel;
-- [x] selectable real CAM 01, CAM 02 and CAM 03 feeds;
-- [x] static and glitch overlays on camera feeds;
-- [x] Springtrap composites for the three available camera rooms;
-- [x] maintenance panel opened with Minus;
-- [x] camera, audio and ventilation state flags;
-- [x] timed prototype failures;
-- [x] individual reboot and Reboot All progress;
-- [x] camera failure affects the GamePad feed;
-- [x] ventilation failure affects the TV office view;
-- [ ] fixed-step update timing independent of rendering cost;
-- [ ] real camera-map layout and all camera rooms;
-- [ ] vent-camera mode.
+## Phase 3 — Complete game systems
 
-## Phase 3 — Game systems
-
-- [ ] full camera map and vents;
-- [x] first maintenance-panel loop;
-- [x] first audio-lure mechanic connected to Audio Devices state;
-- [x] minimal Springtrap room state and automatic movement;
-- [x] ventilation failure accelerates Springtrap movement;
-- [x] selected camera reveals Springtrap's current location;
+- [ ] full Springtrap room graph and decision logic;
+- [ ] real jumpscare animation and sound;
+- [ ] phantom animatronics and hallucinations;
+- [ ] phone calls and ambience;
 - [ ] real audio playback for Play Audio;
-- [ ] connect ventilation state to hallucinations and danger;
-- [ ] full Springtrap route, decisions and office attack;
-- [ ] phantom encounters and jumpscares;
-- [ ] time progression and night completion;
-- [ ] save/load and unlocks.
+- [ ] persistent save/load and unlocked-night state;
+- [ ] Night 5 ending and minigames;
+- [ ] Night 6 and extras/custom-night content.
 
-## Phase 4 — Wii U features
+## Phase 4 — Wii U features and release
 
-- TV: office and main view;
-- GamePad: camera system and touch controls;
-- GamePad speaker for radio/static effects;
-- optional Wii U Pro Controller support;
-- proper icon and TV/GamePad boot splashes;
-- release packaging.
+- [x] custom icon and separate TV/GamePad boot images;
+- [ ] GamePad touch camera map;
+- [ ] GamePad speaker effects;
+- [ ] Wii U Pro Controller support;
+- [ ] optimized GX2 rendering;
+- [ ] release packaging and external asset policy.
 
 ## Immediate next task
 
-Expand beyond the three-room prototype. Convert CAM 04 to CAM 10 and the real camera-map layout, give Springtrap a longer route toward the office, and begin the vent-camera mode. In parallel, create the portable audio API so Play Audio triggers the real lure sound rather than only changing game state.
+Complete Night 1 presentation and prepare Night 2 gameplay by converting CAM 04–10 plus the real camera-map layout. Then extend Springtrap from the current three-room route to the complete building route and add vent cameras/sealing. In parallel, add the first Wii U audio backend for camera movement, static and Play Audio.
