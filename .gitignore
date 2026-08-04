@@ -7,8 +7,10 @@ build/
 *.o
 *.d
 
-# Generated source restored from compressed development assets
+# Generated / extracted development assets
 source/camera_springtrap_textures.c
+assets/audio_low12/
+data/audio/
 
 # Editor / operating system files
 .vscode/
