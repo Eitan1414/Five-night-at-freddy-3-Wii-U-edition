@@ -13,7 +13,9 @@ typedef enum GameButton {
     GAME_BUTTON_BACK    = 1u << 5,
     GAME_BUTTON_PANEL   = 1u << 6,
     GAME_BUTTON_START   = 1u << 7,
-    GAME_BUTTON_SELECT  = 1u << 8
+    GAME_BUTTON_SELECT  = 1u << 8,
+    GAME_BUTTON_MODE    = 1u << 9,
+    GAME_BUTTON_SEAL    = 1u << 10
 } GameButton;
 
 typedef struct InputState {
