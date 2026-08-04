@@ -2,11 +2,11 @@
 
 ## Source audit
 
-The PSX project remains the main C reference. PlayStation graphics, controller, storage and SPU/CD calls are replaced by portable Wii U layers rather than compiled directly.
+The PSX project remains the main technical reference. Its PlayStation-specific graphics, controller, storage, CD and SPU calls are being replaced by portable Wii U layers rather than recompiled directly.
 
 ## Phase 0 — Wii U bootstrap
 
-- [x] Native `wut` project;
+- [x] native `wut` project;
 - [x] `.elf`, `.rpx` and `.wuhb` outputs;
 - [x] clean `WHBProc` lifecycle;
 - [x] TV and GamePad output;
@@ -19,56 +19,72 @@ The PSX project remains the main C reference. PlayStation graphics, controller, 
 - [x] portable input API;
 - [x] shared TV/GamePad graphics API;
 - [x] frame-clock wrapper;
-- [x] indexed RLE texture renderer and TIM converter;
+- [x] sprite-mask and indexed RLE texture renderers;
+- [x] PlayStation TIM converter;
 - [x] portable `sndcore2` audio API;
-- [x] build-time MP3 → signed big-endian PCM conversion;
+- [x] generated MP3 → Wii U PCM pipeline;
 - [ ] portable storage/save API;
 - [ ] GX2 texture renderer.
 
 ## Phase 2 — Playable office loop
 
-- [x] warning, animated title and office panorama;
+- [x] warning and animated title menu;
+- [x] real office panorama;
 - [x] separate TV office and GamePad systems;
-- [x] ten selectable camera nodes positioned like the supplied map;
-- [x] real CAM 01–03 feeds;
-- [ ] finish integrating the real CAM 04–10 backgrounds into the active renderer;
-- [x] camera map and vent-map modes;
-- [x] one sealable vent at a time;
-- [x] maintenance panel and system repair;
-- [x] 12 AM → 6 AM clock and Nights 1–5;
-- [x] victory, Game Over and retry flow;
-- [x] inactivity-triggered ventilation error;
-- [x] dim/blackout/recovery cycle;
-- [ ] fixed-step timing independent of rendering cost.
+- [x] ten camera-map nodes positioned from the supplied map;
+- [x] five selectable and sealable ventilation routes;
+- [x] Play Audio with three random echo cues;
+- [x] maintenance panel and repair progress;
+- [x] camera, audio and ventilation failures;
+- [x] inactivity-triggered ventilation failure and blackout cycle;
+- [x] 12 AM → 6 AM clock;
+- [x] night introduction, victory and Game Over flows;
+- [x] sequential session progression through Nights 1–6;
+- [ ] fixed-step timing independent of rendering cost;
+- [ ] full-resolution CAM 04–10 backgrounds;
+- [ ] GamePad touch selection.
 
-## Phase 3 — Complete game systems
+## Phase 3 — Springtrap
 
-- [x] ten-room adjacent-camera Springtrap graph;
-- [x] per-night random movement speed;
-- [x] five vent routes and blocked-vent return behavior;
-- [x] CAM 02 direct-office vent attack;
-- [x] hidden upper-hall and office-window routes;
-- [x] freeze Springtrap while directly observed at the window/left doorway;
-- [x] release him when panels open, the player looks away or blackout occurs;
-- [x] real vent entry/exit, alarm, breathing, static and jumpscare audio;
-- [x] Play Audio restricted to an adjacent target room;
-- [ ] add the missing `danger2b` sound to the implemented soft/loud danger states;
-- [ ] full jumpscare animation;
-- [ ] phantom animatronics and hallucinations;
-- [ ] phone calls and general ambience;
+- [x] adjacent-room camera graph;
+- [x] random stay/move/vent movement opportunities;
+- [x] Night 2 six-second movement opportunity baseline;
+- [x] no ventilation choice before 1 AM;
+- [x] faster opportunities on later nights and late hours;
+- [x] five ventilation destinations and one sealed vent;
+- [x] office window, left doorway, hidden hall and direct-office states;
+- [x] freeze while directly watched;
+- [x] observation released by panels, blackout or Phantom events;
+- [x] lure accepted only in an adjacent camera;
+- [x] 20% valid-lure resistance from Night 3 onward;
+- [ ] final per-night opportunity tables and balancing;
+- [ ] full Springtrap jumpscare animation.
+
+## Phase 4 — Phantom animatronics
+
+- [x] shared once-per-night attack/effect limit;
+- [x] Phantom Foxy monitor-open spawn and toy-box office state;
+- [x] Phantom Balloon Boy CAM 01/07/09/10 cycle and 0.55-second reaction window;
+- [x] Phantom Freddy hourly checks, forced 4 AM appearance and monitor defence;
+- [x] Phantom Chica CAM 07 cycle, forced 5 AM appearance and office-left attack;
+- [x] Phantom Mangle CAM 04 cycle, garble loop and Audio Devices failure;
+- [x] Phantom Puppet CAM 08 cycle, input-blocking mask and ventilation failure;
+- [x] prevent non-Foxy cycles before 1 AM;
+- [x] compact PSX textures for camera, office and jumpscare presentation;
+- [x] Phantom attacks cause system failures but never player death;
+- [ ] restore every original distinct jumpscare frame at optimized resolution;
+- [ ] tune exact per-night probabilities after console playtesting;
+- [ ] add any remaining Phantom-specific transitions found during testing.
+
+## Phase 5 — Remaining game content
+
 - [ ] persistent save/load and unlocked-night state;
+- [ ] phone calls and full ambience;
 - [ ] Night 5 ending and minigames;
-- [ ] Night 6 and extras/custom-night content.
-
-## Phase 4 — Wii U features and release
-
-- [x] custom icon and separate TV/GamePad boot images;
-- [ ] GamePad touch camera map;
-- [ ] separate GamePad speaker routing for selected effects;
-- [ ] Wii U Pro Controller support;
-- [ ] optimized GX2 rendering;
+- [ ] final Night 6/aggressive-mode unlock flow;
+- [ ] extras and additional completion rewards;
 - [ ] release packaging and external asset policy.
 
 ## Immediate next task
 
-Test the new ten-camera/vent build on real hardware, then finish activating the converted CAM 04–10 image pack. After visual validation, add the complete Springtrap office jumpscare animation and begin the Phantom systems without enabling unfinished encounters in normal play.
+Compile and test the Phantom/Springtrap milestone on real Wii U hardware. Focus on audio mixing, reaction windows, monitor transitions, once-per-night limits and frame rate. Then replace the reduced CAM 04–10 backgrounds and compact repeated jumpscare frames with optimized GX2 textures before final probability balancing.
