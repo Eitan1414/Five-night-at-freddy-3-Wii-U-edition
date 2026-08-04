@@ -26,14 +26,61 @@
 #define TITLE_FRAME_COUNT 5
 #define REPAIR_SINGLE_FRAMES 120u
 #define REPAIR_ALL_FRAMES 240u
-#define CAMERA_FAILURE_FRAME 720u
-#define VENTILATION_FAILURE_FRAME 1440u
-#define AUDIO_FAILURE_FRAME 2160u
-#define SPRINGTRAP_MOVE_FRAMES 540u
-#define SPRINGTRAP_MOVE_FRAMES_VENT_ERROR 300u
+#define NIGHT_COUNT 5
+#define NIGHT_INTRO_FRAMES 180u
+#define FRAMES_PER_HOUR 3600u
+#define VICTORY_MIN_FRAMES 180u
+#define VICTORY_AUTO_FRAMES 720u
+#define NO_FAILURE_FRAME UINT32_MAX
+#define ATTACK_GRACE_FRAMES 600u
 #define AUDIO_LURE_TRAVEL_FRAMES 90u
 #define AUDIO_LURE_COOLDOWN_FRAMES 300u
 #define AUDIO_LURE_MESSAGE_FRAMES 150u
+
+
+typedef enum NightPhase {
+    NIGHT_PHASE_INTRO = 0,
+    NIGHT_PHASE_ACTIVE,
+    NIGHT_PHASE_VICTORY,
+    NIGHT_PHASE_GAME_OVER
+} NightPhase;
+
+typedef struct NightConfig {
+    int number;
+    bool springtrap_enabled;
+    uint32_t springtrap_move_frames;
+    uint32_t camera_failure_frame;
+    uint32_t ventilation_failure_frame;
+    uint32_t audio_failure_frame;
+    uint32_t attack_grace_frames;
+    const char *subtitle;
+} NightConfig;
+
+static const NightConfig kNightConfigs[NIGHT_COUNT] = {
+    {1, false, 0u, NO_FAILURE_FRAME, NO_FAILURE_FRAME, NO_FAILURE_FRAME,
+     ATTACK_GRACE_FRAMES, "SYSTEM ORIENTATION"},
+    {2, true, 900u, 7200u, 10800u, 14400u,
+     ATTACK_GRACE_FRAMES, "SPRINGTRAP ACTIVE"},
+    {3, true, 720u, 5400u, 9000u, 12600u,
+     540u, "SYSTEMS UNSTABLE"},
+    {4, true, 540u, 3600u, 7200u, 10800u,
+     480u, "AGGRESSIVE MOVEMENT"},
+    {5, true, 420u, 2700u, 5400u, 8100u,
+     420u, "FINAL SHIFT"},
+};
+
+static int g_title_night = 1;
+
+static const NightConfig *night_config(int number)
+{
+    if (number < 1) {
+        number = 1;
+    }
+    if (number > NIGHT_COUNT) {
+        number = NIGHT_COUNT;
+    }
+    return &kNightConfigs[number - 1];
+}
 
 typedef enum MaintenanceItem {
     MAINTENANCE_CAMERA = 0,
@@ -48,10 +95,17 @@ typedef enum AudioLureMessage {
     AUDIO_LURE_MESSAGE_PLAYING,
     AUDIO_LURE_MESSAGE_SUCCESS,
     AUDIO_LURE_MESSAGE_ERROR,
-    AUDIO_LURE_MESSAGE_COOLDOWN
+    AUDIO_LURE_MESSAGE_COOLDOWN,
+    AUDIO_LURE_MESSAGE_NO_TARGET
 } AudioLureMessage;
 
 typedef struct SystemsState {
+    int night_number;
+    NightPhase night_phase;
+    uint32_t phase_frames;
+    int current_hour;
+    uint32_t hour_frames;
+    uint32_t attack_frames;
     bool maintenance_open;
     int maintenance_selection;
     bool repairing;
@@ -132,3 +186,7 @@ static int title_frame_index(const App *app)
 {
     const uint32_t phase = app->state_frames % 180u;
     if (phase < 144u) {
+        return 0;
+    }
+    return 1 + (int) (((phase - 144u) / 9u) % 4u);
+}
