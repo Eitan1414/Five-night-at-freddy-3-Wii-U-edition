@@ -19,7 +19,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 #-------------------------------------------------------------------------------
 TARGET      := fnaf3-wiiu
 BUILD       := build
-SOURCES     := source
+SOURCES     := source source/game source/platform source/renderer
 DATA        := data
 INCLUDES    := include
 CONTENT     :=
