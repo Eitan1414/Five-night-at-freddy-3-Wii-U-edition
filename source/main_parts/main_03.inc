@@ -1,3 +1,11 @@
+    if (systems->ventilation_failed) {
+        const uint32_t pulse = (systems->night_frames / 12u) & 1u;
+        const uint32_t warning = pulse
+            ? GRAPHICS_RGB(225, 56, 39)
+            : GRAPHICS_RGB(120, 18, 12);
+        graphics_draw_rect(GRAPHICS_TARGET_TV,
+                           568, 12, 268, 38,
+                           GRAPHICS_RGB(20, 0, 0));
         graphics_draw_frame(GRAPHICS_TARGET_TV,
                             568, 12, 268, 38, 3, warning);
         graphics_draw_text(GRAPHICS_TARGET_TV,
@@ -61,7 +69,10 @@ static void draw_camera_feed(const App *app,
     graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
                        47, 73, 760, 300,
                        GRAPHICS_RGB(0, 0, 0));
-    const TextureRle *feed = selected_camera == systems->springtrap_camera
+    const bool springtrap_visible =
+        night_config(systems->night_number)->springtrap_enabled &&
+        selected_camera == systems->springtrap_camera;
+    const TextureRle *feed = springtrap_visible
         ? camera_springtrap_texture(selected_camera)
         : camera_texture(selected_camera);
     texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
@@ -87,7 +98,7 @@ static void draw_camera_feed(const App *app,
                        55, 399, 3,
                        camera_label(selected_camera),
                        GRAPHICS_RGB(216, 239, 209));
-    if (selected_camera == systems->springtrap_camera) {
+    if (springtrap_visible) {
         graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
                            214, 405, 2,
                            "MOTION DETECTED",
@@ -120,6 +131,10 @@ static void draw_camera_feed(const App *app,
             lure_status = "AUDIO RECHARGING";
             lure_colour = GRAPHICS_RGB(173, 157, 101);
             break;
+        case AUDIO_LURE_MESSAGE_NO_TARGET:
+            lure_status = "NO MOVEMENT DETECTED";
+            lure_colour = GRAPHICS_RGB(136, 160, 130);
+            break;
         case AUDIO_LURE_MESSAGE_NONE:
         default:
             if (systems->audio_lure_cooldown_frames > 0u) {
@@ -132,3 +147,45 @@ static void draw_camera_feed(const App *app,
                        55, 435, 2,
                        lure_status,
                        lure_colour);
+    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                       55, 460, 1,
+                       "LEFT RIGHT: CAMERA   A: LURE   X/Y: CLOSE",
+                       GRAPHICS_RGB(130, 174, 126));
+}
+
+static bool system_failed(const SystemsState *systems, int item)
+{
+    switch (item) {
+        case MAINTENANCE_CAMERA:
+            return systems->camera_failed;
+        case MAINTENANCE_AUDIO:
+            return systems->audio_failed;
+        case MAINTENANCE_VENTILATION:
+            return systems->ventilation_failed;
+        default:
+            return false;
+    }
+}
+
+static void draw_maintenance_panel(const SystemsState *systems)
+{
+    static const char *const labels[MAINTENANCE_ITEM_COUNT] = {
+        "CAMERA SYSTEM",
+        "AUDIO DEVICES",
+        "VENTILATION",
+        "REBOOT ALL",
+        "EXIT",
+    };
+
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                       0, 0, GRAPHICS_LOGICAL_WIDTH, GRAPHICS_LOGICAL_HEIGHT,
+                       GRAPHICS_RGB(1, 5, 3));
+    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+                        38, 31, 778, 412, 4,
+                        GRAPHICS_RGB(54, 112, 59));
+    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                       81, 58, 4,
+                       "MAINTENANCE PANEL",
+                       GRAPHICS_RGB(174, 220, 166));
+
+    for (int item = 0; item < MAINTENANCE_ITEM_COUNT; ++item) {
