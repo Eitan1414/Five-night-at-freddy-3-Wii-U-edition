@@ -2,6 +2,7 @@
 
 #include <whb/proc.h>
 
+#include "assets/menu_springtrap_texture.h"
 #include "assets/warning_texture.h"
 #include "game/app.h"
 #include "platform/frame_clock.h"
@@ -9,26 +10,72 @@
 #include "platform/input.h"
 #include "renderer/texture.h"
 
+static void draw_warning_texture(void)
+{
+    graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                       60,
+                       154,
+                       734,
+                       174,
+                       GRAPHICS_RGB(0, 0, 0));
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     67,
+                     174,
+                     720,
+                     138,
+                     &gWarningTexture);
+}
+
+static void draw_title_texture(const App *app)
+{
+    const int glitch_x = (int) ((app->effect_seed >> 10) % 7u) - 3;
+
+    graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                       410,
+                       0,
+                       444,
+                       GRAPHICS_LOGICAL_HEIGHT,
+                       GRAPHICS_RGB(0, 0, 0));
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     410 + glitch_x,
+                     16,
+                     444,
+                     448,
+                     &gMenuSpringtrapTexture);
+
+    if ((app->effect_seed & 0x03u) == 0u) {
+        const int glitch_y = 90 + (int) ((app->effect_seed >> 8) % 300u);
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                           410,
+                           glitch_y,
+                           444,
+                           3,
+                           GRAPHICS_RGB(36, 92, 40));
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                           448,
+                           glitch_y + 7,
+                           361,
+                           1,
+                           GRAPHICS_RGB(105, 153, 84));
+    }
+}
+
 static void render_app(App *app)
 {
-    const bool draw_warning_texture =
-        app->needs_redraw && app->screen == APP_SCREEN_WARNING;
+    const bool redraw = app->needs_redraw;
+    const AppScreen screen = app->screen;
 
     app_render(app);
 
-    if (draw_warning_texture) {
-        graphics_draw_rect(GRAPHICS_TARGET_BOTH,
-                           60,
-                           154,
-                           734,
-                           174,
-                           GRAPHICS_RGB(0, 0, 0));
-        texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                         67,
-                         174,
-                         720,
-                         138,
-                         &gWarningTexture);
+    if (!redraw) {
+        return;
+    }
+
+    if (screen == APP_SCREEN_WARNING) {
+        draw_warning_texture();
+        graphics_present(GRAPHICS_TARGET_BOTH);
+    } else if (screen == APP_SCREEN_TITLE) {
+        draw_title_texture(app);
         graphics_present(GRAPHICS_TARGET_BOTH);
     }
 }
