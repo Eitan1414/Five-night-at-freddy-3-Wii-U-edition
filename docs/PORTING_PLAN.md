@@ -29,7 +29,10 @@ The code cannot simply be recompiled with `wut`. Its game logic must be separate
 - [x] Move `OSScreen` allocation and drawing out of game code.
 - [x] Add a frame-clock wrapper.
 - [x] Add an initial sprite-mask renderer.
-- [x] Reduce `main.c` to initialization and the game loop.
+- [x] Add a row-compressed indexed texture renderer.
+- [x] Add a converter for indexed PlayStation `.TIM` files.
+- [x] Display the first converted PSX texture on TV and GamePad.
+- [x] Reduce `main.c` to platform initialization, the game loop and temporary texture composition.
 - [ ] Add portable audio API.
 - [ ] Add portable storage/save API.
 - [ ] Replace the software backend with a GX2 texture renderer.
@@ -40,6 +43,7 @@ Initial replacements:
 | --- | --- |
 | `PadRead`, `PAD*` | portable input API backed by `VPADRead` |
 | `FntPrint` | portable Wii U UI text renderer |
+| indexed `.TIM` images | converter plus row-RLE texture API |
 | `Gs*`, `DrawOTag`, `LoadImage` | current `OSScreen` backend, later GX2 |
 | `Spu*` | future AX/AX2 or SDL2_mixer-compatible audio layer |
 | `Cd*` | future bundled-content or SD file API |
@@ -53,9 +57,11 @@ Initial replacements:
 - [x] open/close camera panel;
 - [x] separate TV and GamePad views;
 - [x] first sprite rendered through the renderer module;
+- [x] first converted PSX texture displayed;
 - [ ] selectable real camera feed;
 - [ ] fixed-step update timing independent of rendering cost;
-- [ ] converted texture loading.
+- [ ] full-size background texture loading;
+- [ ] real office visual layout.
 
 ## Phase 3 — Game systems
 
@@ -77,4 +83,4 @@ Initial replacements:
 
 ## Immediate next task
 
-Create the first real texture pipeline: convert one permitted test image, load it through a renderer-facing texture API, and display different textured content on the TV and GamePad. After that, replace the temporary office with the real visual layout one asset at a time.
+Move from the small validation texture to a full-size visual. The preferred next milestone is a GX2 or otherwise efficient background path capable of displaying the converted title image or office panorama without thousands of software pixel writes. Then replace the procedural title character or temporary office background one asset at a time.
