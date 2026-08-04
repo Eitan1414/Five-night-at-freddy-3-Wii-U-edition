@@ -4,27 +4,24 @@ Native Wii U homebrew port project targeting **Aroma** and the `.wuhb` format.
 
 ## Current status
 
-The port now has a modular foundation and its first PSX visuals running on Wii U:
+The port now contains a small interactive Night 1 systems prototype:
 
 - native C application built with devkitPro `wut`;
-- portable GamePad input API;
-- shared graphics API targeting the TV, GamePad or both;
-- separate game-state, platform, sprite and texture modules;
-- converter for indexed PlayStation `.TIM` images;
-- row-compressed indexed textures with nearest-neighbour scaling;
-- original PSX warning graphic on TV and GamePad;
-- original PSX Springtrap image on the title screen;
-- interactive **New Game**, **Load Game** and **Extras** menu;
-- `New Game` opens the converted PSX office panorama;
-- left/right scrolls through the office image;
-- X or Y opens a separate camera system on the GamePad;
-- converted PSX feeds for **CAM 01**, **CAM 02** and **CAM 03**;
-- left/right or up/down switches between the three camera feeds;
-- the TV keeps displaying the office while the GamePad displays cameras;
-- static scanlines and intermittent glitch bars over camera feeds;
-- automatic `.elf`, `.rpx` and `.wuhb` builds with GitHub Actions.
+- portable GamePad input and shared TV/GamePad graphics APIs;
+- converter and row-compressed renderer for indexed PlayStation `.TIM` images;
+- original PSX warning graphic;
+- title screen animated with the five real `MENU1`–`MENU5` Springtrap frames;
+- converted PSX office panorama with horizontal movement;
+- separate GamePad camera system with CAM 01, CAM 02 and CAM 03;
+- scanlines and intermittent camera glitches;
+- maintenance panel with camera, audio and ventilation status;
+- timed camera, ventilation and audio failures during the office test;
+- individual system reboot and **Reboot All** progress sequences;
+- camera failure replaces the GamePad feed with a signal-lost screen;
+- ventilation failure displays a flashing warning over the office;
+- automatic `.elf`, `.rpx` and `.wuhb` builds through GitHub Actions.
 
-The game logic is still an early systems test. Audio, saves, Springtrap AI, phantom encounters, maintenance systems and night progression have not been ported yet.
+This remains a development prototype. Springtrap AI, phantom encounters, complete camera/vent maps, sound, saves and full night progression are not integrated yet.
 
 ## Project layout
 
@@ -37,11 +34,15 @@ include/
 source/
 ├── assets/
 ├── game/
+├── main_parts/
 ├── platform/
 ├── renderer/
 ├── main.c
-├── warning_texture.c
 ├── menu_springtrap_texture.c
+├── menu_springtrap_texture2.c
+├── menu_springtrap_texture3.c
+├── menu_springtrap_texture4.c
+├── menu_springtrap_texture5.c
 ├── office_texture.c
 ├── camera01_texture.c
 ├── camera02_texture.c
@@ -50,7 +51,7 @@ tools/
 └── convert_tim.py
 ```
 
-Game code no longer calls `VPADRead` or `OSScreen` directly. `main.c` currently composes the converted PSX textures over the portable game states while the renderer migration is still in progress.
+`main.c` currently includes several small implementation fragments under `source/main_parts/`. This is only an upload-friendly organization for the current development milestone; it behaves as one C translation unit.
 
 ## Texture pipeline
 
@@ -69,7 +70,7 @@ python3 tools/convert_tim.py input.tim source/generated_texture.c include/assets
   --symbol gGeneratedTexture --sample-step 2
 ```
 
-The warning uses a small converted texture. Springtrap, the office and camera feeds currently use reduced-resolution RLE versions so they remain practical with the early `OSScreen` backend. A later GX2 renderer will allow higher-resolution assets and faster full-screen updates.
+The large visuals currently use reduced-resolution RLE textures so they remain practical with the early `OSScreen` backend. A later GX2 renderer will enable higher-resolution images and faster full-screen animation.
 
 ## Build locally
 
@@ -105,24 +106,30 @@ Launch it from the Aroma Wii U Menu.
 
 ### Title screen
 
-- **D-Pad Up/Down** or left-stick emulation: change selection;
+- **Up/Down**: change selection;
 - **A** or **+**: confirm.
 
 ### Office test
 
 - **Left/Right**: scroll through the office panorama;
-- **X** or **Y**: open or close the GamePad camera panel;
+- **X** or **Y**: open or close the camera panel;
+- **−**: open or close maintenance;
 - **B**: return to the title screen.
 
 ### Camera panel
 
 - **Left/Right** or **Up/Down**: switch between CAM 01, CAM 02 and CAM 03;
 - **X** or **Y**: close the camera panel;
+- **−**: open maintenance;
 - the TV remains on the office view.
 
-### Load Game / Extras
+### Maintenance panel
 
-- **B**: return to the title screen.
+- **Up/Down**: select Camera System, Audio Devices, Ventilation, Reboot All or Exit;
+- **A** or **+**: start the selected reboot;
+- **B** or **−**: close the panel when no reboot is running.
+
+An individual reboot lasts about two seconds; **Reboot All** lasts about four seconds. For this prototype, the camera failure starts around 12 seconds into the office, ventilation around 24 seconds and audio around 36 seconds, making the repair loop easy to test.
 
 The HOME button continues to use the normal Wii U system flow.
 
