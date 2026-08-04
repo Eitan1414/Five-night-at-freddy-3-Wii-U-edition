@@ -1,0 +1,41 @@
+name: Build Wii U Homebrew
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitppc:20260503
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build WUHB
+        run: make -j2
+
+      - name: Verify outputs
+        run: |
+          test -f fnaf3-wiiu.elf
+          test -f fnaf3-wiiu.rpx
+          test -f fnaf3-wiiu.wuhb
+          ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
+
+      - name: Upload Wii U build
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu
+          if-no-files-found: error
+          path: |
+            fnaf3-wiiu.elf
+            fnaf3-wiiu.rpx
+            fnaf3-wiiu.wuhb
