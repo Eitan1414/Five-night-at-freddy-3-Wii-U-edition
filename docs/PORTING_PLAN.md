@@ -5,12 +5,12 @@
 The PSX project is the appropriate technical reference because it is written in C and already contains the complete game flow. The audit found:
 
 - `fnaf3.c`: about 905 lines;
-- most of the implementation is placed in large headers under `objects/`;
+- most implementation is placed in large headers under `objects/`;
 - direct PlayStation APIs for graphics, controller input, CD access, memory cards and SPU audio;
 - PSX-native `.TIM`, `.VAG` and XA/CD resources;
 - no clear source-code or asset licence in the supplied archive.
 
-The code cannot simply be recompiled with `wut`. Its game logic must be separated from the PSX hardware layer.
+The code cannot simply be recompiled with `wut`; game logic must be separated from the PSX hardware layer.
 
 ## Phase 0 — Wii U bootstrap
 
@@ -23,23 +23,17 @@ The code cannot simply be recompiled with `wut`. Its game logic must be separate
 
 ## Phase 1 — Platform abstraction
 
-- [x] Add a portable `platform/input.h` API.
-- [x] Move all `VPADRead` logic into `input_wiiu.c`.
-- [x] Add a graphics API that can target TV, GamePad or both.
+- [x] Add a portable input API.
+- [x] Move `VPADRead` logic out of game code.
+- [x] Add a graphics API targeting TV, GamePad or both.
 - [x] Move `OSScreen` allocation and drawing out of game code.
 - [x] Add a frame-clock wrapper.
-- [x] Add an initial sprite-mask renderer.
-- [x] Add a row-compressed indexed texture renderer.
+- [x] Add sprite-mask and row-compressed indexed texture renderers.
 - [x] Add a converter for indexed PlayStation `.TIM` files.
 - [x] Display converted PSX textures on TV and GamePad.
-- [x] Render the real PSX Springtrap title image.
-- [x] Render and horizontally scroll the real PSX office panorama.
-- [x] Render three selectable PSX camera feeds on the GamePad.
 - [ ] Add portable audio API.
 - [ ] Add portable storage/save API.
 - [ ] Replace the software backend with a GX2 texture renderer.
-
-Initial replacements:
 
 | PSX dependency | Wii U replacement |
 | --- | --- |
@@ -47,35 +41,39 @@ Initial replacements:
 | `FntPrint` | portable Wii U UI text renderer |
 | indexed `.TIM` images | converter plus row-RLE texture API |
 | `Gs*`, `DrawOTag`, `LoadImage` | current `OSScreen` backend, later GX2 |
-| `Spu*` | future AX/AX2 or SDL2_mixer-compatible audio layer |
+| `Spu*` | future AX/AX2 audio layer |
 | `Cd*` | future bundled-content or SD file API |
 | memory-card functions | future Wii U save directory / SD fallback |
 
 ## Phase 2 — Minimal playable loop
 
 - [x] title/menu state;
-- [x] real title character texture;
-- [x] real office panorama;
-- [x] horizontal office movement;
-- [x] open/close camera panel;
+- [x] all five real title frames (`MENU1` to `MENU5`);
+- [x] real office panorama and horizontal movement;
 - [x] separate TV and GamePad views;
-- [x] first sprite rendered through the renderer module;
-- [x] converted warning, title and office textures;
+- [x] open/close camera panel;
 - [x] selectable real CAM 01, CAM 02 and CAM 03 feeds;
 - [x] static and glitch overlays on camera feeds;
+- [x] maintenance panel opened with Minus;
+- [x] camera, audio and ventilation state flags;
+- [x] timed prototype failures;
+- [x] individual reboot and Reboot All progress;
+- [x] camera failure affects the GamePad feed;
+- [x] ventilation failure affects the TV office view;
 - [ ] fixed-step update timing independent of rendering cost;
-- [ ] animated title frames (`MENU1` to `MENU5`);
 - [ ] real camera-map layout and all camera rooms;
 - [ ] vent-camera mode.
 
 ## Phase 3 — Game systems
 
-- camera map and vents;
-- maintenance panel;
-- Springtrap AI;
-- phantom encounters and jumpscares;
-- time progression and night completion;
-- save/load and unlocks.
+- [ ] full camera map and vents;
+- [x] first maintenance-panel loop;
+- [ ] connect audio-device state to an actual lure mechanic;
+- [ ] connect ventilation state to hallucinations and danger;
+- [ ] Springtrap AI and room movement;
+- [ ] phantom encounters and jumpscares;
+- [ ] time progression and night completion;
+- [ ] save/load and unlocks.
 
 ## Phase 4 — Wii U features
 
@@ -88,4 +86,4 @@ Initial replacements:
 
 ## Immediate next task
 
-Add the maintenance-panel state and its first controls, then begin connecting the camera system to actual game state. The next visual improvement should also add the remaining title frames (`MENU2` to `MENU5`) so Springtrap glitches between real PSX images instead of only shifting one frame.
+Connect the system flags to real gameplay. Add a minimal Springtrap state that moves between the three available camera rooms, make the selected camera reveal his current location, and add an audio-lure action whose availability depends on the Audio Devices system. After that, expand the camera map and begin vent-camera mode.
