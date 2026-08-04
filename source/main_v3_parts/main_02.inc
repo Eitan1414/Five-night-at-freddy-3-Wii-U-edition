@@ -103,13 +103,13 @@ static void update_active_game(Game *game, const InputState *input)
     update_ventilation(game);
 
     PhantomEvent phantom_event = phantoms_update(
-        &game->phantoms, game->hour, game->camera_open,
+        &game->phantoms, game->hour == 12 ? 0 : game->hour, game->camera_open,
         game->maintenance_open, game->selected_camera, game->office_pan);
     process_phantom_event(game, phantom_event);
 
     if (config->springtrap_enabled) {
         SpringtrapEvent event = springtrap_ai_update(
-            &game->springtrap, game->night, game->hour,
+            &game->springtrap, game->night, game->hour == 12 ? 0 : game->hour,
             springtrap_interval(game), game->sealed_vent,
             springtrap_directly_observed(game), game->player_blinded);
         process_springtrap_event(game, event);
