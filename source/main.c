@@ -3,6 +3,7 @@
 #include <whb/proc.h>
 
 #include "assets/menu_springtrap_texture.h"
+#include "assets/office_texture.h"
 #include "assets/warning_texture.h"
 #include "game/app.h"
 #include "platform/frame_clock.h"
@@ -60,6 +61,46 @@ static void draw_title_texture(const App *app)
     }
 }
 
+static void draw_office_texture(const App *app)
+{
+    const int texture_x = -133 + app->office_pan;
+
+    graphics_draw_rect(GRAPHICS_TARGET_TV,
+                       0,
+                       0,
+                       GRAPHICS_LOGICAL_WIDTH,
+                       GRAPHICS_LOGICAL_HEIGHT,
+                       GRAPHICS_RGB(0, 0, 0));
+    texture_draw_rle(GRAPHICS_TARGET_TV,
+                     texture_x,
+                     24,
+                     1120,
+                     430,
+                     &gOfficeTexture);
+
+    for (int y = 30; y < 454; y += 12) {
+        graphics_draw_rect(GRAPHICS_TARGET_TV,
+                           0,
+                           y,
+                           GRAPHICS_LOGICAL_WIDTH,
+                           1,
+                           GRAPHICS_RGB(4, 8, 5));
+    }
+
+    graphics_draw_text(GRAPHICS_TARGET_TV,
+                       18,
+                       5,
+                       2,
+                       "NIGHT 1 - OFFICE TEST",
+                       GRAPHICS_RGB(166, 191, 151));
+    graphics_draw_text(GRAPHICS_TARGET_TV,
+                       18,
+                       458,
+                       1,
+                       "LEFT RIGHT: LOOK   X/Y: CAMERAS   B: MENU",
+                       GRAPHICS_RGB(119, 150, 111));
+}
+
 static void render_app(App *app)
 {
     const bool redraw = app->needs_redraw;
@@ -77,6 +118,9 @@ static void render_app(App *app)
     } else if (screen == APP_SCREEN_TITLE) {
         draw_title_texture(app);
         graphics_present(GRAPHICS_TARGET_BOTH);
+    } else if (screen == APP_SCREEN_OFFICE_TEST) {
+        draw_office_texture(app);
+        graphics_present(GRAPHICS_TARGET_TV);
     }
 }
 
