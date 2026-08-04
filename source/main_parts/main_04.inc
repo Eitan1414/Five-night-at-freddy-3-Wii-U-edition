@@ -1,3 +1,66 @@
+    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                       55, 460, 1,
+                       "LEFT RIGHT: CAMERA   A: LURE   X/Y: CLOSE",
+                       GRAPHICS_RGB(130, 174, 126));
+}
+
+static bool system_failed(const SystemsState *systems, int item)
+{
+    switch (item) {
+        case MAINTENANCE_CAMERA:
+            return systems->camera_failed;
+        case MAINTENANCE_AUDIO:
+            return systems->audio_failed;
+        case MAINTENANCE_VENTILATION:
+            return systems->ventilation_failed;
+        default:
+            return false;
+    }
+}
+
+static void draw_maintenance_panel(const SystemsState *systems)
+{
+    static const char *const labels[MAINTENANCE_ITEM_COUNT] = {
+        "CAMERA SYSTEM",
+        "AUDIO DEVICES",
+        "VENTILATION",
+        "REBOOT ALL",
+        "EXIT",
+    };
+
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                       0, 0, GRAPHICS_LOGICAL_WIDTH, GRAPHICS_LOGICAL_HEIGHT,
+                       GRAPHICS_RGB(1, 5, 3));
+    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+                        38, 31, 778, 412, 4,
+                        GRAPHICS_RGB(54, 112, 59));
+    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                       81, 58, 4,
+                       "MAINTENANCE PANEL",
+                       GRAPHICS_RGB(174, 220, 166));
+
+    for (int item = 0; item < MAINTENANCE_ITEM_COUNT; ++item) {
+        const int y = 126 + item * 55;
+        const bool selected = item == systems->maintenance_selection;
+        if (selected) {
+            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                               76, y - 12, 701, 40,
+                               GRAPHICS_RGB(24, 60, 29));
+            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                               76, y - 12, 6, 40,
+                               GRAPHICS_RGB(131, 211, 124));
+        }
+
+        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                           101, y, 3, labels[item],
+                           selected
+                               ? GRAPHICS_RGB(222, 242, 216)
+                               : GRAPHICS_RGB(111, 148, 108));
+
+        if (item < MAINTENANCE_REBOOT_ALL) {
+            const bool failed = system_failed(systems, item);
+            graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                               602, y, 2,
                                failed ? "ERROR" : "ONLINE",
                                failed
                                    ? GRAPHICS_RGB(237, 69, 47)
@@ -68,38 +131,3 @@ static void begin_repair(SystemsState *systems)
     }
     systems->repairing = true;
     systems->repair_target = systems->maintenance_selection;
-    systems->repair_frames = 0u;
-}
-
-static void handle_maintenance_input(SystemsState *systems,
-                                     App *app,
-                                     const InputState *input)
-{
-    if (systems->repairing) {
-        return;
-    }
-
-    if (input_was_pressed(input, GAME_BUTTON_UP)) {
-        systems->maintenance_selection =
-            (systems->maintenance_selection + MAINTENANCE_ITEM_COUNT - 1) %
-            MAINTENANCE_ITEM_COUNT;
-        app->needs_redraw = true;
-    }
-    if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
-        systems->maintenance_selection =
-            (systems->maintenance_selection + 1) % MAINTENANCE_ITEM_COUNT;
-        app->needs_redraw = true;
-    }
-    if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
-        input_was_pressed(input, GAME_BUTTON_START)) {
-        begin_repair(systems);
-        app->needs_redraw = true;
-    }
-    if (input_was_pressed(input, GAME_BUTTON_BACK) ||
-        input_was_pressed(input, GAME_BUTTON_SELECT)) {
-        systems->maintenance_open = false;
-        app->needs_redraw = true;
-    }
-}
-
-int main(int argc, char **argv)
