@@ -54,6 +54,7 @@ The code cannot simply be recompiled with `wut`; game logic must be separated fr
 - [x] open/close camera panel;
 - [x] selectable real CAM 01, CAM 02 and CAM 03 feeds;
 - [x] static and glitch overlays on camera feeds;
+- [x] Springtrap composites for the three available camera rooms;
 - [x] maintenance panel opened with Minus;
 - [x] camera, audio and ventilation state flags;
 - [x] timed prototype failures;
@@ -68,9 +69,13 @@ The code cannot simply be recompiled with `wut`; game logic must be separated fr
 
 - [ ] full camera map and vents;
 - [x] first maintenance-panel loop;
-- [ ] connect audio-device state to an actual lure mechanic;
+- [x] first audio-lure mechanic connected to Audio Devices state;
+- [x] minimal Springtrap room state and automatic movement;
+- [x] ventilation failure accelerates Springtrap movement;
+- [x] selected camera reveals Springtrap's current location;
+- [ ] real audio playback for Play Audio;
 - [ ] connect ventilation state to hallucinations and danger;
-- [ ] Springtrap AI and room movement;
+- [ ] full Springtrap route, decisions and office attack;
 - [ ] phantom encounters and jumpscares;
 - [ ] time progression and night completion;
 - [ ] save/load and unlocks.
@@ -86,4 +91,4 @@ The code cannot simply be recompiled with `wut`; game logic must be separated fr
 
 ## Immediate next task
 
-Connect the system flags to real gameplay. Add a minimal Springtrap state that moves between the three available camera rooms, make the selected camera reveal his current location, and add an audio-lure action whose availability depends on the Audio Devices system. After that, expand the camera map and begin vent-camera mode.
+Expand beyond the three-room prototype. Convert CAM 04 to CAM 10 and the real camera-map layout, give Springtrap a longer route toward the office, and begin the vent-camera mode. In parallel, create the portable audio API so Play Audio triggers the real lure sound rather than only changing game state.
