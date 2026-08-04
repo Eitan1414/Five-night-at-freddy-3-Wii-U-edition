@@ -1,3 +1,38 @@
+    systems->repair_frames = 0u;
+}
+
+static void handle_maintenance_input(SystemsState *systems,
+                                     App *app,
+                                     const InputState *input)
+{
+    if (systems->repairing) {
+        return;
+    }
+
+    if (input_was_pressed(input, GAME_BUTTON_UP)) {
+        systems->maintenance_selection =
+            (systems->maintenance_selection + MAINTENANCE_ITEM_COUNT - 1) %
+            MAINTENANCE_ITEM_COUNT;
+        app->needs_redraw = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
+        systems->maintenance_selection =
+            (systems->maintenance_selection + 1) % MAINTENANCE_ITEM_COUNT;
+        app->needs_redraw = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+        input_was_pressed(input, GAME_BUTTON_START)) {
+        begin_repair(systems);
+        app->needs_redraw = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_BACK) ||
+        input_was_pressed(input, GAME_BUTTON_SELECT)) {
+        systems->maintenance_open = false;
+        app->needs_redraw = true;
+    }
+}
+
+int main(int argc, char **argv)
 {
     (void) argc;
     (void) argv;
@@ -60,6 +95,9 @@
                 input_was_pressed(&input, GAME_BUTTON_DOWN)) {
                 selected_camera = (selected_camera + 1) % CAMERA_COUNT;
                 app.needs_redraw = true;
+            }
+            if (input_was_pressed(&input, GAME_BUTTON_CONFIRM)) {
+                trigger_audio_lure(&systems, &app, selected_camera);
             }
         }
 
