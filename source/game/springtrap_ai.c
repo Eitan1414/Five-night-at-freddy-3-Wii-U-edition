@@ -6,16 +6,16 @@
 #define OFFICE_ATTACK_BASE_FRAMES 360u
 
 static const int kNeighbours[SPRINGTRAP_CAMERA_COUNT][4] = {
-    {1, 5, -1, -1}, /* CAM 01: CAM 02, CAM 06 */
-    {0, 2, 4, -1},  /* CAM 02: CAM 01, CAM 03, CAM 05 */
-    {1, 3, -1, -1}, /* CAM 03: CAM 02, CAM 04 */
-    {2, 4, 9, -1},  /* CAM 04: CAM 03, CAM 05, CAM 10 */
-    {1, 3, 5, 7},   /* CAM 05: CAM 02, CAM 04, CAM 06, CAM 08 */
-    {0, 4, 6, -1},  /* CAM 06: CAM 01, CAM 05, CAM 07 */
-    {5, 7, -1, -1}, /* CAM 07: CAM 06, CAM 08 */
-    {4, 6, 8, -1},  /* CAM 08: CAM 05, CAM 07, CAM 09 */
-    {7, 9, -1, -1}, /* CAM 09: CAM 08, CAM 10 */
-    {3, 8, -1, -1}, /* CAM 10: CAM 04, CAM 09 */
+    {1, 5, -1, -1},
+    {0, 2, 4, -1},
+    {1, 3, -1, -1},
+    {2, 4, 9, -1},
+    {1, 3, 5, 7},
+    {0, 4, 6, -1},
+    {5, 7, -1, -1},
+    {4, 6, 8, -1},
+    {7, 9, -1, -1},
+    {3, 8, -1, -1},
 };
 
 static uint32_t next_random(SpringtrapAI *ai)
@@ -36,7 +36,7 @@ static int neighbour_count(int camera)
     return count;
 }
 
-static bool cameras_adjacent(int first, int second)
+bool springtrap_ai_cameras_adjacent(int first, int second)
 {
     const int count = neighbour_count(first);
     for (int index = 0; index < count; ++index) {
@@ -127,7 +127,6 @@ static SpringtrapEvent enter_vent(SpringtrapAI *ai, SpringtrapVent vent)
 }
 
 static SpringtrapEvent exit_vent(SpringtrapAI *ai,
-                                 int night_number,
                                  SpringtrapVent sealed_vent)
 {
     SpringtrapEvent event = empty_event();
@@ -181,27 +180,21 @@ static SpringtrapEvent exit_vent(SpringtrapAI *ai,
     ai->vent_source_camera = -1;
     ai->vent_frames = 0u;
     ai->move_frames = 0u;
-    (void) night_number;
     return event;
 }
 
-static SpringtrapEvent move_from_camera(SpringtrapAI *ai,
-                                        int night_number,
-                                        SpringtrapVent sealed_vent)
+static SpringtrapEvent move_to_random_neighbour(SpringtrapAI *ai)
 {
     SpringtrapEvent event = empty_event();
     const int current = ai->camera;
-    const SpringtrapVent available_vent = vent_for_camera(current);
-    const uint32_t vent_chance = 10u + (uint32_t) night_number * 5u;
-
-    if (available_vent != SPRINGTRAP_VENT_NONE &&
-        available_vent != sealed_vent &&
-        (next_random(ai) % 100u) < vent_chance) {
-        return enter_vent(ai, available_vent);
+    const int count = neighbour_count(current);
+    if (count <= 0) {
+        event.flags = SPRINGTRAP_EVENT_STAYED;
+        ai->move_frames = 0u;
+        return event;
     }
 
-    if (current == 0 &&
-        (next_random(ai) % 100u) < (18u + (uint32_t) night_number * 5u)) {
+    if (current == 0 && (next_random(ai) % 100u) < 28u) {
         ai->kind = SPRINGTRAP_LOCATION_OFFICE_LEFT;
         ai->camera = -1;
         ai->move_frames = 0u;
@@ -211,10 +204,6 @@ static SpringtrapEvent move_from_camera(SpringtrapAI *ai,
         return event;
     }
 
-    const int count = neighbour_count(current);
-    if (count <= 0) {
-        return event;
-    }
     const int next = kNeighbours[current][next_random(ai) % (uint32_t) count];
     ai->camera = next;
     ai->move_frames = 0u;
@@ -224,9 +213,35 @@ static SpringtrapEvent move_from_camera(SpringtrapAI *ai,
     return event;
 }
 
+static SpringtrapEvent movement_opportunity(SpringtrapAI *ai,
+                                             int current_hour)
+{
+    SpringtrapEvent event = empty_event();
+    const SpringtrapVent available_vent = vent_for_camera(ai->camera);
+    uint32_t choice = next_random(ai) % 3u;
+
+    if (choice == 2u &&
+        (current_hour < 1 || available_vent == SPRINGTRAP_VENT_NONE)) {
+        choice = next_random(ai) & 1u;
+    }
+
+    if (choice == 0u) {
+        ai->move_frames = 0u;
+        event.flags = SPRINGTRAP_EVENT_STAYED;
+        event.from_camera = ai->camera;
+        event.to_camera = ai->camera;
+        return event;
+    }
+    if (choice == 2u) {
+        return enter_vent(ai, available_vent);
+    }
+    return move_to_random_neighbour(ai);
+}
+
 SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
                                      int night_number,
-                                     uint32_t camera_move_interval,
+                                     int current_hour,
+                                     uint32_t movement_opportunity_frames,
                                      SpringtrapVent sealed_vent,
                                      bool directly_observed,
                                      bool player_blinded)
@@ -239,19 +254,19 @@ SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
     switch (ai->kind) {
         case SPRINGTRAP_LOCATION_CAMERA:
             ++ai->move_frames;
-            if (ai->move_frames >= camera_move_interval) {
-                event = move_from_camera(ai, night_number, sealed_vent);
+            if (ai->move_frames >= movement_opportunity_frames) {
+                event = movement_opportunity(ai, current_hour);
             }
             break;
         case SPRINGTRAP_LOCATION_VENT:
             ++ai->vent_frames;
             if (ai->vent_frames >= vent_travel_frames(night_number)) {
-                event = exit_vent(ai, night_number, sealed_vent);
+                event = exit_vent(ai, sealed_vent);
             }
             break;
         case SPRINGTRAP_LOCATION_HALL_HIDDEN:
             ++ai->move_frames;
-            if (ai->move_frames >= camera_move_interval) {
+            if (ai->move_frames >= movement_opportunity_frames) {
                 ai->move_frames = 0u;
                 event.flags = SPRINGTRAP_EVENT_MOVED;
                 if ((next_random(ai) & 1u) == 0u) {
@@ -291,18 +306,27 @@ SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
     return event;
 }
 
-SpringtrapEvent springtrap_ai_lure(SpringtrapAI *ai, int target_camera)
+SpringtrapEvent springtrap_ai_lure(SpringtrapAI *ai,
+                                   int target_camera,
+                                   int night_number)
 {
     SpringtrapEvent event = empty_event();
     if (ai == NULL || target_camera < 0 ||
         target_camera >= SPRINGTRAP_CAMERA_COUNT ||
-        ai->kind != SPRINGTRAP_LOCATION_CAMERA) {
+        ai->kind != SPRINGTRAP_LOCATION_CAMERA ||
+        target_camera == ai->camera ||
+        !springtrap_ai_cameras_adjacent(ai->camera, target_camera)) {
+        event.flags = SPRINGTRAP_EVENT_LURE_INVALID;
         return event;
     }
-    if (target_camera != ai->camera &&
-        !cameras_adjacent(ai->camera, target_camera)) {
+
+    if (night_number >= 3 && (next_random(ai) % 100u) < 20u) {
+        event.flags = SPRINGTRAP_EVENT_LURE_IGNORED;
+        event.from_camera = ai->camera;
+        event.to_camera = target_camera;
         return event;
     }
+
     event.flags = SPRINGTRAP_EVENT_MOVED |
                   event_danger_for_camera(target_camera);
     event.from_camera = ai->camera;
@@ -310,6 +334,15 @@ SpringtrapEvent springtrap_ai_lure(SpringtrapAI *ai, int target_camera)
     ai->camera = target_camera;
     ai->move_frames = 0u;
     return event;
+}
+
+void springtrap_ai_release_observation(SpringtrapAI *ai)
+{
+    if (ai != NULL &&
+        (ai->kind == SPRINGTRAP_LOCATION_OFFICE_WINDOW ||
+         ai->kind == SPRINGTRAP_LOCATION_OFFICE_LEFT)) {
+        ai->move_frames += 90u;
+    }
 }
 
 bool springtrap_ai_is_on_camera(const SpringtrapAI *ai, int camera)
