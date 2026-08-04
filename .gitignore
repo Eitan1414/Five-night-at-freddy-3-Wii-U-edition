@@ -1,0 +1,14 @@
+# Wii U build outputs
+build/
+*.elf
+*.rpx
+*.wuhb
+*.map
+*.o
+*.d
+
+# Editor / operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
