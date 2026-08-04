@@ -4,21 +4,23 @@ Native Wii U homebrew port project targeting **Aroma** and the `.wuhb` format.
 
 ## Current status
 
-The project now has a modular Phase 1 foundation, a first playable systems test and its first converted PSX texture:
+The port now has a modular foundation and its first PSX visuals running on Wii U:
 
 - native C application built with devkitPro `wut`;
-- portable input API instead of direct controller checks in game code;
+- portable GamePad input API;
 - shared graphics API targeting the TV, GamePad or both;
-- separate game state, platform, sprite-renderer and texture-renderer modules;
-- row-compressed indexed texture format with nearest-neighbour scaling;
-- conversion tool for indexed PlayStation `.TIM` images;
-- the original PSX warning graphic displayed on TV and GamePad;
-- PSX-inspired title screen with interactive **New Game**, **Load Game** and **Extras** choices;
-- `New Game` opens an office test with horizontal movement;
-- the GamePad can display a separate camera-system prototype;
+- separate game-state, platform, sprite and texture modules;
+- converter for indexed PlayStation `.TIM` images;
+- row-compressed indexed textures with nearest-neighbour scaling;
+- original PSX warning graphic on TV and GamePad;
+- original PSX Springtrap image on the title screen;
+- interactive **New Game**, **Load Game** and **Extras** menu;
+- `New Game` opens the converted PSX office panorama;
+- left/right scrolls through the office image;
+- X or Y opens the separate GamePad camera prototype;
 - automatic `.elf`, `.rpx` and `.wuhb` builds with GitHub Actions.
 
-The title, office, camera interface and most sprites are still temporary procedural graphics. Original gameplay, audio, saves and AI have not been integrated yet.
+The game logic is still an early systems test. Audio, saves, real camera feeds, Springtrap AI, phantom encounters and night progression have not been ported yet.
 
 ## Project layout
 
@@ -29,27 +31,28 @@ include/
 ├── platform/
 └── renderer/
 source/
-├── assets/
 ├── game/
 ├── platform/
 ├── renderer/
 ├── main.c
-└── warning_texture.c
+├── warning_texture.c
+├── menu_springtrap_texture.c
+└── office_texture.c
 tools/
 └── convert_tim.py
 ```
 
-`main.c` initializes the platform and runs the update/render loop. Game code no longer calls `VPADRead` or `OSScreen` directly.
+Game code no longer calls `VPADRead` or `OSScreen` directly. `main.c` currently composes the converted PSX textures over the portable game states while the renderer migration is still in progress.
 
 ## Texture pipeline
 
-The current software texture renderer uses:
+The temporary software texture path uses:
 
-- an indexed palette in Wii U `RGBX8` colours;
+- Wii U `RGBX8` palettes;
 - row-by-row run-length compression;
 - a transparent palette index;
-- nearest-neighbour scaling to the logical 854×480 canvas;
-- the same texture API for TV, GamePad or both.
+- nearest-neighbour scaling;
+- the same API for TV, GamePad or both.
 
 Convert a supported 4-bit or 8-bit indexed PlayStation TIM with:
 
@@ -58,7 +61,7 @@ python3 tools/convert_tim.py input.tim source/generated_texture.c include/assets
   --symbol gGeneratedTexture --sample-step 2
 ```
 
-Large backgrounds will eventually move to a faster GX2-backed texture path. The current `OSScreen` renderer is intended for validation and small early assets.
+The warning uses a small converted texture. Springtrap and the office currently use reduced-resolution RLE versions so they remain practical with the early `OSScreen` backend. A later GX2 renderer will allow higher-resolution assets and faster full-screen updates.
 
 ## Build locally
 
@@ -88,9 +91,9 @@ Launch it from the Aroma Wii U Menu.
 
 ## Current controls
 
-### Warning screen
+### Warning
 
-- **A** or **+**: skip the warning.
+- **A** or **+**: skip.
 
 ### Title screen
 
@@ -99,11 +102,11 @@ Launch it from the Aroma Wii U Menu.
 
 ### Office test
 
-- **Left/Right**: look around the office;
+- **Left/Right**: scroll through the office panorama;
 - **X** or **Y**: open or close the GamePad camera panel;
 - **B**: return to the title screen.
 
-### Load Game / Extras placeholders
+### Load Game / Extras
 
 - **B**: return to the title screen.
 
@@ -111,6 +114,6 @@ The HOME button continues to use the normal Wii U system flow.
 
 ## Porting policy
 
-The supplied PSX fan-project archive does not contain a clear source-code or asset licence. The converted warning texture is therefore included only in this private development repository for port testing and should not be redistributed in a public release without confirming permission. The port architecture and conversion tools remain separated from imported game assets so they can be replaced or packaged appropriately later.
+The supplied PSX fan-project archive does not contain a clear source-code or asset licence. Converted game textures are therefore kept in this private development repository for port testing and should not be redistributed publicly without confirming permission. The port architecture and conversion tools remain separated from imported game assets.
 
 See [`docs/PORTING_PLAN.md`](docs/PORTING_PLAN.md) for the migration plan.
