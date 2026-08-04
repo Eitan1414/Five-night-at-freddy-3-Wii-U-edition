@@ -17,41 +17,45 @@ The code cannot simply be recompiled with `wut`. Its game logic must be separate
 - [x] Create a native `wut` project.
 - [x] Produce `.elf`, `.rpx` and `.wuhb` outputs.
 - [x] Initialize and shut down cleanly through `WHBProc`.
-- [x] Display debug text on TV and GamePad.
+- [x] Display output on TV and GamePad.
 - [x] Read GamePad buttons with VPAD.
 - [x] Add a GitHub Actions build.
 
 ## Phase 1 — Platform abstraction
 
-Create portable interfaces instead of calling console APIs from game logic:
-
-```text
-platform/input.h
-platform/graphics.h
-platform/audio.h
-platform/storage.h
-platform/time.h
-```
+- [x] Add a portable `platform/input.h` API.
+- [x] Move all `VPADRead` logic into `input_wiiu.c`.
+- [x] Add a graphics API that can target TV, GamePad or both.
+- [x] Move `OSScreen` allocation and drawing out of game code.
+- [x] Add a frame-clock wrapper.
+- [x] Add an initial sprite-mask renderer.
+- [x] Reduce `main.c` to initialization and the game loop.
+- [ ] Add portable audio API.
+- [ ] Add portable storage/save API.
+- [ ] Replace the software backend with a GX2 texture renderer.
 
 Initial replacements:
 
 | PSX dependency | Wii U replacement |
 | --- | --- |
-| `PadRead`, `PAD*` | `VPADRead`, later KPAD support |
-| `FntPrint` | Wii U debug/UI text renderer |
-| `Gs*`, `DrawOTag`, `LoadImage` | GX2 or SDL2-based renderer |
-| `Spu*` | AX/AX2 or SDL2_mixer-compatible audio layer |
-| `Cd*` | normal files from bundled content or SD |
-| memory-card functions | Wii U save directory / SD fallback |
+| `PadRead`, `PAD*` | portable input API backed by `VPADRead` |
+| `FntPrint` | portable Wii U UI text renderer |
+| `Gs*`, `DrawOTag`, `LoadImage` | current `OSScreen` backend, later GX2 |
+| `Spu*` | future AX/AX2 or SDL2_mixer-compatible audio layer |
+| `Cd*` | future bundled-content or SD file API |
+| memory-card functions | future Wii U save directory / SD fallback |
 
 ## Phase 2 — Minimal playable loop
 
-- title/menu state;
-- office background;
-- horizontal office movement;
-- open/close camera panel;
-- one selectable camera;
-- stable 60 Hz update loop independent of rendering.
+- [x] title/menu state;
+- [x] temporary office background;
+- [x] horizontal office movement;
+- [x] open/close camera panel;
+- [x] separate TV and GamePad views;
+- [x] first sprite rendered through the renderer module;
+- [ ] selectable real camera feed;
+- [ ] fixed-step update timing independent of rendering cost;
+- [ ] converted texture loading.
 
 ## Phase 3 — Game systems
 
@@ -73,4 +77,4 @@ Initial replacements:
 
 ## Immediate next task
 
-Define the portable input API and translate the PSX control conditions from `controllerinput()` without importing rendering or audio code.
+Create the first real texture pipeline: convert one permitted test image, load it through a renderer-facing texture API, and display different textured content on the TV and GamePad. After that, replace the temporary office with the real visual layout one asset at a time.
