@@ -17,10 +17,14 @@ The port now has a modular foundation and its first PSX visuals running on Wii U
 - interactive **New Game**, **Load Game** and **Extras** menu;
 - `New Game` opens the converted PSX office panorama;
 - left/right scrolls through the office image;
-- X or Y opens the separate GamePad camera prototype;
+- X or Y opens a separate camera system on the GamePad;
+- converted PSX feeds for **CAM 01**, **CAM 02** and **CAM 03**;
+- left/right or up/down switches between the three camera feeds;
+- the TV keeps displaying the office while the GamePad displays cameras;
+- static scanlines and intermittent glitch bars over camera feeds;
 - automatic `.elf`, `.rpx` and `.wuhb` builds with GitHub Actions.
 
-The game logic is still an early systems test. Audio, saves, real camera feeds, Springtrap AI, phantom encounters and night progression have not been ported yet.
+The game logic is still an early systems test. Audio, saves, Springtrap AI, phantom encounters, maintenance systems and night progression have not been ported yet.
 
 ## Project layout
 
@@ -31,13 +35,17 @@ include/
 ├── platform/
 └── renderer/
 source/
+├── assets/
 ├── game/
 ├── platform/
 ├── renderer/
 ├── main.c
 ├── warning_texture.c
 ├── menu_springtrap_texture.c
-└── office_texture.c
+├── office_texture.c
+├── camera01_texture.c
+├── camera02_texture.c
+└── camera03_texture.c
 tools/
 └── convert_tim.py
 ```
@@ -61,7 +69,7 @@ python3 tools/convert_tim.py input.tim source/generated_texture.c include/assets
   --symbol gGeneratedTexture --sample-step 2
 ```
 
-The warning uses a small converted texture. Springtrap and the office currently use reduced-resolution RLE versions so they remain practical with the early `OSScreen` backend. A later GX2 renderer will allow higher-resolution assets and faster full-screen updates.
+The warning uses a small converted texture. Springtrap, the office and camera feeds currently use reduced-resolution RLE versions so they remain practical with the early `OSScreen` backend. A later GX2 renderer will allow higher-resolution assets and faster full-screen updates.
 
 ## Build locally
 
@@ -105,6 +113,12 @@ Launch it from the Aroma Wii U Menu.
 - **Left/Right**: scroll through the office panorama;
 - **X** or **Y**: open or close the GamePad camera panel;
 - **B**: return to the title screen.
+
+### Camera panel
+
+- **Left/Right** or **Up/Down**: switch between CAM 01, CAM 02 and CAM 03;
+- **X** or **Y**: close the camera panel;
+- the TV remains on the office view.
 
 ### Load Game / Extras
 
