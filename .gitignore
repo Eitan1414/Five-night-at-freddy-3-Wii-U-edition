@@ -9,7 +9,9 @@ build/
 
 # Generated / extracted development assets
 source/camera_springtrap_textures.c
+source/phantom_assets.c
 assets/audio_low12/
+assets/audio_phantoms_low/
 data/audio/
 
 # Editor / operating system files
