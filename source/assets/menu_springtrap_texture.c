@@ -1,0 +1,56 @@
+/* Generated from MENU1.TIM by tools/convert_tim.py (2x sampled). */
+#include "assets/menu_springtrap_texture.h"
+
+#include <stdint.h>
+
+static const uint32_t kPalette[256] = {
+    0x000000FFu, 0x394A10FFu, 0x182008FFu, 0x5A6A20FFu, 0x081000FFu, 0x293910FFu,
+    0x4A5A18FFu, 0x181000FFu, 0x203108FFu, 0x4A4A4AFFu, 0x080800FFu, 0x838331FFu,
+    0x393910FFu, 0x181800FFu, 0x415218FFu, 0x6A6A6AFFu, 0x292008FFu, 0x313131FFu,
+    0x393939FFu, 0x4A4A18FFu, 0x627320FFu, 0x526220FFu, 0x100000FFu, 0x101800FFu,
+    0x313108FFu, 0x181818FFu, 0x000800FFu, 0x394110FFu, 0x415218FFu, 0x101000FFu,
+    0x5A6220FFu, 0x181818FFu, 0x293108FFu, 0x100800FFu, 0x201808FFu, 0x414A10FFu,
+    0x202908FFu, 0x6A6A29FFu, 0x525A18FFu, 0x201808FFu, 0x292929FFu, 0x414110FFu,
+    0x101010FFu, 0x080000FFu, 0x202020FFu, 0x314110FFu, 0x181800FFu, 0x182000FFu,
+    0x525A18FFu, 0x6A7B29FFu, 0x101800FFu, 0x293108FFu, 0x526218FFu, 0x202008FFu,
+    0x627320FFu, 0x313910FFu, 0x081000FFu, 0x838383FFu, 0x4A5218FFu, 0x292908FFu,
+    0x414141FFu, 0x4A5218FFu, 0x627B20FFu, 0x5A6220FFu, 0x080800FFu, 0x101010FFu,
+    0x414A18FFu, 0x414110FFu, 0x000000FFu, 0x394A18FFu, 0x5A7320FFu, 0x181008FFu,
+    0x203110FFu, 0x525252FFu, 0x080808FFu, 0x8B8B39FFu, 0x393910FFu, 0x181808FFu,
+    0x737373FFu, 0x313131FFu, 0x393939FFu, 0x4A4A18FFu, 0x101808FFu, 0x313110FFu,
+    0x202020FFu, 0x394110FFu, 0x101008FFu, 0x293110FFu, 0x101000FFu, 0x202008FFu,
+    0x414A18FFu, 0x6A7329FFu, 0x525A20FFu, 0x292929FFu, 0x080000FFu, 0x181808FFu,
+    0x182008FFu, 0x101808FFu, 0x293110FFu, 0x526220FFu, 0x202908FFu, 0x313910FFu,
+    0x4A5A18FFu, 0x292910FFu, 0x627B29FFu, 0x5A6A20FFu, 0x080808FFu, 0x414118FFu,
+    [106 ... 255] = 0x000000FFu,
+};
+
+static const uint16_t kRowOffsets[127] = {
+    0u, 54u, 100u, 146u, 172u, 192u, 210u, 222u, 228u, 238u, 254u, 272u,
+    294u, 322u, 356u, 398u, 448u, 494u, 544u, 588u, 626u, 660u, 682u, 704u,
+    714u, 728u, 746u, 768u, 786u, 804u, 824u, 842u, 870u, 892u, 914u, 934u,
+    954u, 972u, 994u, 1018u, 1042u, 1070u, 1096u, 1120u, 1140u, 1158u, 1178u, 1210u,
+    1260u, 1314u, 1364u, 1400u, 1424u, 1442u, 1462u, 1480u, 1502u, 1532u, 1566u, 1598u,
+    1630u, 1660u, 1686u, 1712u, 1740u, 1766u, 1788u, 1812u, 1826u, 1842u, 1852u, 1864u,
+    1876u, 1886u, 1904u, 1934u, 1976u, 2020u, 2064u, 2120u, 2168u, 2196u, 2224u, 2250u,
+    2276u, 2296u, 2330u, 2378u, 2450u, 2524u, 2612u, 2678u, 2748u, 2836u, 2904u, 2950u,
+    2996u, 3040u, 3088u, 3122u, 3150u, 3176u, 3204u, 3246u, 3302u, 3368u, 3430u, 3480u,
+    3526u, 3566u, 3602u, 3628u, 3652u, 3676u, 3704u, 3728u, 3750u, 3766u, 3794u, 3814u,
+    3836u, 3852u, 3872u, 3890u, 3912u, 3940u, 3958u,
+};
+
+static const uint8_t kRuns[3958] = {
+#include "assets/menu_springtrap_runs_0.inc"
+#include "assets/menu_springtrap_runs_1.inc"
+#include "assets/menu_springtrap_runs_2.inc"
+#include "assets/menu_springtrap_runs_3.inc"
+};
+
+const TextureRle gMenuSpringtrapTexture = {
+    125u,
+    126u,
+    0u,
+    kRowOffsets,
+    kRuns,
+    kPalette,
+};
