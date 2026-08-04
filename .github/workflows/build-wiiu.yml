@@ -20,6 +20,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Prepare generated assets
+        run: sh tools/prepare_generated_assets.sh
+
       - name: Build WUHB
         run: make -j2
 
