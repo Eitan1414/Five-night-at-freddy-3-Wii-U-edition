@@ -7,6 +7,9 @@ build/
 *.o
 *.d
 
+# Generated source restored from compressed development assets
+source/camera_springtrap_textures.c
+
 # Editor / operating system files
 .vscode/
 .idea/
