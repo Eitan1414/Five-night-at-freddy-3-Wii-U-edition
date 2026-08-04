@@ -1,3 +1,35 @@
+    ++systems->hour_frames;
+
+    if (systems->hour_frames >= FRAMES_PER_HOUR) {
+        advance_hour(systems, app);
+        if (systems->night_phase != NIGHT_PHASE_ACTIVE) {
+            return;
+        }
+    }
+
+    if (!systems->camera_failure_triggered &&
+        config->camera_failure_frame != NO_FAILURE_FRAME &&
+        systems->night_frames >= config->camera_failure_frame) {
+        systems->camera_failure_triggered = true;
+        systems->camera_failed = true;
+        app->needs_redraw = true;
+    }
+    if (!systems->ventilation_failure_triggered &&
+        config->ventilation_failure_frame != NO_FAILURE_FRAME &&
+        systems->night_frames >= config->ventilation_failure_frame) {
+        systems->ventilation_failure_triggered = true;
+        systems->ventilation_failed = true;
+        app->needs_redraw = true;
+    }
+    if (!systems->audio_failure_triggered &&
+        config->audio_failure_frame != NO_FAILURE_FRAME &&
+        systems->night_frames >= config->audio_failure_frame) {
+        systems->audio_failure_triggered = true;
+        systems->audio_failed = true;
+        systems->audio_lure_active = false;
+        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_ERROR);
+        app->needs_redraw = true;
+    }
 
     if (systems->audio_lure_cooldown_frames > 0u) {
         --systems->audio_lure_cooldown_frames;
@@ -10,24 +42,44 @@
         }
     }
 
-    if (systems->audio_lure_active) {
-        ++systems->audio_lure_frames;
-        if (systems->audio_lure_frames >= AUDIO_LURE_TRAVEL_FRAMES) {
-            systems->springtrap_camera = systems->audio_lure_target;
-            systems->springtrap_move_frames = 0u;
-            systems->audio_lure_active = false;
-            systems->audio_lure_frames = 0u;
-            set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_SUCCESS);
-            app->needs_redraw = true;
+    if (config->springtrap_enabled) {
+        if (systems->audio_lure_active) {
+            ++systems->audio_lure_frames;
+            if (systems->audio_lure_frames >= AUDIO_LURE_TRAVEL_FRAMES) {
+                systems->springtrap_camera = systems->audio_lure_target;
+                systems->springtrap_move_frames = 0u;
+                systems->attack_frames = 0u;
+                systems->audio_lure_active = false;
+                systems->audio_lure_frames = 0u;
+                set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_SUCCESS);
+                app->needs_redraw = true;
+            }
+        } else {
+            ++systems->springtrap_move_frames;
+            if (systems->springtrap_move_frames >=
+                springtrap_move_interval(systems)) {
+                systems->springtrap_move_frames = 0u;
+                if (systems->springtrap_camera > 0) {
+                    --systems->springtrap_camera;
+                    systems->attack_frames = 0u;
+                }
+                app->needs_redraw = true;
+            }
         }
-    } else {
-        ++systems->springtrap_move_frames;
-        if (systems->springtrap_move_frames >=
-            springtrap_move_interval(systems)) {
-            systems->springtrap_move_frames = 0u;
-            systems->springtrap_camera =
-                (systems->springtrap_camera + CAMERA_COUNT - 1) % CAMERA_COUNT;
-            app->needs_redraw = true;
+
+        if (night_config(systems->night_number)->springtrap_enabled &&
+        systems->springtrap_camera == 0) {
+            ++systems->attack_frames;
+            uint32_t grace = config->attack_grace_frames;
+            if (systems->ventilation_failed) {
+                grace = (grace * 2u) / 3u;
+            }
+            if (systems->attack_frames >= grace) {
+                begin_game_over(systems, app);
+                return;
+            }
+        } else {
+            systems->attack_frames = 0u;
         }
     }
 
@@ -99,10 +151,23 @@ static void draw_office_texture(const App *app, const SystemsState *systems)
                            GRAPHICS_RGB(4, 8, 5));
     }
 
+    char night_text[32];
+    char clock_text[16];
+    snprintf(night_text, sizeof(night_text), "NIGHT %d", systems->night_number);
+    snprintf(clock_text, sizeof(clock_text), "%d AM", systems->current_hour);
     graphics_draw_text(GRAPHICS_TARGET_TV,
                        18, 5, 2,
-                       "NIGHT 1 - OFFICE TEST",
+                       night_text,
                        GRAPHICS_RGB(166, 191, 151));
+    graphics_draw_rect(GRAPHICS_TARGET_TV,
+                       718, 4, 118, 36,
+                       GRAPHICS_RGB(1, 5, 2));
+    graphics_draw_frame(GRAPHICS_TARGET_TV,
+                        718, 4, 118, 36, 2,
+                        GRAPHICS_RGB(65, 103, 63));
+    graphics_draw_text(GRAPHICS_TARGET_TV,
+                       744, 16, 2, clock_text,
+                       GRAPHICS_RGB(218, 235, 211));
     graphics_draw_text(GRAPHICS_TARGET_TV,
                        18, 458, 1,
                        "LEFT RIGHT: LOOK   X/Y: CAMERAS   MINUS: MAINTENANCE",
@@ -124,11 +189,3 @@ static void draw_office_texture(const App *app, const SystemsState *systems)
                            warning);
     }
 
-    if (systems->ventilation_failed) {
-        const uint32_t pulse = (systems->night_frames / 12u) & 1u;
-        const uint32_t warning = pulse
-            ? GRAPHICS_RGB(225, 56, 39)
-            : GRAPHICS_RGB(120, 18, 12);
-        graphics_draw_rect(GRAPHICS_TARGET_TV,
-                           568, 12, 268, 38,
-                           GRAPHICS_RGB(20, 0, 0));
