@@ -34,6 +34,7 @@ The code cannot simply be recompiled with `wut`. Its game logic must be separate
 - [x] Display converted PSX textures on TV and GamePad.
 - [x] Render the real PSX Springtrap title image.
 - [x] Render and horizontally scroll the real PSX office panorama.
+- [x] Render three selectable PSX camera feeds on the GamePad.
 - [ ] Add portable audio API.
 - [ ] Add portable storage/save API.
 - [ ] Replace the software backend with a GX2 texture renderer.
@@ -60,10 +61,12 @@ Initial replacements:
 - [x] separate TV and GamePad views;
 - [x] first sprite rendered through the renderer module;
 - [x] converted warning, title and office textures;
-- [ ] selectable real camera feed;
+- [x] selectable real CAM 01, CAM 02 and CAM 03 feeds;
+- [x] static and glitch overlays on camera feeds;
 - [ ] fixed-step update timing independent of rendering cost;
 - [ ] animated title frames (`MENU1` to `MENU5`);
-- [ ] real camera-map visuals;
+- [ ] real camera-map layout and all camera rooms;
+- [ ] vent-camera mode.
 
 ## Phase 3 — Game systems
 
@@ -85,4 +88,4 @@ Initial replacements:
 
 ## Immediate next task
 
-Convert one real camera feed and make `CAM 01` selectable on the GamePad. The TV should keep the office view while the GamePad shows the converted feed, static overlay and camera label. After that, add the remaining title frames and begin the maintenance-panel state.
+Add the maintenance-panel state and its first controls, then begin connecting the camera system to actual game state. The next visual improvement should also add the remaining title frames (`MENU2` to `MENU5`) so Springtrap glitches between real PSX images instead of only shifting one frame.
