@@ -4,18 +4,35 @@ Native Wii U homebrew port project targeting **Aroma** and the `.wuhb` format.
 
 ## Current status
 
-The project has reached its first interactive graphical milestone:
+The project now has a modular Phase 1 foundation and a first playable systems test:
 
 - native C application built with devkitPro `wut`;
-- clean Wii U process startup and shutdown;
-- software-rendered output on both the TV and Wii U GamePad;
-- PSX-inspired warning screen with a short fade-out;
-- dark green title screen with a procedural Springtrap silhouette;
-- CRT scanlines and intermittent glitch bars;
+- portable input API instead of direct controller checks in game code;
+- shared graphics API targeting the TV, GamePad or both;
+- separate game state, platform and sprite-renderer modules;
+- PSX-inspired warning and title screens;
 - interactive **New Game**, **Load Game** and **Extras** choices;
+- `New Game` opens an office test with horizontal movement;
+- the GamePad can display a separate camera-system prototype;
 - automatic `.elf`, `.rpx` and `.wuhb` builds with GitHub Actions.
 
-The three menu entries currently lead to temporary status screens. The original gameplay, audio, save system and game assets have not been ported yet.
+The office, camera interface and sprites are still temporary procedural graphics. Original gameplay, audio, saves, AI and converted game assets have not been integrated yet.
+
+## Project layout
+
+```text
+include/
+├── game/
+├── platform/
+└── renderer/
+source/
+├── game/
+├── platform/
+├── renderer/
+└── main.c
+```
+
+`main.c` now only initializes the platform and runs the update/render loop. Game code no longer calls `VPADRead` or `OSScreen` directly.
 
 ## Build locally
 
@@ -52,9 +69,15 @@ Launch it from the Aroma Wii U Menu.
 ### Title screen
 
 - **D-Pad Up/Down** or left-stick emulation: change selection;
-- **A** or **+**: confirm the selected entry.
+- **A** or **+**: confirm.
 
-### Temporary status screens
+### Office test
+
+- **Left/Right**: look around the office;
+- **X** or **Y**: open or close the GamePad camera panel;
+- **B**: return to the title screen.
+
+### Load Game / Extras placeholders
 
 - **B**: return to the title screen.
 
@@ -62,10 +85,10 @@ The HOME button continues to use the normal Wii U system flow.
 
 ## Rendering note
 
-This milestone intentionally uses `OSScreen` and procedurally drawn shapes instead of imported PSX images. That keeps the first graphic build self-contained and makes it easier to validate stability before introducing converted textures and a faster GX2 renderer.
+This milestone still uses `OSScreen` and procedural graphics. The abstraction layer means it can later be replaced by a faster GX2 texture renderer without rewriting the game-state code.
 
 ## Porting policy
 
-The PSX archive supplied for analysis does not contain a clear open-source licence for its code or assets. For that reason, the original files are not copied into this repository yet. We will first keep the Wii U platform code clean, then import or reimplement only material that can legally and technically be used.
+The PSX archive supplied for analysis does not contain a clear open-source licence for its code or assets. Original files are therefore not copied into this repository yet. Only material that can legally and technically be reused will be integrated.
 
 See [`docs/PORTING_PLAN.md`](docs/PORTING_PLAN.md) for the migration plan.
