@@ -38,6 +38,12 @@ static uint32_t map_buttons(uint32_t raw)
     if ((raw & VPAD_BUTTON_MINUS) != 0u) {
         mapped |= GAME_BUTTON_SELECT;
     }
+    if ((raw & VPAD_BUTTON_R) != 0u) {
+        mapped |= GAME_BUTTON_MODE;
+    }
+    if ((raw & VPAD_BUTTON_L) != 0u) {
+        mapped |= GAME_BUTTON_SEAL;
+    }
 
     return mapped;
 }
