@@ -189,4 +189,3 @@ static int title_frame_index(const App *app)
         return 0;
     }
     return 1 + (int) (((phase - 144u) / 9u) % 4u);
-}
