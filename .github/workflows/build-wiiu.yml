@@ -20,6 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Install asset tools
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ffmpeg
+
       - name: Prepare generated assets
         run: sh tools/prepare_generated_assets.sh
 
