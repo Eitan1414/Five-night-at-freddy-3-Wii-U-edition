@@ -4,15 +4,18 @@ Native Wii U homebrew port project targeting **Aroma** and the `.wuhb` format.
 
 ## Current status
 
-The repository currently contains the Phase 0 bootstrap:
+The project has reached its first interactive graphical milestone:
 
 - native C application built with devkitPro `wut`;
 - clean Wii U process startup and shutdown;
-- text output on the TV and GamePad;
-- Wii U GamePad button detection through `VPADRead`;
+- software-rendered output on both the TV and Wii U GamePad;
+- PSX-inspired warning screen with a short fade-out;
+- dark green title screen with a procedural Springtrap silhouette;
+- CRT scanlines and intermittent glitch bars;
+- interactive **New Game**, **Load Game** and **Extras** choices;
 - automatic `.elf`, `.rpx` and `.wuhb` builds with GitHub Actions.
 
-This is not yet the game. It is the stable platform layer on which the PSX game logic will be ported.
+The three menu entries currently lead to temporary status screens. The original gameplay, audio, save system and game assets have not been ported yet.
 
 ## Build locally
 
@@ -40,12 +43,26 @@ sd:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
 
 Launch it from the Aroma Wii U Menu.
 
-## Controls in the bootstrap
+## Current controls
 
-- **A**: confirms that GamePad input works;
-- **B**: displays a back/cancel test message;
-- **+**: displays the current port phase;
-- **HOME**: return using the normal system flow.
+### Warning screen
+
+- **A** or **+**: skip the warning.
+
+### Title screen
+
+- **D-Pad Up/Down** or left-stick emulation: change selection;
+- **A** or **+**: confirm the selected entry.
+
+### Temporary status screens
+
+- **B**: return to the title screen.
+
+The HOME button continues to use the normal Wii U system flow.
+
+## Rendering note
+
+This milestone intentionally uses `OSScreen` and procedurally drawn shapes instead of imported PSX images. That keeps the first graphic build self-contained and makes it easier to validate stability before introducing converted textures and a faster GX2 renderer.
 
 ## Porting policy
 
