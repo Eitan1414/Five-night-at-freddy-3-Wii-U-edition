@@ -1,3 +1,9 @@
+        return 0;
+    }
+    return 1 + (int) (((phase - 144u) / 9u) % 4u);
+}
+
+static void systems_reset(SystemsState *systems)
 {
     systems->maintenance_open = false;
     systems->maintenance_selection = 0;
@@ -11,6 +17,14 @@
     systems->camera_failure_triggered = false;
     systems->audio_failure_triggered = false;
     systems->ventilation_failure_triggered = false;
+    systems->springtrap_camera = 2;
+    systems->springtrap_move_frames = 0u;
+    systems->audio_lure_active = false;
+    systems->audio_lure_target = 2;
+    systems->audio_lure_frames = 0u;
+    systems->audio_lure_cooldown_frames = 0u;
+    systems->audio_lure_message = AUDIO_LURE_MESSAGE_NONE;
+    systems->audio_lure_message_frames = 0u;
 }
 
 static uint32_t repair_duration(const SystemsState *systems)
@@ -28,6 +42,8 @@ static void finish_repair(SystemsState *systems)
             break;
         case MAINTENANCE_AUDIO:
             systems->audio_failed = false;
+            systems->audio_lure_message = AUDIO_LURE_MESSAGE_NONE;
+            systems->audio_lure_message_frames = 0u;
             break;
         case MAINTENANCE_VENTILATION:
             systems->ventilation_failed = false;
@@ -36,12 +52,55 @@ static void finish_repair(SystemsState *systems)
             systems->camera_failed = false;
             systems->audio_failed = false;
             systems->ventilation_failed = false;
+            systems->audio_lure_message = AUDIO_LURE_MESSAGE_NONE;
+            systems->audio_lure_message_frames = 0u;
             break;
         default:
             break;
     }
     systems->repairing = false;
     systems->repair_frames = 0u;
+}
+
+static void set_audio_lure_message(SystemsState *systems,
+                                   AudioLureMessage message)
+{
+    systems->audio_lure_message = message;
+    systems->audio_lure_message_frames = AUDIO_LURE_MESSAGE_FRAMES;
+}
+
+static void trigger_audio_lure(SystemsState *systems,
+                               App *app,
+                               int selected_camera)
+{
+    if (systems->audio_failed) {
+        systems->audio_lure_active = false;
+        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_ERROR);
+        app->needs_redraw = true;
+        return;
+    }
+
+    if (systems->audio_lure_active ||
+        systems->audio_lure_cooldown_frames > 0u) {
+        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_COOLDOWN);
+        app->needs_redraw = true;
+        return;
+    }
+
+    systems->audio_lure_active = true;
+    systems->audio_lure_target = selected_camera;
+    systems->audio_lure_frames = 0u;
+    systems->audio_lure_cooldown_frames = AUDIO_LURE_COOLDOWN_FRAMES;
+    systems->springtrap_move_frames = 0u;
+    set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_PLAYING);
+    app->needs_redraw = true;
+}
+
+static uint32_t springtrap_move_interval(const SystemsState *systems)
+{
+    return systems->ventilation_failed
+        ? SPRINGTRAP_MOVE_FRAMES_VENT_ERROR
+        : SPRINGTRAP_MOVE_FRAMES;
 }
 
 static void update_systems(SystemsState *systems, App *app)
@@ -68,38 +127,7 @@ static void update_systems(SystemsState *systems, App *app)
         systems->night_frames >= AUDIO_FAILURE_FRAME) {
         systems->audio_failure_triggered = true;
         systems->audio_failed = true;
+        systems->audio_lure_active = false;
+        set_audio_lure_message(systems, AUDIO_LURE_MESSAGE_ERROR);
         app->needs_redraw = true;
     }
-
-    if (systems->repairing) {
-        ++systems->repair_frames;
-        app->needs_redraw = true;
-        if (systems->repair_frames >= repair_duration(systems)) {
-            finish_repair(systems);
-        }
-    }
-
-    if (systems->maintenance_open || systems->ventilation_failed ||
-        systems->camera_failed) {
-        if ((systems->night_frames % 12u) == 0u) {
-            app->needs_redraw = true;
-        }
-    }
-}
-
-static void draw_warning_texture(void)
-{
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH,
-                       60, 154, 734, 174,
-                       GRAPHICS_RGB(0, 0, 0));
-    texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                     67, 174, 720, 138,
-                     &gWarningTexture);
-}
-
-static void draw_title_texture(const App *app)
-{
-    const int frame = title_frame_index(app);
-    const int glitch_x = frame == 0
-        ? (int) ((app->effect_seed >> 10) % 7u) - 3
-        : (frame - 2) * 3;
