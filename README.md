@@ -4,7 +4,7 @@ Native Wii U homebrew port project targeting **Aroma** and the `.wuhb` format.
 
 ## Current status
 
-The port now contains a small interactive Night 1 systems prototype:
+The port now contains a small interactive Night 1 gameplay prototype:
 
 - native C application built with devkitPro `wut`;
 - portable GamePad input and shared TV/GamePad graphics APIs;
@@ -13,6 +13,11 @@ The port now contains a small interactive Night 1 systems prototype:
 - title screen animated with the five real `MENU1`–`MENU5` Springtrap frames;
 - converted PSX office panorama with horizontal movement;
 - separate GamePad camera system with CAM 01, CAM 02 and CAM 03;
+- real Springtrap camera appearances for all three available rooms;
+- Springtrap begins in CAM 03 and automatically moves toward CAM 01;
+- ventilation failure accelerates Springtrap's movement;
+- **Play Audio** can lure Springtrap to the selected camera;
+- Audio Devices failure disables the lure until repaired;
 - scanlines and intermittent camera glitches;
 - maintenance panel with camera, audio and ventilation status;
 - timed camera, ventilation and audio failures during the office test;
@@ -21,7 +26,7 @@ The port now contains a small interactive Night 1 systems prototype:
 - ventilation failure displays a flashing warning over the office;
 - automatic `.elf`, `.rpx` and `.wuhb` builds through GitHub Actions.
 
-This remains a development prototype. Springtrap AI, phantom encounters, complete camera/vent maps, sound, saves and full night progression are not integrated yet.
+This remains a development prototype. Phantom encounters, complete camera/vent maps, real sound playback, saves, jumpscares and full night progression are not integrated yet.
 
 ## Project layout
 
@@ -34,6 +39,7 @@ include/
 source/
 ├── assets/
 ├── game/
+├── generated/
 ├── main_parts/
 ├── platform/
 ├── renderer/
@@ -48,7 +54,8 @@ source/
 ├── camera02_texture.c
 └── camera03_texture.c
 tools/
-└── convert_tim.py
+├── convert_tim.py
+└── prepare_generated_assets.sh
 ```
 
 `main.c` currently includes several small implementation fragments under `source/main_parts/`. This is only an upload-friendly organization for the current development milestone; it behaves as one C translation unit.
@@ -70,13 +77,14 @@ python3 tools/convert_tim.py input.tim source/generated_texture.c include/assets
   --symbol gGeneratedTexture --sample-step 2
 ```
 
-The large visuals currently use reduced-resolution RLE textures so they remain practical with the early `OSScreen` backend. A later GX2 renderer will enable higher-resolution images and faster full-screen animation.
+The large visuals currently use reduced-resolution RLE textures so they remain practical with the early `OSScreen` backend. The three Springtrap camera composites are stored as a compressed generated source and restored before compilation. A later GX2 renderer will enable higher-resolution images and faster full-screen animation.
 
 ## Build locally
 
 Install the current Wii U development packages through devkitPro, then run:
 
 ```sh
+sh tools/prepare_generated_assets.sh
 make
 ```
 
@@ -87,6 +95,8 @@ fnaf3-wiiu.elf
 fnaf3-wiiu.rpx
 fnaf3-wiiu.wuhb
 ```
+
+GitHub Actions performs the generated-asset preparation automatically.
 
 ## Test on Wii U
 
@@ -119,9 +129,12 @@ Launch it from the Aroma Wii U Menu.
 ### Camera panel
 
 - **Left/Right** or **Up/Down**: switch between CAM 01, CAM 02 and CAM 03;
+- **A**: play the audio lure in the selected room;
 - **X** or **Y**: close the camera panel;
 - **−**: open maintenance;
 - the TV remains on the office view.
+
+The lure takes about 1.5 seconds to attract Springtrap, then enters a short recharge period. Messages on the GamePad indicate whether it is playing, successful, recharging or unavailable because Audio Devices has failed.
 
 ### Maintenance panel
 
