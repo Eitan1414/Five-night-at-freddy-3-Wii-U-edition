@@ -20,7 +20,7 @@ include $(DEVKITPRO)/wut/share/wut_rules
 TARGET      := fnaf3-wiiu
 BUILD       := build
 SOURCES     := source source/game source/platform source/renderer
-DATA        := data
+DATA        := data data/audio
 INCLUDES    := include
 CONTENT     :=
 ICON        := icon.jpg
@@ -35,7 +35,7 @@ CFLAGS   += $(INCLUDE) -D__WIIU__ -D__WUT__
 CXXFLAGS := $(CFLAGS)
 ASFLAGS  := -g $(ARCH)
 LDFLAGS  := -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
-LIBS     := -lwut
+LIBS     := -lsndcore2 -lwut
 LIBDIRS  := $(PORTLIBS) $(WUT_ROOT)
 
 #-------------------------------------------------------------------------------
