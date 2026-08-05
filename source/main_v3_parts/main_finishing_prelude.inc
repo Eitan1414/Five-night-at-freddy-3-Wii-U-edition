@@ -35,3 +35,4 @@ typedef struct FinishingState {
 
 static FinishingState sFinishing;
 static void finishing_draw_phone_overlay(void);
+static void finishing_graphics_present(uint32_t target);
