@@ -42,6 +42,7 @@ static void render_game(Game *game)
         case SCREEN_NIGHT_INTRO: draw_night_intro(game); break;
         case SCREEN_OFFICE: draw_office(game); break;
         case SCREEN_VICTORY: draw_victory(game); break;
+        case SCREEN_SPRINGTRAP_JUMPSCARE: draw_springtrap_jumpscare(game); break;
         case SCREEN_GAME_OVER: draw_game_over(game); break;
         case SCREEN_PLACEHOLDER: draw_placeholder(); break;
     }
