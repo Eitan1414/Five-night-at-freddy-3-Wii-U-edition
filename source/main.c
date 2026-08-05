@@ -5,6 +5,7 @@
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_save_menu.inc"
 #include "main_v3_parts/main_03.inc"
+#include "main_v3_parts/main_save_title.inc"
 #include "main_v3_parts/main_04.inc"
 #include "main_v3_parts/main_05.inc"
 #include "main_v3_parts/main_06.inc"
