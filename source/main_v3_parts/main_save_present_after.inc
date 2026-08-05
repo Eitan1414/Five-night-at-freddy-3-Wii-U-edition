@@ -1,1 +1,0 @@
-#undef graphics_present
