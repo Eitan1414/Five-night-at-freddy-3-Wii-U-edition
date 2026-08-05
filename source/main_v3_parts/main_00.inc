@@ -8,6 +8,7 @@
 #include "assets/camera01_texture.h"
 #include "assets/camera02_texture.h"
 #include "assets/camera03_texture.h"
+#include "assets/camera_extended_assets.h"
 #include "assets/menu_springtrap_texture.h"
 #include "assets/menu_springtrap_texture2.h"
 #include "assets/menu_springtrap_texture3.h"
@@ -162,10 +163,16 @@ static const NightConfig kNightConfigs[NIGHT_COUNT] = {
 };
 
 static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
     &gCamera01Texture,
+    &gCamera02Texture,
+    &gCamera03Texture,
+    &gCamera04Texture,
+    &gCamera05Texture,
+    &gCamera06Texture,
+    &gCamera07Texture,
+    &gCamera08Texture,
+    &gCamera09Texture,
+    &gCamera10Texture,
 };
 
 static const TextureRle *const kTitleFrames[TITLE_FRAME_COUNT] = {
@@ -258,21 +265,3 @@ static void process_phantom_event(Game *game, PhantomEvent event)
         set_ventilation_failure(game);
     }
     if ((event.flags & PHANTOM_EVENT_AUDIO_FAILURE) != 0u) {
-        game->audio_failed = true;
-        game->audio_lure_active = false;
-        stop_lure_audio();
-        set_message(game, MESSAGE_PHANTOM_MANGLE);
-    }
-    if ((event.flags & PHANTOM_EVENT_GARBLE_STARTED) != 0u) {
-        audio_restart(AUDIO_CUE_GARBLE, 0.92f, true);
-    }
-    if ((event.flags & PHANTOM_EVENT_GARBLE_ENDED) != 0u) {
-        audio_stop(AUDIO_CUE_GARBLE);
-    }
-    if ((event.flags & PHANTOM_EVENT_MASK_STARTED) != 0u) {
-        audio_restart(AUDIO_CUE_MASK, 0.82f, true);
-        set_message(game, MESSAGE_PHANTOM_PUPPET);
-    }
-    if ((event.flags & PHANTOM_EVENT_MASK_ENDED) != 0u) {
-        audio_stop(AUDIO_CUE_MASK);
-    }
