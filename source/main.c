@@ -44,6 +44,14 @@
 
 #include "main_v3_parts/main_complete_title.inc"
 #include "main_v3_parts/main_complete_cheats.inc"
+#define main fnaf3_complete_main
+#define update_game fnaf3_complete_update_game
+#define render_game fnaf3_complete_render_game
 #define fnaf3_content_render_game fnaf3_complete_content_render_game
 #include "main_v3_parts/main_complete.inc"
 #undef fnaf3_content_render_game
+#undef render_game
+#undef update_game
+#undef main
+
+#include "main_v3_parts/main_full_audio.inc"
