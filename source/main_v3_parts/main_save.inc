@@ -51,6 +51,27 @@ static void autosave_completed_night(Game *game)
     if (g_save_last_write_ok) g_save_load_result = SAVE_LOAD_OK;
 }
 
+static const char *save_load_status_text(void)
+{
+    switch (g_save_load_result) {
+        case SAVE_LOAD_UNAVAILABLE: return "SD AUTOSAVE UNAVAILABLE";
+        case SAVE_LOAD_EMPTY: return "NO SAVE DATA";
+        case SAVE_LOAD_RECOVERED: return "BACKUP SAVE RECOVERED";
+        case SAVE_LOAD_CORRUPT: return "SAVE CORRUPT - DEFAULT USED";
+        case SAVE_LOAD_OK:
+        default: return "AUTOSAVE READY";
+    }
+}
+
+static uint32_t save_load_status_colour(void)
+{
+    if (g_save_load_result == SAVE_LOAD_UNAVAILABLE ||
+        g_save_load_result == SAVE_LOAD_CORRUPT) {
+        return COLOUR_RED;
+    }
+    return GRAPHICS_RGB(74, 111, 73);
+}
+
 static const char *autosave_result_text(void)
 {
     if (!g_save_write_attempted) return "";
