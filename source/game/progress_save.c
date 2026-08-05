@@ -6,8 +6,11 @@
 #include "platform/storage.h"
 
 #define PROGRESS_NIGHT_COUNT 6
+#define PROGRESS_SECRET_MINIGAME_COUNT 6
+#define PROGRESS_SECRET_COMPLETE_MASK 0x3Fu
 
 static uint8_t s_completed_nights_mask = 0u;
+static uint8_t s_secret_minigames_mask = 0u;
 static int s_highest_unlocked_night = 1;
 static SaveLoadResult s_load_result = SAVE_LOAD_EMPTY;
 static bool s_write_attempted = false;
@@ -20,9 +23,22 @@ static int clamp_night(int night)
     return night;
 }
 
+static void write_current_progress(void)
+{
+    const SaveData data = {
+        (uint8_t) s_highest_unlocked_night,
+        s_completed_nights_mask,
+        s_secret_minigames_mask
+    };
+    s_write_attempted = true;
+    s_last_write_ok = save_data_write(&data);
+    if (s_last_write_ok) s_load_result = SAVE_LOAD_OK;
+}
+
 void progress_save_init(int *unlocked_night)
 {
     s_completed_nights_mask = 0u;
+    s_secret_minigames_mask = 0u;
     s_highest_unlocked_night = unlocked_night != NULL
         ? clamp_night(*unlocked_night) : 1;
     s_load_result = SAVE_LOAD_EMPTY;
@@ -36,12 +52,13 @@ void progress_save_init(int *unlocked_night)
         return;
     }
 
-    SaveData data = {1u, 0u};
+    SaveData data = {1u, 0u, 0u};
     s_load_result = save_data_load(&data);
     if (s_load_result == SAVE_LOAD_OK ||
         s_load_result == SAVE_LOAD_RECOVERED) {
         s_highest_unlocked_night = clamp_night(data.unlocked_night);
         s_completed_nights_mask = data.completed_nights_mask;
+        s_secret_minigames_mask = data.secret_minigames_mask;
     }
 
     if (unlocked_night != NULL)
@@ -66,13 +83,16 @@ void progress_save_complete_night(int completed_night,
     if (unlocked_night != NULL)
         *unlocked_night = s_highest_unlocked_night;
 
-    const SaveData data = {
-        (uint8_t) s_highest_unlocked_night,
-        s_completed_nights_mask
-    };
-    s_write_attempted = true;
-    s_last_write_ok = save_data_write(&data);
-    if (s_last_write_ok) s_load_result = SAVE_LOAD_OK;
+    write_current_progress();
+}
+
+void progress_save_complete_secret_minigame(int minigame)
+{
+    if (minigame < 1 || minigame > PROGRESS_SECRET_MINIGAME_COUNT) return;
+    const uint8_t bit = (uint8_t) (1u << (minigame - 1));
+    if ((s_secret_minigames_mask & bit) != 0u) return;
+    s_secret_minigames_mask |= bit;
+    write_current_progress();
 }
 
 int progress_save_highest_unlocked_night(void)
@@ -89,6 +109,23 @@ bool progress_save_is_night_completed(int night)
 bool progress_save_extras_unlocked(void)
 {
     return progress_save_is_night_completed(5);
+}
+
+uint8_t progress_save_secret_minigames_mask(void)
+{
+    return s_secret_minigames_mask;
+}
+
+bool progress_save_is_secret_minigame_completed(int minigame)
+{
+    if (minigame < 1 || minigame > PROGRESS_SECRET_MINIGAME_COUNT) return false;
+    return (s_secret_minigames_mask & (uint8_t) (1u << (minigame - 1))) != 0u;
+}
+
+bool progress_save_good_ending_unlocked(void)
+{
+    return (s_secret_minigames_mask & PROGRESS_SECRET_COMPLETE_MASK)
+        == PROGRESS_SECRET_COMPLETE_MASK;
 }
 
 const char *progress_save_load_status_text(void)

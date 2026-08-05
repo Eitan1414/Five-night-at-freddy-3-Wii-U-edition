@@ -51,11 +51,20 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
+if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
+    temporary_user_content="${TMPDIR:-/tmp}/fnaf3-user-content.tar.xz"
+    # shellcheck disable=SC2086
+    cat source/generated/user_content.tar.xz.b64.* | base64 -d > "$temporary_user_content"
+    tar -xJf "$temporary_user_content" -C .
+    rm -f "$temporary_user_content"
+fi
+
 PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
 TIM_ROOT="$PSX_SOURCE/tim"
 SCREAMER_ROOT="$TIM_ROOT/screamer"
 SCREAMER_AUDIO="$PSX_SOURCE/vag/screamer.vag"
 PHONE_ARCHIVE="$PSX_SOURCE/xa/inter8.zip"
+USER_AUDIO_ROOT="${FNAF3_USER_AUDIO_ROOT:-assets/user_audio}"
 
 if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
     echo "Original PSX jumpscare sources not found at: $PSX_SOURCE" >&2
@@ -89,6 +98,33 @@ convert_audio() {
         -i "$input" -ar 16000 -ac 1 -f s16be "$output"
 }
 
+user_audio_path() {
+    name="$1"
+    for extension in ogg mp3 wav; do
+        candidate="$USER_AUDIO_ROOT/$name.$extension"
+        if [ -f "$candidate" ]; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
+convert_user_audio_or_tone() {
+    name="$1"
+    output="$2"
+    frequency="$3"
+    duration="$4"
+    if input="$(user_audio_path "$name")"; then
+        convert_audio "$input" "$output"
+        return
+    fi
+    echo "warning: $name user audio missing; using temporary build tone" >&2
+    ffmpeg -hide_banner -loglevel error -y \
+        -f lavfi -i "sine=frequency=${frequency}:duration=${duration}:sample_rate=16000" \
+        -ar 16000 -ac 1 -f s16be "$output"
+}
+
 convert_audio assets/audio_low12/vent_quiet1.mp3 data/audio/vent_quiet1.bin
 convert_audio assets/audio_low12/vent_quiet2.mp3 data/audio/vent_quiet2.bin
 convert_audio assets/audio_low12/vent_closer1.mp3 data/audio/vent_closer1.bin
@@ -105,6 +141,29 @@ convert_audio assets/audio_phantoms_low/echo1.mp3 data/audio/echo1.bin
 convert_audio assets/audio_phantoms_low/echo3b.mp3 data/audio/echo3b.bin
 convert_audio assets/audio_phantoms_low/echo4b.mp3 data/audio/echo4b.bin
 
+# Keep the PSX extraction/fallback as a safety net, then override it with the
+# clean PC call recordings supplied for this Wii U edition.
 python3 tools/extract_phone_xa.py "$PHONE_ARCHIVE" data/audio
+for night in 1 2 3 4 5 6; do
+    if phone_input="$(user_audio_path "phone_night${night}")"; then
+        convert_audio "$phone_input" "data/audio/phone_night${night}.bin"
+    fi
+done
+
+# six_am remains the generated fallback until assets/user_audio/six_am.mp3 is
+# provided. If it is present, it transparently replaces the fallback.
+if six_am_input="$(user_audio_path six_am)"; then
+    convert_audio "$six_am_input" data/audio/six_am.bin
+fi
+
+convert_user_audio_or_tone select data/audio/select.bin 880 0.06
+convert_user_audio_or_tone end data/audio/end.bin 330 1.36
+convert_user_audio_or_tone crank1 data/audio/crank1.bin 180 0.76
+convert_user_audio_or_tone crank2 data/audio/crank2.bin 150 0.50
+convert_user_audio_or_tone lever1 data/audio/lever1.bin 260 0.39
+convert_user_audio_or_tone lever2 data/audio/lever2.bin 300 0.50
+convert_user_audio_or_tone stare data/audio/stare.bin 55 73.88
+convert_user_audio_or_tone titlemusic data/audio/titlemusic.bin 110 40.39
+convert_user_audio_or_tone startday data/audio/startday.bin 440 4.65
 
 rm -rf assets/audio_low12 assets/audio_phantoms_low
