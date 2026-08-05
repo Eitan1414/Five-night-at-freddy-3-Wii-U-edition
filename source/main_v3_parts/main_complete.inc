@@ -222,13 +222,16 @@ static bool complete_try_hidden_trigger(Game *game,
 
 static void update_game(Game *game, const InputState *input)
 {
+    if (complete_update_extras(game, input)) return;
     if (complete_handle_hidden_return(game, input)) return;
 
     InputState filtered = *input;
     if (complete_try_hidden_trigger(game, input, &filtered) && sSecret.active)
         return;
 
+    const GameScreen before_screen = game->screen;
     fnaf3_content_update_game(game, &filtered);
+    complete_apply_gameplay_cheats(game, before_screen);
 }
 
 static void complete_draw_original_bad_ending(const Game *game)
@@ -257,13 +260,23 @@ static void complete_draw_original_bad_ending(const Game *game)
 static void render_game(Game *game)
 {
     if (!game->dirty) return;
+    sCompleteRenderGame = game;
+
+    if (complete_render_extras(game)) {
+        game->dirty = false;
+        sCompleteRenderGame = NULL;
+        return;
+    }
     if (game->screen == SCREEN_PLACEHOLDER &&
         sFinishing.mode == FINISHING_NIGHT5_ENDING) {
         game->dirty = false;
         complete_draw_original_bad_ending(game);
+        sCompleteRenderGame = NULL;
         return;
     }
+
     fnaf3_content_render_game(game);
+    sCompleteRenderGame = NULL;
 }
 
 int main(int argc, char **argv)
@@ -281,6 +294,7 @@ int main(int argc, char **argv)
     memset(&sFinishing, 0, sizeof(sFinishing));
     memset(&sSecret, 0, sizeof(sSecret));
     memset(&sSecretTriggers, 0, sizeof(sSecretTriggers));
+    memset(&sCompleteCheats, 0, sizeof(sCompleteCheats));
     sTitleMusicPlaying = false;
 
     Game game;
