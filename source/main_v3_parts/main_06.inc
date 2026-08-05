@@ -5,8 +5,11 @@
     if (game->screen_frames >= 180u) {
         char text[32]; snprintf(text, sizeof(text), "NIGHT %d COMPLETE", game->night);
         graphics_draw_text(GRAPHICS_TARGET_BOTH, 248, 305, 3, text, COLOUR_GREEN);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 346, 1,
-                           autosave_result_text(), autosave_result_colour());
+        if (progress_save_write_attempted()) {
+            graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 346, 1,
+                               progress_save_write_status_text(),
+                               progress_save_last_write_ok() ? COLOUR_GREEN : COLOUR_RED);
+        }
         graphics_draw_text(GRAPHICS_TARGET_BOTH, 236, 379, 2,
                            game->night < NIGHT_COUNT ? "A: START NEXT NIGHT" : "A: RETURN TO TITLE",
                            GRAPHICS_RGB(104, 151, 101));
@@ -63,7 +66,7 @@ int main(int argc, char **argv)
         render_game(&game);
         frame_clock_wait_next();
     }
-    save_system_stop();
+    progress_save_shutdown();
     audio_stop_all(); audio_shutdown(); graphics_shutdown(); WHBProcShutdown();
     return 0;
 }
