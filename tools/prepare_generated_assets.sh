@@ -8,7 +8,27 @@ restore_xz_base64() {
     cat $source_pattern | base64 -d | xz -dc > "$output"
 }
 
-restore_xz_base64 \
+restore_truncated_xz_base64() {
+    source_pattern="$1"
+    output="$2"
+    temporary="${output}.xz"
+
+    # The historical extended-camera upload is missing only the final XZ
+    # stream trailer. xz still emits the complete C source before reporting
+    # the truncated footer, so keep that output and validate its last asset.
+    # shellcheck disable=SC2086
+    cat $source_pattern | base64 -d > "$temporary"
+    if ! xz -dc "$temporary" > "$output"; then
+        echo "warning: recovered extended camera source from truncated XZ stream" >&2
+    fi
+    rm -f "$temporary"
+
+    test -s "$output"
+    grep -q "gCamera04Texture" "$output"
+    grep -q "gCamera10Texture" "$output"
+}
+
+restore_truncated_xz_base64 \
     "source/generated/camera_extended_assets.c.xz.b64.*" \
     "source/camera_extended_assets.c"
 restore_xz_base64 \
