@@ -133,6 +133,10 @@ $(OFILES_SRC): $(HFILES_BIN)
 	@echo $(notdir $<)
 	@$(bin2o)
 
+%.b64.o %_b64.h: %.b64
+	@echo $(notdir $<)
+	@$(bin2o)
+
 -include $(DEPENDS)
 
 endif
