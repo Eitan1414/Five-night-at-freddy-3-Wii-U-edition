@@ -41,4 +41,7 @@
 #undef update_game
 #undef main
 
+#include "main_v3_parts/main_complete_title.inc"
+#define fnaf3_content_render_game fnaf3_complete_content_render_game
 #include "main_v3_parts/main_complete.inc"
+#undef fnaf3_content_render_game
