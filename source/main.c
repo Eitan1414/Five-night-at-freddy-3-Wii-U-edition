@@ -2,6 +2,7 @@
 #include "assets/ending_assets.h"
 #include "assets/original_ui_assets.h"
 #include "assets/camera_springtrap_assets.h"
+#include "assets/office_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -66,4 +67,7 @@
 
 #include "main_v3_parts/main_original_ui_01.inc"
 #include "main_v3_parts/main_original_ui_02.inc"
+#include "main_v3_parts/main_authentic_office.inc"
+#define draw_office_tv draw_authentic_office_tv
 #include "main_v3_parts/main_original_ui_03.inc"
+#undef draw_office_tv
