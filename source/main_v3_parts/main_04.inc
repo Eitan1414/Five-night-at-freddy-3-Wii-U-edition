@@ -20,18 +20,51 @@ static void draw_springtrap_office(const Game *game)
 
 static void draw_phantom_office(const Game *game)
 {
-    if (phantoms_foxy_present(&game->phantoms) && game->office_pan < -15)
-        texture_draw_rle(GRAPHICS_TARGET_TV, 42, 152, 190, 290, &gPhantomFoxyOfficeTexture);
-    if (phantoms_freddy_walking(&game->phantoms)) {
-        int x = 760 - (int) (game->phantoms.freddy_walk_frames * 5u);
-        texture_draw_rle(GRAPHICS_TARGET_TV, x, 150, 160, 210, &gPhantomFreddyOfficeTexture);
+    if (phantoms_foxy_present(&game->phantoms) && game->office_pan < -15) {
+        const int bob = phantom_bob(game->night_frames, 26u, 6);
+        texture_draw_rle(GRAPHICS_TARGET_TV, 42 + bob / 2, 152 - bob,
+                         190, 290, &gPhantomFoxyOfficeTexture);
     }
-    if (game->phantoms.chica_office_waiting && game->office_pan < -10)
-        texture_draw_rle(GRAPHICS_TARGET_TV, 0, 105, 210, 315, &gPhantomChicaOfficeTexture);
-    if (phantoms_mangle_active(&game->phantoms))
-        texture_draw_rle(GRAPHICS_TARGET_TV, 592, 90, 220, 260, &gPhantomMangleOfficeTexture);
-    if (phantoms_puppet_active(&game->phantoms))
-        texture_draw_rle(GRAPHICS_TARGET_BOTH, 112, 20, 630, 440, &gPhantomPuppetOfficeTexture);
+    if (phantoms_freddy_walking(&game->phantoms)) {
+        const int step = phantom_bob(game->phantoms.freddy_walk_frames, 18u, 7);
+        int x = 760 - (int) (game->phantoms.freddy_walk_frames * 5u);
+        texture_draw_rle(GRAPHICS_TARGET_TV, x, 150 - step,
+                         160, 210 + step, &gPhantomFreddyOfficeTexture);
+    }
+    if (game->phantoms.chica_office_waiting && game->office_pan < -10) {
+        const int pulse = phantom_bob(game->night_frames, 20u, 8);
+        texture_draw_rle(GRAPHICS_TARGET_TV, -pulse / 2, 105 - pulse,
+                         210 + pulse, 315 + pulse, &gPhantomChicaOfficeTexture);
+    }
+    if (phantoms_mangle_active(&game->phantoms)) {
+        const uint32_t timer = game->phantoms.mangle_office_frames;
+        const int bob = phantom_bob(timer, 30u, 9);
+        if (((timer / 9u) % 5u) == 0u) {
+            texture_draw_rle(GRAPHICS_TARGET_TV, 566 - bob, 77 + bob,
+                             256, 250, &gPhantomMangleCameraTexture);
+        } else {
+            texture_draw_rle(GRAPHICS_TARGET_TV, 592 - bob / 2, 90 - bob,
+                             220 + bob, 260 + bob, &gPhantomMangleOfficeTexture);
+        }
+        if ((timer % 17u) < 3u) {
+            graphics_draw_rect(GRAPHICS_TARGET_TV, 556, 170 + bob,
+                               280, 4, GRAPHICS_RGB(124, 142, 124));
+        }
+    }
+    if (phantoms_puppet_active(&game->phantoms)) {
+        const TextureRle *frame = sequence_ping_pong_frame(
+            &gPhantomPuppetRealAnimation,
+            game->phantoms.puppet_office_frames);
+        const int drift = phantom_bob(game->phantoms.puppet_office_frames,
+                                      48u, 18);
+        if (frame != NULL) {
+            texture_draw_rle(GRAPHICS_TARGET_BOTH, 82 + drift / 2,
+                             5 - drift / 2, 690 - drift, 470 + drift, frame);
+        } else {
+            texture_draw_rle(GRAPHICS_TARGET_BOTH, 112, 20, 630, 440,
+                             &gPhantomPuppetOfficeTexture);
+        }
+    }
 }
 
 static void draw_office_tv(const Game *game)
@@ -133,6 +166,15 @@ static const char *message_text(const Game *game)
 static void draw_phantom_camera_overlay(const Game *game)
 {
     PhantomId phantom = phantoms_camera_overlay(&game->phantoms, game->selected_camera);
+    const int bob = phantom_bob(game->night_frames, 24u, 7);
     switch (phantom) {
         case PHANTOM_BALLOON_BOY:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD, 180, 88, 250, 250, &gPhantomBBCameraTexture); break;
+            if (game->phantoms.bb_seen_frames >= 22u)
+                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD, 142 - bob, 56 - bob,
+                                 326 + bob * 2, 306 + bob * 2,
+                                 &gPhantomBBOfficeTexture);
+            else
+                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD, 180 + bob / 2,
+                                 88 - bob, 250, 250,
+                                 &gPhantomBBCameraTexture);
+            break;
