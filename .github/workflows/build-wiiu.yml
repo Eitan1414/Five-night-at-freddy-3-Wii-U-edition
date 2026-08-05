@@ -20,8 +20,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install asset tools
+      - name: Install Wii U and asset dependencies
         run: |
+          dkp-pacman -Sy --needed --noconfirm wiiu-sdl2
           apt-get update
           apt-get install -y --no-install-recommends ffmpeg
 
