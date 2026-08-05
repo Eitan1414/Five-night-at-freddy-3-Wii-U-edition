@@ -31,5 +31,13 @@
 #undef update_game
 #undef main
 
+#define main fnaf3_content_main
+#define update_game fnaf3_content_update_game
+#define render_game fnaf3_content_render_game
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #include "main_v3_parts/main_secret_minigames_02.inc"
+#undef render_game
+#undef update_game
+#undef main
+
+#include "main_v3_parts/main_complete.inc"
