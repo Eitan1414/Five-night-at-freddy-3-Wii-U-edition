@@ -41,6 +41,17 @@ static void maybe_spawn_puppet(PhantomSystem *system, int hour)
     }
 }
 
+static uint32_t jumpscare_duration_frames(PhantomId phantom)
+{
+    switch (phantom) {
+        case PHANTOM_FOXY: return 11u * 4u;
+        case PHANTOM_BALLOON_BOY: return 9u * 4u;
+        case PHANTOM_FREDDY: return 7u * 4u;
+        case PHANTOM_CHICA: return 6u * 4u;
+        default: return JUMPSCARE_DURATION_FRAMES;
+    }
+}
+
 static PhantomEvent update_jumpscare(PhantomSystem *system)
 {
     PhantomEvent event = empty_event();
@@ -48,7 +59,8 @@ static PhantomEvent update_jumpscare(PhantomSystem *system)
         return event;
     }
     ++system->jumpscare_frames;
-    if (system->jumpscare_frames >= JUMPSCARE_DURATION_FRAMES) {
+    if (system->jumpscare_frames >=
+        jumpscare_duration_frames(system->jumpscare)) {
         const PhantomId finished = system->jumpscare;
         mark_attacked(system, finished);
         system->jumpscare = PHANTOM_NONE;
