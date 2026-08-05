@@ -1,6 +1,6 @@
 # External audio overrides
 
-The Wii U build can load raw signed 16-bit big-endian, 16 kHz, mono PCM files from:
+The Wii U build loads raw signed 16-bit big-endian, 16 kHz, mono PCM files from:
 
 `SD:/wiiu/apps/fnaf3-wiiu/audio/`
 
@@ -16,7 +16,9 @@ Supported names:
 - `titlemusic.bin`
 - `startday.bin`
 
-Every file is optional. If an override is absent or invalid, the embedded fallback cue is used. The distributed test package contains the recordings supplied for this Wii U edition except `six_am.bin`, which was not included in the received attachments.
+Every file is optional. If an override is absent, empty, too large or invalid, the embedded fallback cue is used. The complete distributed SD package contains the six supplied Phone Guy calls, all supplied interface/music effects and the supplied `six_am` cue.
+
+The SD card is mounted before the audio engine starts so the override files are available during `audio_init`.
 
 Conversion example:
 
