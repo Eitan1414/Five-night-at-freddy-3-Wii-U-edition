@@ -14,15 +14,20 @@ class SequenceSpec:
     relative_dir: str
     file_prefix: str
     count: int
+    ticks_per_frame: int = 4
 
 
 SEQUENCES = (
     SequenceSpec("gSpringtrapJumpscareLeft", "Springtrap", "", 13),
     SequenceSpec("gSpringtrapJumpscareRight", "Springtrap2", "", 12),
-    SequenceSpec("gPhantomBBRealJumpscare", "BB", "BBJUMP", 9),
-    SequenceSpec("gPhantomChicaRealJumpscare", "Chica", "CHJUMP", 6),
-    SequenceSpec("gPhantomFreddyRealJumpscare", "Freddy", "FJUMP", 7),
-    SequenceSpec("gPhantomFoxyRealJumpscare", "Foxy", "", 11),
+    SequenceSpec("gPhantomBBRealJumpscare", "BB", "BBJUMP", 9, 3),
+    SequenceSpec("gPhantomChicaRealJumpscare", "Chica", "CHJUMP", 6, 4),
+    SequenceSpec("gPhantomFreddyRealJumpscare", "Freddy", "FJUMP", 7, 5),
+    SequenceSpec("gPhantomFoxyRealJumpscare", "Foxy", "", 11, 3),
+    # The original PSX source ships these five Marionette frames at the
+    # screamer root as Mjump1..5. They were present in the historical Wii U
+    # asset pack but were never wired into the rendered Puppet encounter.
+    SequenceSpec("gPhantomPuppetRealAnimation", "", "Mjump", 5, 8),
 )
 
 
@@ -186,11 +191,12 @@ def main() -> None:
         source.append("\n};\n")
         source.append(
             f"const JumpscareSequence {spec.symbol} = {{\n"
-            f"    {array_symbol}, {spec.count}u, 4u,\n"
+            f"    {array_symbol}, {spec.count}u, {spec.ticks_per_frame}u,\n"
             f"}};\n\n"
         )
         header.append(f"extern const JumpscareSequence {spec.symbol};\n")
-        print(f"{spec.symbol}: {spec.count} frames on {canvas_width}x{canvas_height}")
+        print(f"{spec.symbol}: {spec.count} frames on {canvas_width}x{canvas_height} "
+              f"at {spec.ticks_per_frame} ticks/frame")
 
     args.output_c.parent.mkdir(parents=True, exist_ok=True)
     args.output_h.parent.mkdir(parents=True, exist_ok=True)
