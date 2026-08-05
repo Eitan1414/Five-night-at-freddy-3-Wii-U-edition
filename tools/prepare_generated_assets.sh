@@ -47,7 +47,7 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-    echo "python3 is required to prepare jumpscare assets" >&2
+    echo "python3 is required to prepare generated assets" >&2
     exit 1
 fi
 
@@ -55,6 +55,7 @@ PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
 TIM_ROOT="$PSX_SOURCE/tim"
 SCREAMER_ROOT="$TIM_ROOT/screamer"
 SCREAMER_AUDIO="$PSX_SOURCE/vag/screamer.vag"
+PHONE_ARCHIVE="$PSX_SOURCE/xa/inter8.zip"
 
 if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
     echo "Original PSX jumpscare sources not found at: $PSX_SOURCE" >&2
@@ -103,5 +104,7 @@ convert_audio assets/audio_phantoms_low/mask.mp3 data/audio/mask.bin
 convert_audio assets/audio_phantoms_low/echo1.mp3 data/audio/echo1.bin
 convert_audio assets/audio_phantoms_low/echo3b.mp3 data/audio/echo3b.bin
 convert_audio assets/audio_phantoms_low/echo4b.mp3 data/audio/echo4b.bin
+
+python3 tools/extract_phone_xa.py "$PHONE_ARCHIVE" data/audio
 
 rm -rf assets/audio_low12 assets/audio_phantoms_low

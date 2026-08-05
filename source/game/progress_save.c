@@ -80,6 +80,17 @@ int progress_save_highest_unlocked_night(void)
     return s_highest_unlocked_night;
 }
 
+bool progress_save_is_night_completed(int night)
+{
+    if (night < 1 || night > PROGRESS_NIGHT_COUNT) return false;
+    return (s_completed_nights_mask & (uint8_t) (1u << (night - 1))) != 0u;
+}
+
+bool progress_save_extras_unlocked(void)
+{
+    return progress_save_is_night_completed(5);
+}
+
 const char *progress_save_load_status_text(void)
 {
     switch (s_load_result) {

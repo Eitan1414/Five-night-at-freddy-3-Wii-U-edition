@@ -9,6 +9,8 @@ void progress_save_complete_night(int completed_night,
                                   int *unlocked_night);
 
 int progress_save_highest_unlocked_night(void);
+bool progress_save_is_night_completed(int night);
+bool progress_save_extras_unlocked(void);
 
 const char *progress_save_load_status_text(void);
 bool progress_save_load_status_is_error(void);

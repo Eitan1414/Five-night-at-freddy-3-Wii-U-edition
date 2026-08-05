@@ -1,10 +1,26 @@
 #include "game/progress_save.h"
 
+#include "main_v3_parts/main_finishing_prelude.inc"
+
+#define main fnaf3_legacy_main
+#define update_game fnaf3_legacy_update_game
+#define render_game fnaf3_legacy_render_game
+
 #include "main_v3_parts/main_00.inc"
 #include "main_v3_parts/main_01.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
 #include "main_v3_parts/main_04.inc"
+
+#define graphics_present finishing_graphics_present
 #include "main_v3_parts/main_05.inc"
+#undef graphics_present
+
 #include "main_v3_parts/main_06.inc"
+
+#undef render_game
+#undef update_game
+#undef main
+
+#include "main_v3_parts/main_finishing.inc"

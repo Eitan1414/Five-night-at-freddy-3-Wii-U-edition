@@ -50,7 +50,7 @@ jobs:
             /tmp/fnaf3-psx-original
           cd /tmp/fnaf3-psx-original
           git checkout f19e22762f48d4269e07730827d8eaab5995557b -- \
-            tim/screamer tim/office tim/camera vag/screamer.vag
+            tim/screamer tim/office tim/camera vag/screamer.vag xa/inter8.zip
 
       - name: Prepare generated assets
         env:
