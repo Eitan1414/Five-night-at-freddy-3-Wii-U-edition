@@ -8,9 +8,11 @@
 #define PROGRESS_NIGHT_COUNT 6
 #define PROGRESS_SECRET_MINIGAME_COUNT 6
 #define PROGRESS_SECRET_COMPLETE_MASK 0x3Fu
+#define PROGRESS_ACHIEVEMENT_AGGRESSIVE 0x01u
 
 static uint8_t s_completed_nights_mask = 0u;
 static uint8_t s_secret_minigames_mask = 0u;
+static uint8_t s_achievement_flags = 0u;
 static int s_highest_unlocked_night = 1;
 static SaveLoadResult s_load_result = SAVE_LOAD_EMPTY;
 static bool s_write_attempted = false;
@@ -28,7 +30,8 @@ static void write_current_progress(void)
     const SaveData data = {
         (uint8_t) s_highest_unlocked_night,
         s_completed_nights_mask,
-        s_secret_minigames_mask
+        s_secret_minigames_mask,
+        s_achievement_flags
     };
     s_write_attempted = true;
     s_last_write_ok = save_data_write(&data);
@@ -39,6 +42,7 @@ void progress_save_init(int *unlocked_night)
 {
     s_completed_nights_mask = 0u;
     s_secret_minigames_mask = 0u;
+    s_achievement_flags = 0u;
     s_highest_unlocked_night = unlocked_night != NULL
         ? clamp_night(*unlocked_night) : 1;
     s_load_result = SAVE_LOAD_EMPTY;
@@ -52,13 +56,14 @@ void progress_save_init(int *unlocked_night)
         return;
     }
 
-    SaveData data = {1u, 0u, 0u};
+    SaveData data = {1u, 0u, 0u, 0u};
     s_load_result = save_data_load(&data);
     if (s_load_result == SAVE_LOAD_OK ||
         s_load_result == SAVE_LOAD_RECOVERED) {
         s_highest_unlocked_night = clamp_night(data.unlocked_night);
         s_completed_nights_mask = data.completed_nights_mask;
         s_secret_minigames_mask = data.secret_minigames_mask;
+        s_achievement_flags = data.achievement_flags;
     }
 
     if (unlocked_night != NULL)
@@ -95,6 +100,13 @@ void progress_save_complete_secret_minigame(int minigame)
     write_current_progress();
 }
 
+void progress_save_complete_aggressive_nightmare(void)
+{
+    if ((s_achievement_flags & PROGRESS_ACHIEVEMENT_AGGRESSIVE) != 0u) return;
+    s_achievement_flags |= PROGRESS_ACHIEVEMENT_AGGRESSIVE;
+    write_current_progress();
+}
+
 int progress_save_highest_unlocked_night(void)
 {
     return s_highest_unlocked_night;
@@ -126,6 +138,11 @@ bool progress_save_good_ending_unlocked(void)
 {
     return (s_secret_minigames_mask & PROGRESS_SECRET_COMPLETE_MASK)
         == PROGRESS_SECRET_COMPLETE_MASK;
+}
+
+bool progress_save_aggressive_nightmare_completed(void)
+{
+    return (s_achievement_flags & PROGRESS_ACHIEVEMENT_AGGRESSIVE) != 0u;
 }
 
 const char *progress_save_load_status_text(void)
