@@ -23,8 +23,9 @@ The PSX project remains the main technical reference. Its PlayStation-specific g
 - [x] PlayStation TIM converter;
 - [x] portable `sndcore2` audio API;
 - [x] generated MP3 → Wii U PCM pipeline;
-- [ ] portable storage/save API;
-- [ ] GX2 texture renderer.
+- [x] SDL2/GX2 renderer with separate TV and GamePad targets;
+- [x] GPU texture cache for indexed RLE assets;
+- [ ] portable storage/save API.
 
 ## Phase 2 — Playable office loop
 
@@ -41,7 +42,7 @@ The PSX project remains the main technical reference. Its PlayStation-specific g
 - [x] night introduction, victory and Game Over flows;
 - [x] sequential session progression through Nights 1–6;
 - [ ] fixed-step timing independent of rendering cost;
-- [ ] full-resolution CAM 04–10 backgrounds;
+- [ ] regenerate CAM 04–10 from higher-resolution source frames;
 - [ ] GamePad touch selection.
 
 ## Phase 3 — Springtrap
@@ -87,4 +88,4 @@ The PSX project remains the main technical reference. Its PlayStation-specific g
 
 ## Immediate next task
 
-Compile and test the Phantom/Springtrap milestone on real Wii U hardware. Focus on audio mixing, reaction windows, monitor transitions, once-per-night limits and frame rate. Then replace the reduced CAM 04–10 backgrounds and compact repeated jumpscare frames with optimized GX2 textures before final probability balancing.
+Test the SDL2/GX2 renderer on real Wii U hardware. Verify Aroma boot stability, independent TV/GamePad output, transparency, CAM 01–10, Springtrap and Phantom overlays, monitor transitions, frame rate and audio stability. After hardware validation, regenerate the reduced camera sources at a higher optimized resolution and restore the missing distinct jumpscare frames.
