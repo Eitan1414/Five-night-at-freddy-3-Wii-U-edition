@@ -1,4 +1,5 @@
 #include "game/progress_save.h"
+#include "assets/ending_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 
