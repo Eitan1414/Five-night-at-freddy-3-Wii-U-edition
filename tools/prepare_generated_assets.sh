@@ -49,6 +49,26 @@ if ! command -v ffmpeg >/dev/null 2>&1; then
     exit 1
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "python3 is required to prepare jumpscare assets" >&2
+    exit 1
+fi
+
+PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
+SCREAMER_ROOT="$PSX_SOURCE/tim/screamer"
+SCREAMER_AUDIO="$PSX_SOURCE/vag/screamer.vag"
+
+if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
+    echo "Original PSX jumpscare sources not found at: $PSX_SOURCE" >&2
+    echo "Set FNAF3_PSX_SOURCE to the extracted Five-Night-at-Freddys-3-PSX source." >&2
+    exit 1
+fi
+
+python3 tools/convert_jumpscare_tim.py \
+    "$SCREAMER_ROOT" \
+    source/jumpscare_assets.c \
+    include/assets/jumpscare_assets.h
+
 mkdir -p assets data/audio
 rm -rf assets/audio_low12 assets/audio_phantoms_low data/audio
 mkdir -p data/audio
@@ -73,7 +93,7 @@ convert_audio assets/audio_low12/alarm.mp3 data/audio/alarm.bin
 convert_audio assets/audio_low12/breathing.mp3 data/audio/breathing.bin
 convert_audio assets/audio_low12/wait.mp3 data/audio/wait.bin
 convert_audio assets/audio_low12/static_sound.mp3 data/audio/static_sound.bin
-convert_audio assets/audio_low12/scream3.mp3 data/audio/scream3.bin
+convert_audio "$SCREAMER_AUDIO" data/audio/scream3.bin
 
 convert_audio assets/audio_phantoms_low/garble1.mp3 data/audio/garble1.bin
 convert_audio assets/audio_phantoms_low/mask.mp3 data/audio/mask.bin
