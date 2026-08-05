@@ -40,9 +40,6 @@ restore_extended_cameras \
 restore_xz_base64 \
     "source/generated/camera_springtrap_textures.c.xz.b64" \
     "source/camera_springtrap_textures.c"
-restore_xz_base64 \
-    "source/generated/phantom_assets_min.c.xz.b64" \
-    "source/phantom_assets.c"
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "ffmpeg is required to prepare audio assets" >&2
@@ -55,7 +52,8 @@ if ! command -v python3 >/dev/null 2>&1; then
 fi
 
 PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
-SCREAMER_ROOT="$PSX_SOURCE/tim/screamer"
+TIM_ROOT="$PSX_SOURCE/tim"
+SCREAMER_ROOT="$TIM_ROOT/screamer"
 SCREAMER_AUDIO="$PSX_SOURCE/vag/screamer.vag"
 
 if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
@@ -63,6 +61,11 @@ if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
     echo "Set FNAF3_PSX_SOURCE to the extracted Five-Night-at-Freddys-3-PSX source." >&2
     exit 1
 fi
+
+python3 tools/convert_phantom_visuals.py \
+    "$TIM_ROOT" \
+    source/phantom_assets.c \
+    include/assets/phantom_assets.h
 
 python3 tools/convert_jumpscare_tim.py \
     "$SCREAMER_ROOT" \

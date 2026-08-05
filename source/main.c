@@ -2,6 +2,7 @@
 
 #include "main_v3_parts/main_00.inc"
 #include "main_v3_parts/main_01.inc"
+#include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
 #include "main_v3_parts/main_04.inc"
