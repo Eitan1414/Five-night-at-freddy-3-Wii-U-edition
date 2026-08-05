@@ -1,3 +1,6 @@
+#include <stdbool.h>
+#include <stdint.h>
+
 typedef enum FinishingMode {
     FINISHING_NONE = 0,
     FINISHING_EXTRAS,
