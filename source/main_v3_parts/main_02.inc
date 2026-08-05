@@ -92,7 +92,7 @@ static void update_active_game(Game *game, const InputState *input)
         game->audio_lure_frames = 0u;
         if ((lure_event.flags & SPRINGTRAP_EVENT_MOVED) != 0u) {
             set_message(game, MESSAGE_AUDIO_SUCCESS);
-            process_springtrap_event(game, lure_event);
+            process_springtrap_event(game, lure_event, SPRINGTRAP_OFFICE_NONE);
         } else if ((lure_event.flags & SPRINGTRAP_EVENT_LURE_IGNORED) != 0u) {
             set_message(game, MESSAGE_AUDIO_IGNORED);
         } else {
@@ -108,11 +108,13 @@ static void update_active_game(Game *game, const InputState *input)
     process_phantom_event(game, phantom_event);
 
     if (config->springtrap_enabled) {
+        const SpringtrapOfficeSide attack_side =
+            springtrap_ai_office_side(&game->springtrap);
         SpringtrapEvent event = springtrap_ai_update(
             &game->springtrap, game->night, game->hour == 12 ? 0 : game->hour,
             springtrap_interval(game), game->sealed_vent,
             springtrap_directly_observed(game), game->player_blinded);
-        process_springtrap_event(game, event);
+        process_springtrap_event(game, event, attack_side);
     }
 
     if (game->repairing && ++game->repair_frames >= repair_duration(game)) {

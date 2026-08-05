@@ -41,6 +41,7 @@ static void reset_night(Game *game, int night)
     game->audio_lure_cooldown = 0u;
     game->message = MESSAGE_NONE;
     game->message_frames = 0u;
+    game->springtrap_jumpscare_right = false;
 
     springtrap_ai_reset(&game->springtrap, night, game_random(game));
     phantoms_reset(&game->phantoms, night, night >= 6, game_random(game));
@@ -79,12 +80,28 @@ static bool springtrap_directly_observed(const Game *game)
 
 static void begin_game_over(Game *game)
 {
-    if (game->screen == SCREEN_GAME_OVER) return;
+    audio_stop(AUDIO_CUE_SCREAM);
+    game->screen = SCREEN_GAME_OVER;
+    game->screen_frames = 0u;
+    game->dirty = true;
+}
+
+static void begin_springtrap_jumpscare(Game *game,
+                                      SpringtrapOfficeSide attack_side)
+{
+    if (game->screen == SCREEN_SPRINGTRAP_JUMPSCARE ||
+        game->screen == SCREEN_GAME_OVER) {
+        return;
+    }
     audio_stop_all();
     audio_play(AUDIO_CUE_SCREAM, 1.0f, false);
     game->camera_open = false;
     game->maintenance_open = false;
-    game->screen = SCREEN_GAME_OVER;
+    game->vent_map_open = false;
+    game->springtrap_jumpscare_right =
+        attack_side == SPRINGTRAP_OFFICE_WINDOW ||
+        (attack_side == SPRINGTRAP_OFFICE_NONE && game->office_pan >= 0);
+    game->screen = SCREEN_SPRINGTRAP_JUMPSCARE;
     game->screen_frames = 0u;
     game->dirty = true;
 }
@@ -100,7 +117,9 @@ static void begin_victory(Game *game)
     game->dirty = true;
 }
 
-static void process_springtrap_event(Game *game, SpringtrapEvent event)
+static void process_springtrap_event(Game *game,
+                                     SpringtrapEvent event,
+                                     SpringtrapOfficeSide attack_side)
 {
     if ((event.flags & SPRINGTRAP_EVENT_VENT_ENTER) != 0u) {
         audio_play((game_random(game) & 1u) != 0u
@@ -117,7 +136,7 @@ static void process_springtrap_event(Game *game, SpringtrapEvent event)
     if ((event.flags & SPRINGTRAP_EVENT_DANGER_LOUD) != 0u)
         set_message(game, MESSAGE_DANGER_LOUD);
     if ((event.flags & SPRINGTRAP_EVENT_ATTACK) != 0u)
-        begin_game_over(game);
+        begin_springtrap_jumpscare(game, attack_side);
     if (event.flags != 0u) game->dirty = true;
 }
 

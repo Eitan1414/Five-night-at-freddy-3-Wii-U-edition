@@ -9,6 +9,7 @@
 #include "assets/camera02_texture.h"
 #include "assets/camera03_texture.h"
 #include "assets/camera_extended_assets.h"
+#include "assets/jumpscare_assets.h"
 #include "assets/menu_springtrap_texture.h"
 #include "assets/menu_springtrap_texture2.h"
 #include "assets/menu_springtrap_texture3.h"
@@ -56,6 +57,7 @@ typedef enum GameScreen {
     SCREEN_NIGHT_INTRO,
     SCREEN_OFFICE,
     SCREEN_VICTORY,
+    SCREEN_SPRINGTRAP_JUMPSCARE,
     SCREEN_GAME_OVER,
     SCREEN_PLACEHOLDER
 } GameScreen;
@@ -143,6 +145,7 @@ typedef struct Game {
     MessageKind message;
     uint32_t message_frames;
 
+    bool springtrap_jumpscare_right;
     SpringtrapAI springtrap;
     PhantomSystem phantoms;
 } Game;

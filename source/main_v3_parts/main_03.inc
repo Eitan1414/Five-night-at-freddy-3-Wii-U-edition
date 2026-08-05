@@ -77,6 +77,17 @@ static void update_game(Game *game, const InputState *input)
                 }
             }
             break;
+        case SCREEN_SPRINGTRAP_JUMPSCARE: {
+            const JumpscareSequence *sequence = game->springtrap_jumpscare_right
+                ? &gSpringtrapJumpscareRight
+                : &gSpringtrapJumpscareLeft;
+            game->dirty = true;
+            if (game->screen_frames >=
+                sequence->frame_count * sequence->ticks_per_frame) {
+                begin_game_over(game);
+            }
+            break;
+        }
         case SCREEN_GAME_OVER:
             if ((game->screen_frames % 5u) == 0u) game->dirty = true;
             if (input_was_pressed(input, GAME_BUTTON_CONFIRM) || input_was_pressed(input, GAME_BUTTON_START)) {

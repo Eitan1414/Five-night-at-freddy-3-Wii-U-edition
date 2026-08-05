@@ -104,34 +104,64 @@ static void draw_ventilation_overlay(const Game *game)
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, y, 854, spacing / 2 + 1, COLOUR_BLACK);
 }
 
-static const TextureRle *const *jumpscare_frames_for(PhantomId phantom)
+static const JumpscareSequence *phantom_jumpscare_sequence(PhantomId phantom)
 {
     switch (phantom) {
-        case PHANTOM_FOXY: return gPhantomFoxyJumpscareFrames;
-        case PHANTOM_BALLOON_BOY: return gPhantomBBJumpscareFrames;
-        case PHANTOM_FREDDY: return gPhantomFreddyJumpscareFrames;
-        case PHANTOM_CHICA: return gPhantomChicaJumpscareFrames;
-        case PHANTOM_PUPPET: return gPhantomPuppetJumpscareFrames;
+        case PHANTOM_FOXY: return &gPhantomFoxyRealJumpscare;
+        case PHANTOM_BALLOON_BOY: return &gPhantomBBRealJumpscare;
+        case PHANTOM_FREDDY: return &gPhantomFreddyRealJumpscare;
+        case PHANTOM_CHICA: return &gPhantomChicaRealJumpscare;
         default: return NULL;
     }
+}
+
+static void draw_jumpscare_sequence(uint32_t targets,
+                                    const JumpscareSequence *sequence,
+                                    uint32_t timer)
+{
+    if (sequence == NULL || sequence->frames == NULL ||
+        sequence->frame_count == 0u || sequence->ticks_per_frame == 0u) {
+        return;
+    }
+
+    uint32_t frame = timer / sequence->ticks_per_frame;
+    if (frame >= sequence->frame_count) frame = sequence->frame_count - 1u;
+    const TextureRle *texture = sequence->frames[frame];
+    if (texture == NULL || texture->width == 0u || texture->height == 0u) return;
+
+    int draw_height = GRAPHICS_LOGICAL_HEIGHT;
+    int draw_width = (int) (((uint32_t) texture->width *
+                            (uint32_t) draw_height) / texture->height);
+    if (draw_width > GRAPHICS_LOGICAL_WIDTH) {
+        draw_width = GRAPHICS_LOGICAL_WIDTH;
+        draw_height = (int) (((uint32_t) texture->height *
+                             (uint32_t) draw_width) / texture->width);
+    }
+    const int x = (GRAPHICS_LOGICAL_WIDTH - draw_width) / 2;
+    const int y = (GRAPHICS_LOGICAL_HEIGHT - draw_height) / 2;
+
+    graphics_clear(targets, COLOUR_BLACK);
+    texture_draw_rle(targets, x, y, draw_width, draw_height, texture);
+}
+
+static void draw_springtrap_jumpscare(const Game *game)
+{
+    const JumpscareSequence *sequence = game->springtrap_jumpscare_right
+        ? &gSpringtrapJumpscareRight
+        : &gSpringtrapJumpscareLeft;
+    draw_jumpscare_sequence(GRAPHICS_TARGET_BOTH, sequence, game->screen_frames);
+    graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
 static void draw_phantom_jumpscare(const Game *game)
 {
     const PhantomId phantom = phantoms_active_jumpscare(&game->phantoms);
     if (phantom == PHANTOM_NONE) return;
-    const TextureRle *const *frames = jumpscare_frames_for(phantom);
-    if (frames == NULL) return;
-    const uint32_t timer = phantoms_jumpscare_frames(&game->phantoms);
-    const int frame = (int) ((timer / 5u) % 5u);
-    const int shake_x = (int) ((game->seed + timer * 17u) % 19u) - 9;
-    const int shake_y = (int) ((game->seed + timer * 29u) % 15u) - 7;
-    const int zoom = (int) (timer * 2u);
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 0, 854, 480, GRAPHICS_RGB(18, 25, 10));
-    texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                     65 - zoom / 2 + shake_x, 30 - zoom / 3 + shake_y,
-                     724 + zoom, 420 + zoom / 2, frames[frame]);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 260, 440, 2, phantom_name(phantom), COLOUR_RED);
+    const JumpscareSequence *sequence = phantom_jumpscare_sequence(phantom);
+    if (sequence == NULL) return;
+    draw_jumpscare_sequence(GRAPHICS_TARGET_BOTH,
+                            sequence,
+                            phantoms_jumpscare_frames(&game->phantoms));
 }
 
 static void draw_office(const Game *game)
