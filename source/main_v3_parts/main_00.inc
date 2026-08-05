@@ -8,6 +8,7 @@
 #include "assets/camera01_texture.h"
 #include "assets/camera02_texture.h"
 #include "assets/camera03_texture.h"
+#include "assets/camera_extended_assets.h"
 #include "assets/menu_springtrap_texture.h"
 #include "assets/menu_springtrap_texture2.h"
 #include "assets/menu_springtrap_texture3.h"
@@ -162,10 +163,16 @@ static const NightConfig kNightConfigs[NIGHT_COUNT] = {
 };
 
 static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
-    &gCamera01Texture, &gCamera02Texture, &gCamera03Texture,
     &gCamera01Texture,
+    &gCamera02Texture,
+    &gCamera03Texture,
+    &gCamera04Texture,
+    &gCamera05Texture,
+    &gCamera06Texture,
+    &gCamera07Texture,
+    &gCamera08Texture,
+    &gCamera09Texture,
+    &gCamera10Texture,
 };
 
 static const TextureRle *const kTitleFrames[TITLE_FRAME_COUNT] = {

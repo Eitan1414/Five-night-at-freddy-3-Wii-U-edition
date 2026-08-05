@@ -8,6 +8,35 @@ restore_xz_base64() {
     cat $source_pattern | base64 -d | xz -dc > "$output"
 }
 
+restore_extended_cameras() {
+    source_pattern="$1"
+    output="$2"
+    temporary="${output}.xz"
+    trimmed="${output}.trimmed"
+
+    # The historical upload contains all seven camera textures, followed by
+    # a duplicated Springtrap sprite section whose final XZ fragment was never
+    # committed. Recover the emitted C source, then discard that incomplete
+    # duplicate tail. The complete Springtrap sprites are restored separately.
+    # shellcheck disable=SC2086
+    cat $source_pattern | base64 -d > "$temporary"
+    if ! xz -dc "$temporary" > "$output"; then
+        echo "warning: recovered camera textures from truncated XZ stream" >&2
+    fi
+    rm -f "$temporary"
+
+    sed '/^static const uint32_t kSpringtrap01SpritePalette/,$d' \
+        "$output" > "$trimmed"
+    mv "$trimmed" "$output"
+
+    test -s "$output"
+    grep -q "const TextureRle gCamera04Texture" "$output"
+    grep -q "const TextureRle gCamera10Texture" "$output"
+}
+
+restore_extended_cameras \
+    "source/generated/camera_extended_assets.c.xz.b64.*" \
+    "source/camera_extended_assets.c"
 restore_xz_base64 \
     "source/generated/camera_springtrap_textures.c.xz.b64" \
     "source/camera_springtrap_textures.c"
