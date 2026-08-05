@@ -20,10 +20,10 @@ class SequenceSpec:
 SEQUENCES = (
     SequenceSpec("gSpringtrapJumpscareLeft", "Springtrap", "", 13),
     SequenceSpec("gSpringtrapJumpscareRight", "Springtrap2", "", 12),
-    SequenceSpec("gPhantomBBRealJumpscare", "BB", "BBJUMP", 9, 3),
-    SequenceSpec("gPhantomChicaRealJumpscare", "Chica", "CHJUMP", 6, 4),
-    SequenceSpec("gPhantomFreddyRealJumpscare", "Freddy", "FJUMP", 7, 5),
-    SequenceSpec("gPhantomFoxyRealJumpscare", "Foxy", "", 11, 3),
+    SequenceSpec("gPhantomBBRealJumpscare", "BB", "BBJUMP", 9),
+    SequenceSpec("gPhantomChicaRealJumpscare", "Chica", "CHJUMP", 6),
+    SequenceSpec("gPhantomFreddyRealJumpscare", "Freddy", "FJUMP", 7),
+    SequenceSpec("gPhantomFoxyRealJumpscare", "Foxy", "", 11),
     # The original PSX source ships these five Marionette frames at the
     # screamer root as Mjump1..5. They were present in the historical Wii U
     # asset pack but were never wired into the rendered Puppet encounter.
