@@ -27,5 +27,3 @@ static void handle_title_input(Game *game, const InputState *input)
         game->dirty = true;
     }
 }
-
-#define draw_title draw_title_without_save_status
