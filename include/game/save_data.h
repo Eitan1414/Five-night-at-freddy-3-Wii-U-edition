@@ -6,6 +6,7 @@
 typedef struct SaveData {
     uint8_t unlocked_night;
     uint8_t completed_nights_mask;
+    uint8_t secret_minigames_mask;
 } SaveData;
 
 typedef enum SaveLoadResult {
