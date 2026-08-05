@@ -20,7 +20,7 @@ static void draw_authentic_office_tv(const Game *game)
     }
 
     const bool alert_frame = game->ventilation_failed &&
-        ((game->ventilation_error_frames / 18u) % 2u) != 0u;
+        ((game->night_frames / 18u) % 2u) != 0u;
     const TextureRle *office = alert_frame
         ? office_assets_texture(OFFICE_ASSET_ALERT)
         : normal;
