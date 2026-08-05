@@ -9,6 +9,9 @@ restore_xz_base64() {
 }
 
 restore_xz_base64 \
+    "source/generated/camera_extended_assets.c.xz.b64.*" \
+    "source/camera_extended_assets.c"
+restore_xz_base64 \
     "source/generated/camera_springtrap_textures.c.xz.b64" \
     "source/camera_springtrap_textures.c"
 restore_xz_base64 \
