@@ -74,6 +74,11 @@ static void original_ui_draw_maintenance(const Game *game)
 
 static void original_ui_draw_transition(void)
 {
+    if (sMonitorV2.assets_ready) {
+        monitor_v2_draw_transition();
+        return;
+    }
+
     if (!sOriginalUi.transition_active ||
         sOriginalUi.transition_frame < 0 ||
         sOriginalUi.transition_frame >
@@ -137,8 +142,10 @@ int main(int argc, char **argv)
     memset(&sSecretTriggers, 0, sizeof(sSecretTriggers));
     memset(&sCompleteCheats, 0, sizeof(sCompleteCheats));
     memset(&sOriginalUi, 0, sizeof(sOriginalUi));
+    memset(&sMonitorV2, 0, sizeof(sMonitorV2));
     sTitleMusicPlaying = false;
     sOriginalUi.assets_ready = original_ui_assets_init();
+    sMonitorV2.assets_ready = monitor_v2_assets_init();
 
     Game game;
     game_init(&game);
