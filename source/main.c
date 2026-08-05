@@ -12,7 +12,11 @@
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
 #include "main_v3_parts/main_04.inc"
+
+#define graphics_present finishing_graphics_present
 #include "main_v3_parts/main_05.inc"
+#undef graphics_present
+
 #include "main_v3_parts/main_06.inc"
 
 #undef render_game
