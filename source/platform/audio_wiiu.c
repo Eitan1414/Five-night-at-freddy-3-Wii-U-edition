@@ -33,6 +33,15 @@ DECLARE_AUDIO_BIN(phone_night4);
 DECLARE_AUDIO_BIN(phone_night5);
 DECLARE_AUDIO_BIN(phone_night6);
 DECLARE_AUDIO_BIN(six_am);
+DECLARE_AUDIO_BIN(select);
+DECLARE_AUDIO_BIN(end);
+DECLARE_AUDIO_BIN(crank1);
+DECLARE_AUDIO_BIN(crank2);
+DECLARE_AUDIO_BIN(lever1);
+DECLARE_AUDIO_BIN(lever2);
+DECLARE_AUDIO_BIN(stare);
+DECLARE_AUDIO_BIN(titlemusic);
+DECLARE_AUDIO_BIN(startday);
 
 typedef struct AudioClip {
     const uint8_t *data;
@@ -66,6 +75,15 @@ static const AudioClip kClips[AUDIO_CUE_COUNT] = {
     {phone_night5_bin, phone_night5_bin_end},
     {phone_night6_bin, phone_night6_bin_end},
     {six_am_bin, six_am_bin_end},
+    {select_bin, select_bin_end},
+    {end_bin, end_bin_end},
+    {crank1_bin, crank1_bin_end},
+    {crank2_bin, crank2_bin_end},
+    {lever1_bin, lever1_bin_end},
+    {lever2_bin, lever2_bin_end},
+    {stare_bin, stare_bin_end},
+    {titlemusic_bin, titlemusic_bin_end},
+    {startday_bin, startday_bin_end},
 };
 
 static AudioVoiceSlot sVoices[AUDIO_CUE_COUNT];
