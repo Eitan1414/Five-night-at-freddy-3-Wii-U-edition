@@ -231,8 +231,38 @@ static void update_game(Game *game, const InputState *input)
     fnaf3_content_update_game(game, &filtered);
 }
 
+static void complete_draw_original_bad_ending(const Game *game)
+{
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH, 107, 0, 640, 480,
+                     &gBadEndingOriginalTexture);
+
+    if (game->screen_frames >= 90u) {
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH, 172, 342, 510, 92,
+                           GRAPHICS_RGB(0, 0, 0));
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 263, 360, 3,
+                           "NIGHT 6 UNLOCKED", COLOUR_GREEN);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 279, 398, 3,
+                           "EXTRAS UNLOCKED", COLOUR_GREEN);
+    }
+    if (game->screen_frames >= 180u) {
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH, 247, 440, 360, 30,
+                           GRAPHICS_RGB(0, 0, 0));
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 286, 449, 1,
+                           "A: RETURN TO TITLE", COLOUR_WHITE);
+    }
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
 static void render_game(Game *game)
 {
+    if (!game->dirty) return;
+    if (game->screen == SCREEN_PLACEHOLDER &&
+        sFinishing.mode == FINISHING_NIGHT5_ENDING) {
+        game->dirty = false;
+        complete_draw_original_bad_ending(game);
+        return;
+    }
     fnaf3_content_render_game(game);
 }
 
