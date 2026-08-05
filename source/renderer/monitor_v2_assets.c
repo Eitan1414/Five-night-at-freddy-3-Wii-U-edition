@@ -12,14 +12,12 @@
     extern const uint8_t monitor_v2_assets_##index##_b64_end[]
 MONITOR_V2_CHUNK(00);
 MONITOR_V2_CHUNK(01);
-MONITOR_V2_CHUNK(02);
-MONITOR_V2_CHUNK(03);
 #undef MONITOR_V2_CHUNK
 
 #define MONITOR_V2_HEADER_SIZE 8u
 #define MONITOR_V2_DESCRIPTOR_SIZE 24u
 #define MONITOR_V2_PALETTE_BYTES 1024u
-#define MONITOR_V2_UNCOMPRESSED_SIZE 107072u
+#define MONITOR_V2_UNCOMPRESSED_SIZE 63780u
 
 static TextureRle sMonitorV2Textures[MONITOR_V2_TEXTURE_COUNT];
 static uint8_t *sMonitorV2Data = NULL;
@@ -112,24 +110,22 @@ bool monitor_v2_assets_init(void)
     sMonitorV2Attempted = true;
     memset(sMonitorV2Textures, 0, sizeof(sMonitorV2Textures));
 
-    static const uint8_t *const starts[4] = {
+    static const uint8_t *const starts[2] = {
         monitor_v2_assets_00_b64, monitor_v2_assets_01_b64,
-        monitor_v2_assets_02_b64, monitor_v2_assets_03_b64,
     };
-    static const uint8_t *const ends[4] = {
+    static const uint8_t *const ends[2] = {
         monitor_v2_assets_00_b64_end, monitor_v2_assets_01_b64_end,
-        monitor_v2_assets_02_b64_end, monitor_v2_assets_03_b64_end,
     };
 
     size_t encoded_size = 0u;
-    for (int index = 0; index < 4; ++index)
+    for (int index = 0; index < 2; ++index)
         encoded_size += (size_t) (ends[index] - starts[index]);
 
     uint8_t *encoded = (uint8_t *) malloc(encoded_size);
     if (encoded == NULL) return false;
 
     size_t encoded_offset = 0u;
-    for (int index = 0; index < 4; ++index) {
+    for (int index = 0; index < 2; ++index) {
         const size_t bytes = (size_t) (ends[index] - starts[index]);
         memcpy(encoded + encoded_offset, starts[index], bytes);
         encoded_offset += bytes;
