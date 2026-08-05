@@ -20,11 +20,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Wii U and asset dependencies
+      - name: Install asset tools
         run: |
-          dkp-pacman -Sy --needed --noconfirm wiiu-sdl2
           apt-get update
-          apt-get install -y --no-install-recommends ffmpeg
+          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch
+
+      - name: Build official Wii U SDL2 port
+        run: |
+          git clone --depth 1 https://github.com/devkitPro/wut-packages.git /tmp/wut-packages
+          curl -L --fail --retry 3 \
+            https://libsdl.org/release/SDL2-2.32.10.tar.gz \
+            -o /tmp/SDL2-2.32.10.tar.gz
+          tar -xzf /tmp/SDL2-2.32.10.tar.gz -C /tmp
+          cd /tmp/SDL2-2.32.10
+          patch -p1 < /tmp/wut-packages/SDL2/SDL2-2.32.10.patch
+          mkdir build
+          cd build
+          /opt/devkitpro/portlibs/wiiu/bin/powerpc-eabi-cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/opt/devkitpro/portlibs/wiiu \
+            -DSDL_TEST=OFF
+          cmake --build . --parallel 2
+          cmake --install .
 
       - name: Prepare generated assets
         run: sh tools/prepare_generated_assets.sh
