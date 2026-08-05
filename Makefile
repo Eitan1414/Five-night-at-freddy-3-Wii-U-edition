@@ -14,6 +14,8 @@ APP_AUTHOR    := Eitan1414 and contributors
 
 include $(DEVKITPRO)/wut/share/wut_rules
 
+PKGCONF := $(PORTLIBS_PATH)/wiiu/bin/powerpc-eabi-pkg-config
+
 #-------------------------------------------------------------------------------
 # Project layout
 #-------------------------------------------------------------------------------
@@ -32,10 +34,11 @@ DRC_SPLASH  := boot-drc.jpg
 #-------------------------------------------------------------------------------
 CFLAGS   := -g -Wall -Wextra -O2 -ffunction-sections $(MACHDEP)
 CFLAGS   += $(INCLUDE) -D__WIIU__ -D__WUT__
+CFLAGS   += $(shell $(PKGCONF) --cflags sdl2)
 CXXFLAGS := $(CFLAGS)
 ASFLAGS  := -g $(ARCH)
 LDFLAGS  := -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
-LIBS     := -lwut
+LIBS     := $(shell $(PKGCONF) --libs sdl2) -lwut -lstdc++ -lm
 LIBDIRS  := $(PORTLIBS) $(WUT_ROOT)
 
 #-------------------------------------------------------------------------------
