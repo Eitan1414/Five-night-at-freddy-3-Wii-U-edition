@@ -1,6 +1,7 @@
 #include "game/progress_save.h"
 #include "assets/ending_assets.h"
 #include "assets/original_ui_assets.h"
+#include "assets/camera_springtrap_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"

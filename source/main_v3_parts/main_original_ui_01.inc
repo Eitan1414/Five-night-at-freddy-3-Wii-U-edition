@@ -182,6 +182,101 @@ static void original_ui_draw_camera_map(const Game *game)
                        "D-PAD: CAMERA", GRAPHICS_RGB(188, 205, 184));
 }
 
+static void original_ui_draw_authentic_springtrap(const Game *game)
+{
+    static const int x[CAMERA_COUNT] = {
+        337, 452, 320, 46, 451, 48, 53, 235, 50, 432
+    };
+    static const int y[CAMERA_COUNT] = {
+        86, 79, 238, 75, 77, 141, 80, 73, 82, 79
+    };
+    static const int width[CAMERA_COUNT] = {
+        166, 83, 188, 90, 85, 100, 168, 141, 196, 118
+    };
+    static const int height[CAMERA_COUNT] = {
+        236, 244, 86, 236, 238, 174, 207, 244, 221, 239
+    };
+
+    const int camera = game->selected_camera;
+    if (camera < 0 || camera >= CAMERA_COUNT ||
+        !springtrap_ai_is_on_camera(&game->springtrap, camera)) {
+        return;
+    }
+
+    const TextureRle *texture = gOriginalCameraSpringtrapTextures[camera];
+    if (texture == NULL) {
+        draw_springtrap_camera_sprite(camera);
+        return;
+    }
+
+    const int jitter =
+        (int) ((game->night_frames / 3u + (uint32_t) camera * 5u) % 3u) - 1;
+    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                     x[camera] + jitter,
+                     y[camera] - jitter,
+                     width[camera], height[camera], texture);
+
+    if ((game->night_frames % 29u) < 2u) {
+        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                           28, y[camera] + height[camera] / 2,
+                           532, 2, GRAPHICS_RGB(105, 130, 104));
+    }
+}
+
+static void original_ui_draw_authentic_phantom(const Game *game)
+{
+    const PhantomId phantom = phantoms_camera_overlay(
+        &game->phantoms, game->selected_camera);
+    if (phantom == PHANTOM_NONE) return;
+
+    const int flicker =
+        (int) ((game->night_frames / 2u + (uint32_t) phantom) % 5u) - 2;
+    switch (phantom) {
+        case PHANTOM_BALLOON_BOY: {
+            const int bob = phantom_bob(game->night_frames, 24u, 7);
+            if (game->phantoms.bb_seen_frames >= 22u) {
+                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                                 138 - bob, 52 - bob,
+                                 334 + bob * 2, 314 + bob * 2,
+                                 &gPhantomBBOfficeTexture);
+            } else {
+                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                                 174 + bob / 2, 82 - bob,
+                                 262, 262,
+                                 &gPhantomBBCameraTexture);
+            }
+            break;
+        }
+        case PHANTOM_CHICA:
+            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                             350 + flicker, 210 - flicker,
+                             184, 108,
+                             &gPhantomChicaCameraTexture);
+            break;
+        case PHANTOM_MANGLE:
+            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                             56 + flicker, 64 - flicker,
+                             400, 286,
+                             &gPhantomMangleCameraTexture);
+            break;
+        case PHANTOM_PUPPET:
+            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                             205 + flicker, 45 - flicker,
+                             205, 320,
+                             &gPhantomPuppetCameraTexture);
+            break;
+        default:
+            break;
+    }
+
+    if ((game->night_frames % 11u) < 3u) {
+        const int offset = (int) (game->night_frames % 47u);
+        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                           28, 86 + offset * 5 % 250,
+                           532, 3, GRAPHICS_RGB(121, 143, 120));
+    }
+}
+
 static void original_ui_draw_camera_feed(const Game *game)
 {
     graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(1, 4, 2));
@@ -211,14 +306,11 @@ static void original_ui_draw_camera_feed(const Game *game)
                            COLOUR_BLACK);
         texture_draw_rle(GRAPHICS_TARGET_GAMEPAD, 28, 65, 532, 295,
                          kCameraTextures[game->selected_camera]);
-        if (springtrap_ai_is_on_camera(&game->springtrap,
-                                       game->selected_camera)) {
-            draw_springtrap_camera_sprite(game->selected_camera);
-        }
-        draw_phantom_camera_overlay(game);
-        for (int y = 70; y < 360; y += 9)
+        original_ui_draw_authentic_springtrap(game);
+        original_ui_draw_authentic_phantom(game);
+        for (int y_scan = 70; y_scan < 360; y_scan += 9)
             graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
-                               28, y, 532, 1,
+                               28, y_scan, 532, 1,
                                GRAPHICS_RGB(5, 10, 6));
     }
 

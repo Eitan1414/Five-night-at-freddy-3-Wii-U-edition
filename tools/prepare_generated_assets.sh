@@ -77,6 +77,11 @@ python3 tools/convert_phantom_visuals.py \
     source/phantom_assets.c \
     include/assets/phantom_assets.h
 
+python3 tools/convert_camera_springtrap.py \
+    "$TIM_ROOT/camera/cams/map" \
+    source/camera_springtrap_assets.c \
+    include/assets/camera_springtrap_assets.h
+
 python3 tools/convert_jumpscare_tim.py \
     "$SCREAMER_ROOT" \
     source/jumpscare_assets.c \
