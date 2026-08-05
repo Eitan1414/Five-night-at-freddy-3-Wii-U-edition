@@ -84,6 +84,24 @@ bool storage_is_ready(void)
     return s_storage_ready;
 }
 
+bool storage_file_size(const char *relative_path, size_t *size)
+{
+    if (size != NULL) *size = 0u;
+    if (size == NULL) return false;
+
+    char path[STORAGE_PATH_CAPACITY];
+    if (!build_path(path, sizeof(path), relative_path)) return false;
+
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) return false;
+    const bool seek_ok = fseek(file, 0, SEEK_END) == 0;
+    const long length = seek_ok ? ftell(file) : -1L;
+    fclose(file);
+    if (!seek_ok || length <= 0L) return false;
+    *size = (size_t) length;
+    return true;
+}
+
 bool storage_read(const char *relative_path,
                   void *data,
                   size_t capacity,
