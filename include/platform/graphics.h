@@ -47,3 +47,20 @@ void graphics_draw_text(uint32_t targets,
                         int scale,
                         const char *text,
                         uint32_t colour);
+
+/*
+ * Uploads an indexed RLE image once and draws it as a GX2-backed SDL texture.
+ * cache_key must remain stable for the lifetime of the source texture.
+ */
+void graphics_draw_indexed_rle(uint32_t targets,
+                               int x,
+                               int y,
+                               int width,
+                               int height,
+                               const void *cache_key,
+                               uint16_t source_width,
+                               uint16_t source_height,
+                               uint8_t transparent_index,
+                               const uint16_t *row_offsets,
+                               const uint8_t *runs,
+                               const uint32_t *palette);
