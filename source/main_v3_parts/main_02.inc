@@ -138,8 +138,15 @@ static void handle_title_input(Game *game, const InputState *input)
         game->dirty = true;
     }
     if (input_was_pressed(input, GAME_BUTTON_CONFIRM) || input_was_pressed(input, GAME_BUTTON_START)) {
-        if (game->title_selection == 0) reset_night(game, game->unlocked_night);
-        else { game->screen = SCREEN_PLACEHOLDER; game->screen_frames = 0u; game->dirty = true; }
+        if (game->title_selection == 0) {
+            reset_night(game, 1);
+        } else if (game->title_selection == 1) {
+            reset_night(game, progress_save_highest_unlocked_night());
+        } else {
+            game->screen = SCREEN_PLACEHOLDER;
+            game->screen_frames = 0u;
+            game->dirty = true;
+        }
     }
 }
 

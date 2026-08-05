@@ -70,8 +70,7 @@ static void update_game(Game *game, const InputState *input)
             if (game->screen_frames >= 180u &&
                 (input_was_pressed(input, GAME_BUTTON_CONFIRM) || input_was_pressed(input, GAME_BUTTON_START))) {
                 if (game->night < NIGHT_COUNT) {
-                    game->unlocked_night = game->night + 1;
-                    reset_night(game, game->unlocked_night);
+                    reset_night(game, game->night + 1);
                 } else {
                     game->screen = SCREEN_TITLE; game->screen_frames = 0u; game->dirty = true;
                 }
@@ -139,6 +138,10 @@ static void draw_title(const Game *game)
     char continue_text[32];
     snprintf(continue_text, sizeof(continue_text), "CURRENT NIGHT: %d", game->unlocked_night);
     graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 119, 1, continue_text, GRAPHICS_RGB(74, 111, 73));
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 145, 1,
+                       progress_save_load_status_text(),
+                       progress_save_load_status_is_error()
+                           ? COLOUR_RED : GRAPHICS_RGB(74, 111, 73));
     for (int item = 0; item < TITLE_ITEM_COUNT; ++item) {
         const int y = 284 + item * 48;
         if (item == game->title_selection) {

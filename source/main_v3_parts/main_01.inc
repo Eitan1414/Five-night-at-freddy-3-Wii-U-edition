@@ -62,6 +62,7 @@ static void game_init(Game *game)
     game->selected_vent = SPRINGTRAP_VENT_11;
     game->sealed_vent = SPRINGTRAP_VENT_NONE;
     phantoms_reset(&game->phantoms, 1, false, game->seed);
+    progress_save_init(&game->unlocked_night);
     game->dirty = true;
 }
 
@@ -112,6 +113,7 @@ static void begin_victory(Game *game)
     game->camera_open = false;
     game->maintenance_open = false;
     game->hour = 6;
+    progress_save_complete_night(game->night, &game->unlocked_night);
     game->screen = SCREEN_VICTORY;
     game->screen_frames = 0u;
     game->dirty = true;
