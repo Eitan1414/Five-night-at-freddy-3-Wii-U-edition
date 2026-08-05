@@ -60,40 +60,77 @@ typedef struct AudioVoiceSlot {
     bool configured;
 } AudioVoiceSlot;
 
+/* New full-pack cues are optional. Silence is their safe embedded fallback. */
+static const uint8_t kSilence[64] __attribute__((aligned(AUDIO_ALIGNMENT))) = {0};
+#define SILENT_CLIP {kSilence, kSilence + sizeof(kSilence)}
+
 static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
-    {vent_quiet1_bin, vent_quiet1_bin_end},
-    {vent_quiet2_bin, vent_quiet2_bin_end},
-    {vent_closer1_bin, vent_closer1_bin_end},
-    {vent_louder2_bin, vent_louder2_bin_end},
-    {alarm_bin, alarm_bin_end},
-    {breathing_bin, breathing_bin_end},
-    {wait_bin, wait_bin_end},
-    {static_sound_bin, static_sound_bin_end},
-    {scream3_bin, scream3_bin_end},
-    {garble1_bin, garble1_bin_end},
-    {mask_bin, mask_bin_end},
-    {echo1_bin, echo1_bin_end},
-    {echo3b_bin, echo3b_bin_end},
-    {echo4b_bin, echo4b_bin_end},
-    {phone_night1_bin, phone_night1_bin_end},
-    {phone_night2_bin, phone_night2_bin_end},
-    {phone_night3_bin, phone_night3_bin_end},
-    {phone_night4_bin, phone_night4_bin_end},
-    {phone_night5_bin, phone_night5_bin_end},
-    {phone_night6_bin, phone_night6_bin_end},
-    {six_am_bin, six_am_bin_end},
-    {select_bin, select_bin_end},
-    {end_bin, end_bin_end},
-    {crank1_bin, crank1_bin_end},
-    {crank2_bin, crank2_bin_end},
-    {lever1_bin, lever1_bin_end},
-    {lever2_bin, lever2_bin_end},
-    {stare_bin, stare_bin_end},
-    {titlemusic_bin, titlemusic_bin_end},
-    {startday_bin, startday_bin_end},
+    [AUDIO_CUE_VENT_QUIET_1] = {vent_quiet1_bin, vent_quiet1_bin_end},
+    [AUDIO_CUE_VENT_QUIET_2] = {vent_quiet2_bin, vent_quiet2_bin_end},
+    [AUDIO_CUE_VENT_CLOSER_1] = {vent_closer1_bin, vent_closer1_bin_end},
+    [AUDIO_CUE_VENT_LOUDER_2] = {vent_louder2_bin, vent_louder2_bin_end},
+    [AUDIO_CUE_ALARM] = {alarm_bin, alarm_bin_end},
+    [AUDIO_CUE_BREATHING] = {breathing_bin, breathing_bin_end},
+    [AUDIO_CUE_WAIT] = {wait_bin, wait_bin_end},
+    [AUDIO_CUE_STATIC] = {static_sound_bin, static_sound_bin_end},
+    [AUDIO_CUE_SCREAM] = {scream3_bin, scream3_bin_end},
+    [AUDIO_CUE_GARBLE] = {garble1_bin, garble1_bin_end},
+    [AUDIO_CUE_MASK] = {mask_bin, mask_bin_end},
+    [AUDIO_CUE_LURE_ECHO_1] = {echo1_bin, echo1_bin_end},
+    [AUDIO_CUE_LURE_ECHO_3B] = {echo3b_bin, echo3b_bin_end},
+    [AUDIO_CUE_LURE_ECHO_4B] = {echo4b_bin, echo4b_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_1] = {phone_night1_bin, phone_night1_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_2] = {phone_night2_bin, phone_night2_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_3] = {phone_night3_bin, phone_night3_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_4] = {phone_night4_bin, phone_night4_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_5] = {phone_night5_bin, phone_night5_bin_end},
+    [AUDIO_CUE_PHONE_NIGHT_6] = {phone_night6_bin, phone_night6_bin_end},
+    [AUDIO_CUE_SIX_AM] = {six_am_bin, six_am_bin_end},
+    [AUDIO_CUE_SELECT] = {select_bin, select_bin_end},
+    [AUDIO_CUE_END] = {end_bin, end_bin_end},
+    [AUDIO_CUE_CAMERA_OPEN] = {crank1_bin, crank1_bin_end},
+    [AUDIO_CUE_CAMERA_CLOSE] = {crank2_bin, crank2_bin_end},
+    [AUDIO_CUE_MAINTENANCE_CLOSE] = {lever1_bin, lever1_bin_end},
+    [AUDIO_CUE_MAINTENANCE_OPEN] = {lever2_bin, lever2_bin_end},
+    [AUDIO_CUE_GAME_OVER_AMBIENCE] = {stare_bin, stare_bin_end},
+    [AUDIO_CUE_TITLE_MUSIC] = {titlemusic_bin, titlemusic_bin_end},
+    [AUDIO_CUE_START_DAY] = {startday_bin, startday_bin_end},
+    [AUDIO_CUE_OFFICE_FAN] = SILENT_CLIP,
+    [AUDIO_CUE_RAIN_AMBIENCE] = SILENT_CLIP,
+    [AUDIO_CUE_DANGER] = SILENT_CLIP,
+    [AUDIO_CUE_REPAIR_SCANNER] = SILENT_CLIP,
+    [AUDIO_CUE_REPAIR_DONE] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_COLLECT] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_FEED] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_GLITCH] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_CROWD] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_CHIMES] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_PARTY_FAVOR] = SILENT_CLIP,
+    [AUDIO_CUE_ENDING_DESOLATE] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_CRUSH] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_BB_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_MANGLE_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_CHICA_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_STAGE01_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_SHADOW_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = SILENT_CLIP,
 };
 
 static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
+    [AUDIO_CUE_VENT_QUIET_1] = "audio/vent_quiet1.bin",
+    [AUDIO_CUE_VENT_QUIET_2] = "audio/vent_quiet2.bin",
+    [AUDIO_CUE_VENT_CLOSER_1] = "audio/vent_closer1.bin",
+    [AUDIO_CUE_VENT_LOUDER_2] = "audio/vent_louder2.bin",
+    [AUDIO_CUE_ALARM] = "audio/alarm.bin",
+    [AUDIO_CUE_BREATHING] = "audio/breathing.bin",
+    [AUDIO_CUE_WAIT] = "audio/wait.bin",
+    [AUDIO_CUE_STATIC] = "audio/static_sound.bin",
+    [AUDIO_CUE_SCREAM] = "audio/scream3.bin",
+    [AUDIO_CUE_GARBLE] = "audio/garble1.bin",
+    [AUDIO_CUE_MASK] = "audio/mask.bin",
+    [AUDIO_CUE_LURE_ECHO_1] = "audio/echo1.bin",
+    [AUDIO_CUE_LURE_ECHO_3B] = "audio/echo3b.bin",
+    [AUDIO_CUE_LURE_ECHO_4B] = "audio/echo4b.bin",
     [AUDIO_CUE_PHONE_NIGHT_1] = "audio/phone_night1.bin",
     [AUDIO_CUE_PHONE_NIGHT_2] = "audio/phone_night2.bin",
     [AUDIO_CUE_PHONE_NIGHT_3] = "audio/phone_night3.bin",
@@ -110,6 +147,25 @@ static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_GAME_OVER_AMBIENCE] = "audio/stare.bin",
     [AUDIO_CUE_TITLE_MUSIC] = "audio/titlemusic.bin",
     [AUDIO_CUE_START_DAY] = "audio/startday.bin",
+    [AUDIO_CUE_OFFICE_FAN] = "audio/tablefan.bin",
+    [AUDIO_CUE_RAIN_AMBIENCE] = "audio/rainstorm2.bin",
+    [AUDIO_CUE_DANGER] = "audio/danger2b.bin",
+    [AUDIO_CUE_REPAIR_SCANNER] = "audio/scanner4.bin",
+    [AUDIO_CUE_REPAIR_DONE] = "audio/done.bin",
+    [AUDIO_CUE_MINIGAME_COLLECT] = "audio/collect.bin",
+    [AUDIO_CUE_MINIGAME_FEED] = "audio/feed.bin",
+    [AUDIO_CUE_MINIGAME_GLITCH] = "audio/glitch2.bin",
+    [AUDIO_CUE_MINIGAME_CROWD] = "audio/crowd_children.bin",
+    [AUDIO_CUE_MINIGAME_CHIMES] = "audio/clock_chimes.bin",
+    [AUDIO_CUE_MINIGAME_PARTY_FAVOR] = "audio/party_favor.bin",
+    [AUDIO_CUE_ENDING_DESOLATE] = "audio/desolate_underworld.bin",
+    [AUDIO_CUE_MINIGAME_CRUSH] = "audio/crush.bin",
+    [AUDIO_CUE_MINIGAME_BB_MUSIC] = "audio/mb1.bin",
+    [AUDIO_CUE_MINIGAME_MANGLE_MUSIC] = "audio/mb2.bin",
+    [AUDIO_CUE_MINIGAME_CHICA_MUSIC] = "audio/mb4b.bin",
+    [AUDIO_CUE_MINIGAME_STAGE01_MUSIC] = "audio/mb5.bin",
+    [AUDIO_CUE_MINIGAME_SHADOW_MUSIC] = "audio/mb8.bin",
+    [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = "audio/mb9.bin",
 };
 
 static AudioClip sClips[AUDIO_CUE_COUNT];
@@ -250,7 +306,8 @@ void audio_shutdown(void)
 
 void audio_play(AudioCue cue, float volume, bool loop)
 {
-    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
+    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT ||
+        sVoices[cue].voice == NULL) return;
     configure_voice(cue, loop, volume);
     AXSetVoiceCurrentOffset(sVoices[cue].voice, 0u);
     AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_PLAYING);
@@ -264,14 +321,16 @@ void audio_restart(AudioCue cue, float volume, bool loop)
 
 void audio_stop(AudioCue cue)
 {
-    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
+    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT ||
+        sVoices[cue].voice == NULL) return;
     AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_STOPPED);
     AXSetVoiceCurrentOffset(sVoices[cue].voice, 0u);
 }
 
 void audio_stop_all(void)
 {
-    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) audio_stop((AudioCue) cue);
+    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
+        audio_stop((AudioCue) cue);
 }
 
 bool audio_is_available(void)
