@@ -1,16 +1,23 @@
 #include "platform/audio.h"
 
+#include <malloc.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <coreinit/cache.h>
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
 
+#include "platform/storage.h"
+
 #define DECLARE_AUDIO_BIN(name) \
     extern const uint8_t name##_bin[]; \
     extern const uint8_t name##_bin_end[]
+
+#define AUDIO_ALIGNMENT 64u
+#define AUDIO_EXTERNAL_MAX_BYTES (8u * 1024u * 1024u)
 
 DECLARE_AUDIO_BIN(vent_quiet1);
 DECLARE_AUDIO_BIN(vent_quiet2);
@@ -53,7 +60,7 @@ typedef struct AudioVoiceSlot {
     bool configured;
 } AudioVoiceSlot;
 
-static const AudioClip kClips[AUDIO_CUE_COUNT] = {
+static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
     {vent_quiet1_bin, vent_quiet1_bin_end},
     {vent_quiet2_bin, vent_quiet2_bin_end},
     {vent_closer1_bin, vent_closer1_bin_end},
@@ -86,6 +93,27 @@ static const AudioClip kClips[AUDIO_CUE_COUNT] = {
     {startday_bin, startday_bin_end},
 };
 
+static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
+    [AUDIO_CUE_PHONE_NIGHT_1] = "audio/phone_night1.bin",
+    [AUDIO_CUE_PHONE_NIGHT_2] = "audio/phone_night2.bin",
+    [AUDIO_CUE_PHONE_NIGHT_3] = "audio/phone_night3.bin",
+    [AUDIO_CUE_PHONE_NIGHT_4] = "audio/phone_night4.bin",
+    [AUDIO_CUE_PHONE_NIGHT_5] = "audio/phone_night5.bin",
+    [AUDIO_CUE_PHONE_NIGHT_6] = "audio/phone_night6.bin",
+    [AUDIO_CUE_SIX_AM] = "audio/six_am.bin",
+    [AUDIO_CUE_SELECT] = "audio/select.bin",
+    [AUDIO_CUE_END] = "audio/end.bin",
+    [AUDIO_CUE_CAMERA_OPEN] = "audio/crank1.bin",
+    [AUDIO_CUE_CAMERA_CLOSE] = "audio/crank2.bin",
+    [AUDIO_CUE_MAINTENANCE_CLOSE] = "audio/lever1.bin",
+    [AUDIO_CUE_MAINTENANCE_OPEN] = "audio/lever2.bin",
+    [AUDIO_CUE_GAME_OVER_AMBIENCE] = "audio/stare.bin",
+    [AUDIO_CUE_TITLE_MUSIC] = "audio/titlemusic.bin",
+    [AUDIO_CUE_START_DAY] = "audio/startday.bin",
+};
+
+static AudioClip sClips[AUDIO_CUE_COUNT];
+static uint8_t *sOwnedAudio[AUDIO_CUE_COUNT];
 static AudioVoiceSlot sVoices[AUDIO_CUE_COUNT];
 static bool sAvailable = false;
 
@@ -96,12 +124,50 @@ static uint16_t volume_to_ax(float volume)
     return (uint16_t) (volume * 49152.0f);
 }
 
+static void release_external_audio(void)
+{
+    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) {
+        free(sOwnedAudio[cue]);
+        sOwnedAudio[cue] = NULL;
+        sClips[cue] = kEmbeddedClips[cue];
+    }
+}
+
+static void load_external_audio(AudioCue cue)
+{
+    if (cue < 0 || cue >= AUDIO_CUE_COUNT) return;
+    const char *path = kExternalPaths[cue];
+    if (path == NULL) return;
+
+    size_t byte_size = 0u;
+    if (!storage_file_size(path, &byte_size) || byte_size < 2u ||
+        byte_size > AUDIO_EXTERNAL_MAX_BYTES) {
+        return;
+    }
+    byte_size &= ~(size_t) 1u;
+    const size_t allocation_size =
+        (byte_size + AUDIO_ALIGNMENT - 1u) & ~(AUDIO_ALIGNMENT - 1u);
+    uint8_t *data = (uint8_t *) memalign(AUDIO_ALIGNMENT, allocation_size);
+    if (data == NULL) return;
+
+    size_t bytes_read = 0u;
+    if (!storage_read(path, data, byte_size, &bytes_read) ||
+        bytes_read != byte_size) {
+        free(data);
+        return;
+    }
+
+    sOwnedAudio[cue] = data;
+    sClips[cue].data = data;
+    sClips[cue].end = data + byte_size;
+}
+
 static void configure_voice(AudioCue cue, bool loop, float volume)
 {
     if (cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
 
     AXVoice *voice = sVoices[cue].voice;
-    const AudioClip *clip = &kClips[cue];
+    const AudioClip *clip = &sClips[cue];
     const uint32_t byte_size = (uint32_t) (clip->end - clip->data);
     const uint32_t sample_count = byte_size / 2u;
 
@@ -136,13 +202,24 @@ static void configure_voice(AudioCue cue, bool loop, float volume)
 bool audio_init(void)
 {
     memset(sVoices, 0, sizeof(sVoices));
+    memset(sOwnedAudio, 0, sizeof(sOwnedAudio));
+    memcpy(sClips, kEmbeddedClips, sizeof(sClips));
+
+    if (storage_init()) {
+        for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
+            load_external_audio((AudioCue) cue);
+    }
+
     AXInitParams params = {
         .renderer = AX_INIT_RENDERER_32KHZ,
         .pipeline = AX_INIT_PIPELINE_SINGLE,
     };
     AXInitWithParams(&params);
     sAvailable = AXIsInit() != 0;
-    if (!sAvailable) return false;
+    if (!sAvailable) {
+        release_external_audio();
+        return false;
+    }
 
     for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) {
         sVoices[cue].voice = AXAcquireVoice(31u, NULL, NULL);
@@ -167,6 +244,7 @@ void audio_shutdown(void)
         }
     }
     if (AXIsInit()) AXQuit();
+    release_external_audio();
     sAvailable = false;
 }
 
