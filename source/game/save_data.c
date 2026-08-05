@@ -9,6 +9,7 @@
 #define SAVE_NIGHT_COUNT 6u
 #define SAVE_COMPLETED_MASK 0x3Fu
 #define SAVE_SECRET_MASK 0x3Fu
+#define SAVE_ACHIEVEMENT_MASK 0x01u
 
 static const char *const kSavePath = "progress.dat";
 static const char *const kBackupPath = "progress.dat.bak";
@@ -59,6 +60,7 @@ static void encode_save(const SaveData *data, uint8_t *output)
     if (unlocked > SAVE_NIGHT_COUNT) unlocked = SAVE_NIGHT_COUNT;
     const uint8_t completed = data->completed_nights_mask & SAVE_COMPLETED_MASK;
     const uint8_t secrets = data->secret_minigames_mask & SAVE_SECRET_MASK;
+    const uint8_t achievements = data->achievement_flags & SAVE_ACHIEVEMENT_MASK;
 
     output[0] = 'F';
     output[1] = '3';
@@ -68,7 +70,7 @@ static void encode_save(const SaveData *data, uint8_t *output)
     output[5] = derive_unlocked_night(unlocked, completed);
     output[6] = completed;
     output[7] = secrets;
-    output[8] = 0u;
+    output[8] = achievements;
     output[9] = 0u;
     output[10] = 0u;
     output[11] = 0u;
@@ -89,14 +91,17 @@ static bool decode_save(const uint8_t *input, SaveData *data)
     const uint8_t unlocked = input[5];
     const uint8_t completed = input[6];
     const uint8_t secrets = input[7];
+    const uint8_t achievements = input[8];
     if (unlocked < 1u || unlocked > SAVE_NIGHT_COUNT ||
         (completed & (uint8_t) ~SAVE_COMPLETED_MASK) != 0u ||
-        (secrets & (uint8_t) ~SAVE_SECRET_MASK) != 0u) {
+        (secrets & (uint8_t) ~SAVE_SECRET_MASK) != 0u ||
+        (achievements & (uint8_t) ~SAVE_ACHIEVEMENT_MASK) != 0u) {
         return false;
     }
 
     data->completed_nights_mask = completed;
     data->secret_minigames_mask = secrets;
+    data->achievement_flags = achievements;
     data->unlocked_night = derive_unlocked_night(unlocked, completed);
     return true;
 }
