@@ -1,6 +1,7 @@
 #include "game/progress_save.h"
 #include "assets/ending_assets.h"
 #include "assets/original_ui_assets.h"
+#include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
 #include "assets/office_assets.h"
 
@@ -65,8 +66,17 @@
 #undef update_game
 #undef main
 
+#define update_game original_ui_update_game_v1
+#define original_ui_draw_camera_feed original_ui_draw_camera_feed_v1
 #include "main_v3_parts/main_original_ui_01.inc"
+#undef original_ui_draw_camera_feed
+#undef update_game
+
+#define original_ui_draw_vent_map original_ui_draw_vent_map_v1
 #include "main_v3_parts/main_original_ui_02.inc"
+#undef original_ui_draw_vent_map
+
+#include "main_v3_parts/main_monitor_v2.inc"
 #include "main_v3_parts/main_authentic_office.inc"
 #define draw_office_tv draw_authentic_office_tv
 #include "main_v3_parts/main_original_ui_03.inc"
