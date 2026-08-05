@@ -10,7 +10,7 @@
 
 #define DECLARE_AUDIO_BIN(name) \
     extern const uint8_t name##_bin[]; \
-    extern const uint32_t name##_bin_size
+    extern const uint8_t name##_bin_end[]
 
 DECLARE_AUDIO_BIN(vent_quiet1);
 DECLARE_AUDIO_BIN(vent_quiet2);
@@ -29,7 +29,7 @@ DECLARE_AUDIO_BIN(echo4b);
 
 typedef struct AudioClip {
     const uint8_t *data;
-    const uint32_t *byte_size;
+    const uint8_t *end;
 } AudioClip;
 
 typedef struct AudioVoiceSlot {
@@ -38,20 +38,20 @@ typedef struct AudioVoiceSlot {
 } AudioVoiceSlot;
 
 static const AudioClip kClips[AUDIO_CUE_COUNT] = {
-    {vent_quiet1_bin, &vent_quiet1_bin_size},
-    {vent_quiet2_bin, &vent_quiet2_bin_size},
-    {vent_closer1_bin, &vent_closer1_bin_size},
-    {vent_louder2_bin, &vent_louder2_bin_size},
-    {alarm_bin, &alarm_bin_size},
-    {breathing_bin, &breathing_bin_size},
-    {wait_bin, &wait_bin_size},
-    {static_sound_bin, &static_sound_bin_size},
-    {scream3_bin, &scream3_bin_size},
-    {garble1_bin, &garble1_bin_size},
-    {mask_bin, &mask_bin_size},
-    {echo1_bin, &echo1_bin_size},
-    {echo3b_bin, &echo3b_bin_size},
-    {echo4b_bin, &echo4b_bin_size},
+    {vent_quiet1_bin, vent_quiet1_bin_end},
+    {vent_quiet2_bin, vent_quiet2_bin_end},
+    {vent_closer1_bin, vent_closer1_bin_end},
+    {vent_louder2_bin, vent_louder2_bin_end},
+    {alarm_bin, alarm_bin_end},
+    {breathing_bin, breathing_bin_end},
+    {wait_bin, wait_bin_end},
+    {static_sound_bin, static_sound_bin_end},
+    {scream3_bin, scream3_bin_end},
+    {garble1_bin, garble1_bin_end},
+    {mask_bin, mask_bin_end},
+    {echo1_bin, echo1_bin_end},
+    {echo3b_bin, echo3b_bin_end},
+    {echo4b_bin, echo4b_bin_end},
 };
 
 static AudioVoiceSlot sVoices[AUDIO_CUE_COUNT];
@@ -70,7 +70,7 @@ static void configure_voice(AudioCue cue, bool loop, float volume)
 
     AXVoice *voice = sVoices[cue].voice;
     const AudioClip *clip = &kClips[cue];
-    const uint32_t byte_size = *clip->byte_size;
+    const uint32_t byte_size = (uint32_t) (clip->end - clip->data);
     const uint32_t sample_count = byte_size / 2u;
 
     AXVoiceDeviceMixData mix[6];
