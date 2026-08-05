@@ -31,11 +31,13 @@ static void complete_draw_title(const Game *game)
 
     const uint32_t star = GRAPHICS_RGB(225, 219, 103);
     if (progress_save_is_night_completed(5))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 40, 4, "*", star);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 288, 40, 4, "*", star);
     if (progress_save_is_night_completed(6))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 336, 40, 4, "*", star);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 320, 40, 4, "*", star);
     if (progress_save_good_ending_unlocked())
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 368, 40, 4, "*", star);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 352, 40, 4, "*", star);
+    if (progress_save_aggressive_nightmare_completed())
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 384, 40, 4, "*", star);
 
     for (int item = 0; item < TITLE_ITEM_COUNT; ++item) {
         const int y = 284 + item * 48;
