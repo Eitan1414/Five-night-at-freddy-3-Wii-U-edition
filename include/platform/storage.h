@@ -7,6 +7,7 @@ bool storage_init(void);
 void storage_shutdown(void);
 bool storage_is_ready(void);
 
+bool storage_file_size(const char *relative_path, size_t *size);
 bool storage_read(const char *relative_path,
                   void *data,
                   size_t capacity,
