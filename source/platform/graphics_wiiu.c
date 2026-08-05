@@ -2,80 +2,251 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-#include <coreinit/memdefaultheap.h>
-#include <coreinit/screen.h>
+#include <SDL2/SDL.h>
 
-typedef struct DisplayInfo {
-    OSScreenID id;
+#define TEXTURE_CACHE_CAPACITY 64u
+
+typedef struct RenderTarget {
     uint32_t target;
-    uint32_t width;
-    uint32_t height;
-} DisplayInfo;
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+} RenderTarget;
 
-static const DisplayInfo kDisplays[] = {
-    {SCREEN_TV, GRAPHICS_TARGET_TV, 1280u, 720u},
-    {SCREEN_DRC, GRAPHICS_TARGET_GAMEPAD, 854u, 480u},
-};
+typedef struct CachedTexture {
+    const void *key;
+    uint16_t width;
+    uint16_t height;
+    SDL_Texture *tv;
+    SDL_Texture *gamepad;
+} CachedTexture;
 
-static void *sTvBuffer = NULL;
-static void *sGamePadBuffer = NULL;
+static SDL_Window *sTvWindow = NULL;
+static SDL_Window *sGamePadWindow = NULL;
+static SDL_Renderer *sTvRenderer = NULL;
+static SDL_Renderer *sGamePadRenderer = NULL;
+static CachedTexture sTextureCache[TEXTURE_CACHE_CAPACITY];
+static uint32_t sTextureCacheCount = 0u;
 
-static uint32_t scale_x(const DisplayInfo *display, int x)
+static RenderTarget get_target(uint32_t index)
 {
-    return (uint32_t) ((x * (int) display->width) / GRAPHICS_LOGICAL_WIDTH);
+    if (index == 0u) {
+        const RenderTarget target = {
+            GRAPHICS_TARGET_TV,
+            sTvWindow,
+            sTvRenderer,
+        };
+        return target;
+    }
+
+    const RenderTarget target = {
+        GRAPHICS_TARGET_GAMEPAD,
+        sGamePadWindow,
+        sGamePadRenderer,
+    };
+    return target;
 }
 
-static uint32_t scale_y(const DisplayInfo *display, int y)
+static void set_draw_colour(SDL_Renderer *renderer, uint32_t colour)
 {
-    return (uint32_t) ((y * (int) display->height) / GRAPHICS_LOGICAL_HEIGHT);
+    const uint8_t red = (uint8_t) ((colour >> 24) & 0xFFu);
+    const uint8_t green = (uint8_t) ((colour >> 16) & 0xFFu);
+    const uint8_t blue = (uint8_t) ((colour >> 8) & 0xFFu);
+    const uint8_t alpha = (uint8_t) (colour & 0xFFu);
+    SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
 }
 
-static void draw_rect_on_display(const DisplayInfo *display,
-                                 int x,
-                                 int y,
-                                 int width,
-                                 int height,
-                                 uint32_t colour)
+static void destroy_texture_cache(void)
 {
-    if (width <= 0 || height <= 0) {
-        return;
+    for (uint32_t index = 0u; index < sTextureCacheCount; ++index) {
+        if (sTextureCache[index].tv != NULL) {
+            SDL_DestroyTexture(sTextureCache[index].tv);
+        }
+        if (sTextureCache[index].gamepad != NULL) {
+            SDL_DestroyTexture(sTextureCache[index].gamepad);
+        }
     }
 
-    int right = x + width;
-    int bottom = y + height;
+    for (uint32_t index = 0u; index < TEXTURE_CACHE_CAPACITY; ++index) {
+        sTextureCache[index].key = NULL;
+        sTextureCache[index].width = 0u;
+        sTextureCache[index].height = 0u;
+        sTextureCache[index].tv = NULL;
+        sTextureCache[index].gamepad = NULL;
+    }
+    sTextureCacheCount = 0u;
+}
 
-    if (x < 0) {
-        x = 0;
+static CachedTexture *find_cached_texture(const void *key,
+                                          uint16_t width,
+                                          uint16_t height)
+{
+    for (uint32_t index = 0u; index < sTextureCacheCount; ++index) {
+        CachedTexture *cached = &sTextureCache[index];
+        if (cached->key == key && cached->width == width &&
+            cached->height == height) {
+            return cached;
+        }
     }
-    if (y < 0) {
-        y = 0;
-    }
-    if (right > GRAPHICS_LOGICAL_WIDTH) {
-        right = GRAPHICS_LOGICAL_WIDTH;
-    }
-    if (bottom > GRAPHICS_LOGICAL_HEIGHT) {
-        bottom = GRAPHICS_LOGICAL_HEIGHT;
-    }
-    if (x >= right || y >= bottom) {
-        return;
+    return NULL;
+}
+
+static SDL_Texture *create_gpu_texture(SDL_Renderer *renderer,
+                                       uint16_t width,
+                                       uint16_t height,
+                                       const uint8_t *pixels)
+{
+    SDL_Texture *texture = SDL_CreateTexture(renderer,
+                                             SDL_PIXELFORMAT_RGBA32,
+                                             SDL_TEXTUREACCESS_STATIC,
+                                             width,
+                                             height);
+    if (texture == NULL) {
+        return NULL;
     }
 
-    const uint32_t left_pixel = scale_x(display, x);
-    const uint32_t top_pixel = scale_y(display, y);
-    uint32_t right_pixel = scale_x(display, right);
-    uint32_t bottom_pixel = scale_y(display, bottom);
-
-    if (right_pixel <= left_pixel) {
-        right_pixel = left_pixel + 1u;
-    }
-    if (bottom_pixel <= top_pixel) {
-        bottom_pixel = top_pixel + 1u;
+    if (SDL_UpdateTexture(texture, NULL, pixels, (int) width * 4) != 0) {
+        SDL_DestroyTexture(texture);
+        return NULL;
     }
 
-    for (uint32_t pixel_y = top_pixel; pixel_y < bottom_pixel; ++pixel_y) {
-        for (uint32_t pixel_x = left_pixel; pixel_x < right_pixel; ++pixel_x) {
-            OSScreenPutPixelEx(display->id, pixel_x, pixel_y, colour);
+    SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(texture, SDL_ScaleModeLinear);
+    return texture;
+}
+
+static CachedTexture *cache_indexed_texture(const void *key,
+                                            uint16_t width,
+                                            uint16_t height,
+                                            uint8_t transparent_index,
+                                            const uint16_t *row_offsets,
+                                            const uint8_t *runs,
+                                            const uint32_t *palette)
+{
+    if (sTextureCacheCount >= TEXTURE_CACHE_CAPACITY ||
+        sTvRenderer == NULL || sGamePadRenderer == NULL) {
+        return NULL;
+    }
+
+    const size_t pixel_count = (size_t) width * (size_t) height;
+    uint8_t *pixels = (uint8_t *) calloc(pixel_count, 4u);
+    if (pixels == NULL) {
+        return NULL;
+    }
+
+    for (uint32_t source_y = 0u; source_y < height; ++source_y) {
+        const uint16_t row_start = row_offsets[source_y];
+        const uint16_t row_end = row_offsets[source_y + 1u];
+        uint32_t source_x = 0u;
+
+        for (uint16_t offset = row_start;
+             offset + 1u < row_end && source_x < width;
+             offset += 2u) {
+            const uint8_t run_length = runs[offset];
+            const uint8_t palette_index = runs[offset + 1u];
+            uint32_t next_source_x = source_x + run_length;
+            if (next_source_x > width) {
+                next_source_x = width;
+            }
+
+            if (palette_index != transparent_index) {
+                const uint32_t colour = palette[palette_index];
+                const uint8_t red = (uint8_t) ((colour >> 24) & 0xFFu);
+                const uint8_t green = (uint8_t) ((colour >> 16) & 0xFFu);
+                const uint8_t blue = (uint8_t) ((colour >> 8) & 0xFFu);
+                const uint8_t alpha = (uint8_t) (colour & 0xFFu);
+
+                for (uint32_t pixel_x = source_x;
+                     pixel_x < next_source_x;
+                     ++pixel_x) {
+                    const size_t pixel_offset =
+                        ((size_t) source_y * width + pixel_x) * 4u;
+                    pixels[pixel_offset + 0u] = red;
+                    pixels[pixel_offset + 1u] = green;
+                    pixels[pixel_offset + 2u] = blue;
+                    pixels[pixel_offset + 3u] = alpha;
+                }
+            }
+
+            source_x = next_source_x;
+        }
+    }
+
+    SDL_Texture *tv = create_gpu_texture(sTvRenderer, width, height, pixels);
+    SDL_Texture *gamepad = create_gpu_texture(sGamePadRenderer,
+                                              width,
+                                              height,
+                                              pixels);
+    free(pixels);
+
+    if (tv == NULL || gamepad == NULL) {
+        if (tv != NULL) {
+            SDL_DestroyTexture(tv);
+        }
+        if (gamepad != NULL) {
+            SDL_DestroyTexture(gamepad);
+        }
+        return NULL;
+    }
+
+    CachedTexture *cached = &sTextureCache[sTextureCacheCount++];
+    cached->key = key;
+    cached->width = width;
+    cached->height = height;
+    cached->tv = tv;
+    cached->gamepad = gamepad;
+    return cached;
+}
+
+static void draw_rle_fallback(uint32_t targets,
+                              int x,
+                              int y,
+                              int width,
+                              int height,
+                              uint16_t source_width,
+                              uint16_t source_height,
+                              uint8_t transparent_index,
+                              const uint16_t *row_offsets,
+                              const uint8_t *runs,
+                              const uint32_t *palette)
+{
+    for (uint32_t source_y = 0u; source_y < source_height; ++source_y) {
+        const int destination_y0 = y +
+            (int) ((source_y * (uint32_t) height) / source_height);
+        const int destination_y1 = y +
+            (int) (((source_y + 1u) * (uint32_t) height) / source_height);
+        const int destination_height = destination_y1 - destination_y0;
+        if (destination_height <= 0) {
+            continue;
+        }
+
+        const uint16_t row_start = row_offsets[source_y];
+        const uint16_t row_end = row_offsets[source_y + 1u];
+        uint32_t source_x = 0u;
+
+        for (uint16_t offset = row_start; offset + 1u < row_end; offset += 2u) {
+            const uint8_t run_length = runs[offset];
+            const uint8_t palette_index = runs[offset + 1u];
+            const uint32_t next_source_x = source_x + run_length;
+
+            if (palette_index != transparent_index) {
+                const int destination_x0 = x +
+                    (int) ((source_x * (uint32_t) width) / source_width);
+                const int destination_x1 = x +
+                    (int) ((next_source_x * (uint32_t) width) / source_width);
+                const int destination_width = destination_x1 - destination_x0;
+                if (destination_width > 0) {
+                    graphics_draw_rect(targets,
+                                       destination_x0,
+                                       destination_y0,
+                                       destination_width,
+                                       destination_height,
+                                       palette[palette_index]);
+                }
+            }
+
+            source_x = next_source_x;
         }
     }
 }
@@ -144,25 +315,59 @@ static bool get_glyph(char character, uint8_t rows[7])
     return true;
 }
 
+static SDL_Renderer *create_renderer(SDL_Window *window)
+{
+    SDL_Renderer *renderer = SDL_CreateRenderer(window,
+                                                -1,
+                                                SDL_RENDERER_ACCELERATED);
+    if (renderer == NULL) {
+        renderer = SDL_CreateRenderer(window, -1, 0u);
+    }
+    if (renderer == NULL) {
+        return NULL;
+    }
+
+    SDL_RenderSetLogicalSize(renderer,
+                             GRAPHICS_LOGICAL_WIDTH,
+                             GRAPHICS_LOGICAL_HEIGHT);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    return renderer;
+}
+
 bool graphics_init(void)
 {
-    OSScreenInit();
+    if (SDL_InitSubSystem(SDL_INIT_VIDEO) != 0) {
+        return false;
+    }
 
-    const uint32_t tv_size = OSScreenGetBufferSizeEx(SCREEN_TV);
-    const uint32_t gamepad_size = OSScreenGetBufferSizeEx(SCREEN_DRC);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
 
-    sTvBuffer = MEMAllocFromDefaultHeapEx(tv_size, 0x100);
-    sGamePadBuffer = MEMAllocFromDefaultHeapEx(gamepad_size, 0x100);
-
-    if (sTvBuffer == NULL || sGamePadBuffer == NULL) {
+    sTvWindow = SDL_CreateWindow("FNaF3 Wii U TV",
+                                 SDL_WINDOWPOS_UNDEFINED,
+                                 SDL_WINDOWPOS_UNDEFINED,
+                                 1280,
+                                 720,
+                                 SDL_WINDOW_SHOWN |
+                                 SDL_WINDOW_WIIU_TV_ONLY |
+                                 SDL_WINDOW_WIIU_PREVENT_SWAP);
+    sGamePadWindow = SDL_CreateWindow("FNaF3 Wii U GamePad",
+                                      SDL_WINDOWPOS_UNDEFINED,
+                                      SDL_WINDOWPOS_UNDEFINED,
+                                      854,
+                                      480,
+                                      SDL_WINDOW_SHOWN |
+                                      SDL_WINDOW_WIIU_GAMEPAD_ONLY);
+    if (sTvWindow == NULL || sGamePadWindow == NULL) {
         graphics_shutdown();
         return false;
     }
 
-    OSScreenSetBufferEx(SCREEN_TV, sTvBuffer);
-    OSScreenSetBufferEx(SCREEN_DRC, sGamePadBuffer);
-    OSScreenEnableEx(SCREEN_TV, TRUE);
-    OSScreenEnableEx(SCREEN_DRC, TRUE);
+    sTvRenderer = create_renderer(sTvWindow);
+    sGamePadRenderer = create_renderer(sGamePadWindow);
+    if (sTvRenderer == NULL || sGamePadRenderer == NULL) {
+        graphics_shutdown();
+        return false;
+    }
 
     graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(0, 0, 0));
     graphics_present(GRAPHICS_TARGET_BOTH);
@@ -171,40 +376,56 @@ bool graphics_init(void)
 
 void graphics_shutdown(void)
 {
-    OSScreenEnableEx(SCREEN_TV, FALSE);
-    OSScreenEnableEx(SCREEN_DRC, FALSE);
-    OSScreenShutdown();
+    destroy_texture_cache();
 
-    if (sTvBuffer != NULL) {
-        MEMFreeToDefaultHeap(sTvBuffer);
-        sTvBuffer = NULL;
+    if (sTvRenderer != NULL) {
+        SDL_DestroyRenderer(sTvRenderer);
+        sTvRenderer = NULL;
     }
-    if (sGamePadBuffer != NULL) {
-        MEMFreeToDefaultHeap(sGamePadBuffer);
-        sGamePadBuffer = NULL;
+    if (sGamePadRenderer != NULL) {
+        SDL_DestroyRenderer(sGamePadRenderer);
+        sGamePadRenderer = NULL;
     }
+    if (sTvWindow != NULL) {
+        SDL_DestroyWindow(sTvWindow);
+        sTvWindow = NULL;
+    }
+    if (sGamePadWindow != NULL) {
+        SDL_DestroyWindow(sGamePadWindow);
+        sGamePadWindow = NULL;
+    }
+
+    SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
 void graphics_clear(uint32_t targets, uint32_t colour)
 {
-    for (uint32_t index = 0u;
-         index < sizeof(kDisplays) / sizeof(kDisplays[0]);
-         ++index) {
-        if ((targets & kDisplays[index].target) != 0u) {
-            OSScreenClearBufferEx(kDisplays[index].id, colour);
+    for (uint32_t index = 0u; index < 2u; ++index) {
+        const RenderTarget target = get_target(index);
+        if ((targets & target.target) == 0u || target.renderer == NULL) {
+            continue;
         }
+        set_draw_colour(target.renderer, colour);
+        SDL_RenderClear(target.renderer);
     }
 }
 
 void graphics_present(uint32_t targets)
 {
-    for (uint32_t index = 0u;
-         index < sizeof(kDisplays) / sizeof(kDisplays[0]);
-         ++index) {
-        if ((targets & kDisplays[index].target) != 0u) {
-            OSScreenFlipBuffersEx(kDisplays[index].id);
-        }
+    (void) targets;
+
+    /*
+     * The TV window defers the GX2 scan-buffer swap. Presenting the GamePad
+     * window second copies its buffer and performs one synchronized swap for
+     * both displays.
+     */
+    if (sTvRenderer != NULL) {
+        SDL_RenderPresent(sTvRenderer);
     }
+    if (sGamePadRenderer != NULL) {
+        SDL_RenderPresent(sGamePadRenderer);
+    }
+    SDL_PumpEvents();
 }
 
 void graphics_draw_rect(uint32_t targets,
@@ -214,12 +435,18 @@ void graphics_draw_rect(uint32_t targets,
                         int height,
                         uint32_t colour)
 {
-    for (uint32_t index = 0u;
-         index < sizeof(kDisplays) / sizeof(kDisplays[0]);
-         ++index) {
-        if ((targets & kDisplays[index].target) != 0u) {
-            draw_rect_on_display(&kDisplays[index], x, y, width, height, colour);
+    if (width <= 0 || height <= 0) {
+        return;
+    }
+
+    SDL_Rect rectangle = {x, y, width, height};
+    for (uint32_t index = 0u; index < 2u; ++index) {
+        const RenderTarget target = get_target(index);
+        if ((targets & target.target) == 0u || target.renderer == NULL) {
+            continue;
         }
+        set_draw_colour(target.renderer, colour);
+        SDL_RenderFillRect(target.renderer, &rectangle);
     }
 }
 
@@ -262,19 +489,22 @@ void graphics_draw_ellipse(uint32_t targets,
     const int64_t radius_y_squared = (int64_t) radius_y * radius_y;
     const int64_t limit = radius_x_squared * radius_y_squared;
 
-    for (int y = -radius_y; y <= radius_y; ++y) {
+    for (int ellipse_y = -radius_y; ellipse_y <= radius_y; ++ellipse_y) {
         int first_x = radius_x;
         int last_x = -radius_x;
 
-        for (int x = -radius_x; x <= radius_x; ++x) {
-            const int64_t value = (int64_t) x * x * radius_y_squared +
-                                  (int64_t) y * y * radius_x_squared;
+        for (int ellipse_x = -radius_x;
+             ellipse_x <= radius_x;
+             ++ellipse_x) {
+            const int64_t value =
+                (int64_t) ellipse_x * ellipse_x * radius_y_squared +
+                (int64_t) ellipse_y * ellipse_y * radius_x_squared;
             if (value <= limit) {
-                if (x < first_x) {
-                    first_x = x;
+                if (ellipse_x < first_x) {
+                    first_x = ellipse_x;
                 }
-                if (x > last_x) {
-                    last_x = x;
+                if (ellipse_x > last_x) {
+                    last_x = ellipse_x;
                 }
             }
         }
@@ -282,7 +512,7 @@ void graphics_draw_ellipse(uint32_t targets,
         if (last_x >= first_x) {
             graphics_draw_rect(targets,
                                centre_x + first_x,
-                               centre_y + y,
+                               centre_y + ellipse_y,
                                last_x - first_x + 1,
                                1,
                                colour);
@@ -329,5 +559,63 @@ void graphics_draw_text(uint32_t targets,
 
         cursor_x += 6 * scale;
         ++text;
+    }
+}
+
+void graphics_draw_indexed_rle(uint32_t targets,
+                               int x,
+                               int y,
+                               int width,
+                               int height,
+                               const void *cache_key,
+                               uint16_t source_width,
+                               uint16_t source_height,
+                               uint8_t transparent_index,
+                               const uint16_t *row_offsets,
+                               const uint8_t *runs,
+                               const uint32_t *palette)
+{
+    if (cache_key == NULL || source_width == 0u || source_height == 0u ||
+        row_offsets == NULL || runs == NULL || palette == NULL ||
+        width <= 0 || height <= 0) {
+        return;
+    }
+
+    CachedTexture *cached = find_cached_texture(cache_key,
+                                                source_width,
+                                                source_height);
+    if (cached == NULL) {
+        cached = cache_indexed_texture(cache_key,
+                                       source_width,
+                                       source_height,
+                                       transparent_index,
+                                       row_offsets,
+                                       runs,
+                                       palette);
+    }
+
+    if (cached == NULL) {
+        draw_rle_fallback(targets,
+                          x,
+                          y,
+                          width,
+                          height,
+                          source_width,
+                          source_height,
+                          transparent_index,
+                          row_offsets,
+                          runs,
+                          palette);
+        return;
+    }
+
+    const SDL_Rect destination = {x, y, width, height};
+    if ((targets & GRAPHICS_TARGET_TV) != 0u &&
+        sTvRenderer != NULL && cached->tv != NULL) {
+        SDL_RenderCopy(sTvRenderer, cached->tv, NULL, &destination);
+    }
+    if ((targets & GRAPHICS_TARGET_GAMEPAD) != 0u &&
+        sGamePadRenderer != NULL && cached->gamepad != NULL) {
+        SDL_RenderCopy(sGamePadRenderer, cached->gamepad, NULL, &destination);
     }
 }
