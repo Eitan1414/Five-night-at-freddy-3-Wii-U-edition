@@ -16,6 +16,8 @@ The current build contains:
 - inactivity-based ventilation failure and repeating blackout cycle;
 - Play Audio with the supplied `echo1`, `echo3b` and `echo4b` cues;
 - first complete gameplay pass for Phantom Foxy, Balloon Boy, Freddy, Chica, Mangle and Puppet;
+- separate TV/GamePad rendering through the Wii U SDL2/GX2 backend;
+- GPU-cached camera, office, menu, Springtrap and Phantom textures;
 - Wii U audio playback through `sndcore2`;
 - automatic `.elf`, `.rpx` and `.wuhb` builds through GitHub Actions.
 
@@ -153,12 +155,14 @@ Hold **+** and press **Right** in the office with panels closed to advance one h
 
 ## Build locally
 
-Install the current devkitPro Wii U packages and `ffmpeg`, then run:
+Install the current devkitPro Wii U packages, the `wiiu-sdl2` port and `ffmpeg`, then run:
 
 ```sh
 sh tools/prepare_generated_assets.sh
 make
 ```
+
+GitHub Actions builds the official SDL2 Wii U port from its source package and devkitPro patch before compiling the game, so CI does not depend on a preinstalled SDL2 image.
 
 Expected outputs:
 
@@ -176,7 +180,7 @@ sd:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
 
 ## Current limitations
 
-- CAM 04–10 have complete gameplay states and map positions but still reuse reduced room backgrounds in the software renderer;
+- CAM 01–10 are now GPU-rendered and hardware-scaled, but several source frames are still reduced and must be regenerated from higher-resolution material;
 - Phantom visuals use compact PSX textures; the first jumpscare pass uses zoom/shake animation and not every original frame is distinct yet;
 - persistent save data, endings, minigames, full phone calls and final balancing remain unfinished;
 - the supplied PSX archive has no clear redistribution licence, so converted assets remain in this private development repository.
