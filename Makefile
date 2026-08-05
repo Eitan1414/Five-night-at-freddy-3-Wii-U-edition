@@ -38,7 +38,7 @@ CFLAGS   += $(shell $(PKGCONF) --cflags sdl2)
 CXXFLAGS := $(CFLAGS)
 ASFLAGS  := -g $(ARCH)
 LDFLAGS  := -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
-LIBS     := $(shell $(PKGCONF) --libs sdl2) -lwut -lstdc++ -lm
+LIBS     := $(shell $(PKGCONF) --libs sdl2) -lz -lwut -lstdc++ -lm
 LIBDIRS  := $(PORTLIBS) $(WUT_ROOT)
 
 #-------------------------------------------------------------------------------

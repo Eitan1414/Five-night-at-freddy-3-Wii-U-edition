@@ -1,5 +1,6 @@
 #include "game/progress_save.h"
 #include "assets/ending_assets.h"
+#include "assets/original_ui_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -54,4 +55,14 @@
 #undef update_game
 #undef main
 
+#define main fnaf3_full_audio_main
+#define update_game fnaf3_full_audio_update_game
+#define render_game fnaf3_full_audio_render_game
 #include "main_v3_parts/main_full_audio.inc"
+#undef render_game
+#undef update_game
+#undef main
+
+#include "main_v3_parts/main_original_ui_01.inc"
+#include "main_v3_parts/main_original_ui_02.inc"
+#include "main_v3_parts/main_original_ui_03.inc"
