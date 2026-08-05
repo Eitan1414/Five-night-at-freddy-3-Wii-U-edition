@@ -2,6 +2,7 @@
 #include "assets/ending_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
+#include "main_v3_parts/main_complete_prelude.inc"
 
 #define main fnaf3_legacy_main
 #define update_game fnaf3_legacy_update_game
@@ -14,7 +15,7 @@
 #include "main_v3_parts/main_03.inc"
 #include "main_v3_parts/main_04.inc"
 
-#define graphics_present finishing_graphics_present
+#define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
 
@@ -42,6 +43,7 @@
 #undef main
 
 #include "main_v3_parts/main_complete_title.inc"
+#include "main_v3_parts/main_complete_cheats.inc"
 #define fnaf3_content_render_game fnaf3_complete_content_render_game
 #include "main_v3_parts/main_complete.inc"
 #undef fnaf3_content_render_game
