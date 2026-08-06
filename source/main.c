@@ -4,6 +4,7 @@
 #include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
 #include "assets/office_assets.h"
+#include "assets/minigame_pc_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -41,7 +42,10 @@
 #define update_game fnaf3_content_update_game
 #define render_game fnaf3_content_render_game
 #include "main_v3_parts/main_secret_minigames_01.inc"
+#include "main_v3_parts/main_minigame_pc_bb.inc"
+#define secret_draw_bb secret_draw_bb_pc
 #include "main_v3_parts/main_secret_minigames_02.inc"
+#undef secret_draw_bb
 #undef render_game
 #undef update_game
 #undef main
