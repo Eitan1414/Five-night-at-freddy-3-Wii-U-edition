@@ -39,9 +39,14 @@
 #undef update_game
 #undef main
 
-#define main fnaf3_content_main
+/* Keep the original secret-minigame renderer compiled as a safe fallback,
+ * but route gameplay and active rendering through the authentic PC pass.
+ * Renaming the complete legacy renderer avoids macro-renaming its individual
+ * draw-function definitions, which previously produced duplicate symbols.
+ */
+#define main fnaf3_content_main_legacy
 #define update_game fnaf3_content_update_game
-#define render_game fnaf3_content_render_game
+#define render_game fnaf3_content_render_game_legacy
 #define secret_update_active secret_update_active_legacy
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #undef secret_update_active
@@ -49,23 +54,99 @@
 #include "main_v3_parts/main_minigame_pc_bb.inc"
 
 #define secret_update_active secret_update_active_pc
-#define secret_draw_bb secret_draw_bb_pc
-#define secret_draw_mangle secret_draw_mangle_pc
-#define secret_draw_chica secret_draw_chica_pc
-#define secret_draw_stage01 secret_draw_stage01_pc
-#define secret_draw_shadow secret_draw_shadow_pc
-#define secret_draw_happiest secret_draw_happiest_pc
 #include "main_v3_parts/main_secret_minigames_02.inc"
-#undef secret_draw_happiest
-#undef secret_draw_shadow
-#undef secret_draw_stage01
-#undef secret_draw_chica
-#undef secret_draw_mangle
-#undef secret_draw_bb
 #undef secret_update_active
 #undef render_game
 #undef update_game
 #undef main
+
+static void secret_draw_active_authentic(void)
+{
+    if (sSecret.good_ending) {
+        secret_draw_good_ending();
+        graphics_present(GRAPHICS_TARGET_BOTH);
+        return;
+    }
+
+    switch (sSecret.kind) {
+        case SECRET_MINIGAME_BB:
+            secret_draw_bb_pc();
+            break;
+        case SECRET_MINIGAME_MANGLE:
+            secret_draw_mangle_pc();
+            break;
+        case SECRET_MINIGAME_CHICA:
+            secret_draw_chica_pc();
+            break;
+        case SECRET_MINIGAME_STAGE01:
+            secret_draw_stage01_pc();
+            break;
+        case SECRET_MINIGAME_SHADOW_BONNIE:
+            secret_draw_shadow_pc();
+            break;
+        case SECRET_MINIGAME_HAPPIEST_DAY:
+            secret_draw_happiest_pc();
+            break;
+        default:
+            break;
+    }
+
+    if (sSecret.completed) {
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH, 171, 176, 512, 132,
+                           GRAPHICS_RGB(4, 4, 4));
+        graphics_draw_frame(GRAPHICS_TARGET_BOTH, 171, 176, 512, 132, 4,
+                            COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 245, 205, 4,
+                           "MINIGAME COMPLETE", COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 280, 267, 1,
+                           "PROGRESS SAVED - A TO RETURN", COLOUR_GREEN);
+    }
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
+static void fnaf3_content_render_game(Game *game)
+{
+    if (!game->dirty) return;
+    if (sSecret.active) {
+        game->dirty = false;
+        secret_draw_active_authentic();
+        return;
+    }
+    fnaf3_content_render_game_legacy(game);
+}
+
+int fnaf3_content_main(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+    WHBProcInit();
+    if (!graphics_init()) {
+        WHBProcShutdown();
+        return 1;
+    }
+    input_init();
+    frame_clock_reset();
+    (void) audio_init();
+    memset(&sFinishing, 0, sizeof(sFinishing));
+    memset(&sSecret, 0, sizeof(sSecret));
+    sTitleMusicPlaying = false;
+    Game game;
+    game_init(&game);
+    fnaf3_content_render_game(&game);
+    while (WHBProcIsRunning()) {
+        InputState input;
+        input_update(&input);
+        fnaf3_content_update_game(&game, &input);
+        fnaf3_content_render_game(&game);
+        frame_clock_wait_next();
+    }
+    progress_save_shutdown();
+    audio_stop_all();
+    audio_shutdown();
+    graphics_shutdown();
+    WHBProcShutdown();
+    return 0;
+}
 
 #include "main_v3_parts/main_complete_title.inc"
 #include "main_v3_parts/main_complete_cheats.inc"
