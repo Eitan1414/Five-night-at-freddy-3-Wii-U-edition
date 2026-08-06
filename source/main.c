@@ -5,6 +5,7 @@
 #include "assets/camera_springtrap_assets.h"
 #include "assets/office_assets.h"
 #include "assets/minigame_pc_assets.h"
+#include "assets/minigame_pc_extended_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -44,10 +45,22 @@
 #define secret_update_active secret_update_active_legacy
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #undef secret_update_active
+
 #include "main_v3_parts/main_minigame_pc_bb.inc"
+
 #define secret_update_active secret_update_active_pc
 #define secret_draw_bb secret_draw_bb_pc
+#define secret_draw_mangle secret_draw_mangle_pc
+#define secret_draw_chica secret_draw_chica_pc
+#define secret_draw_stage01 secret_draw_stage01_pc
+#define secret_draw_shadow secret_draw_shadow_pc
+#define secret_draw_happiest secret_draw_happiest_pc
 #include "main_v3_parts/main_secret_minigames_02.inc"
+#undef secret_draw_happiest
+#undef secret_draw_shadow
+#undef secret_draw_stage01
+#undef secret_draw_chica
+#undef secret_draw_mangle
 #undef secret_draw_bb
 #undef secret_update_active
 #undef render_game
