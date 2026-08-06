@@ -6,13 +6,9 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: temporary-minigame-branch-build
-  cancel-in-progress: true
-
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     timeout-minutes: 60
     container:
       image: devkitpro/devkitppc:20260503
