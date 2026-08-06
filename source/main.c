@@ -41,11 +41,15 @@
 #define main fnaf3_content_main
 #define update_game fnaf3_content_update_game
 #define render_game fnaf3_content_render_game
+#define secret_update_active secret_update_active_legacy
 #include "main_v3_parts/main_secret_minigames_01.inc"
+#undef secret_update_active
 #include "main_v3_parts/main_minigame_pc_bb.inc"
+#define secret_update_active secret_update_active_pc
 #define secret_draw_bb secret_draw_bb_pc
 #include "main_v3_parts/main_secret_minigames_02.inc"
 #undef secret_draw_bb
+#undef secret_update_active
 #undef render_game
 #undef update_game
 #undef main
