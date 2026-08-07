@@ -105,6 +105,7 @@ static void original_ui_draw_office(Game *game)
             original_ui_draw_camera_feed(game);
     } else {
         draw_office_gamepad(game);
+        office_touch_draw_overlay(game);
     }
 
     draw_ventilation_overlay(game);
