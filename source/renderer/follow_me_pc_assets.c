@@ -15,10 +15,28 @@ static uint16_t sFollowMeOffsetPool[3264];
 static uint8_t sFollowMeRunsPool[82228];
 
 static const char kFollowMePayload[] =
-#include "follow_me_pc_payload_01.inc"
-#include "follow_me_pc_payload_02.inc"
-#include "follow_me_pc_payload_03.inc"
-#include "follow_me_pc_payload_04.inc"
+#include "follow_me_pc_chunk_001.inc"
+#include "follow_me_pc_chunk_002.inc"
+#include "follow_me_pc_chunk_003.inc"
+#include "follow_me_pc_chunk_004.inc"
+#include "follow_me_pc_chunk_005.inc"
+#include "follow_me_pc_chunk_006.inc"
+#include "follow_me_pc_chunk_007.inc"
+#include "follow_me_pc_chunk_008.inc"
+#include "follow_me_pc_chunk_009.inc"
+#include "follow_me_pc_chunk_010.inc"
+#include "follow_me_pc_chunk_011.inc"
+#include "follow_me_pc_chunk_012.inc"
+#include "follow_me_pc_chunk_013.inc"
+#include "follow_me_pc_chunk_014.inc"
+#include "follow_me_pc_chunk_015.inc"
+#include "follow_me_pc_chunk_016.inc"
+#include "follow_me_pc_chunk_017_018.inc"
+#include "follow_me_pc_chunk_019_020.inc"
+#include "follow_me_pc_chunk_021.inc"
+#include "follow_me_pc_chunk_022.inc"
+#include "follow_me_pc_chunk_023.inc"
+#include "follow_me_pc_chunk_024.inc"
 ;
 
 static int follow_me_b64_value(char value)
