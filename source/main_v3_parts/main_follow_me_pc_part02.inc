@@ -180,11 +180,34 @@ static void follow_me_pc_draw_sprite(FollowMePcSprite sprite, int x, int y,
                                      int scale)
 {
     const TextureRle *texture = follow_me_pc_sprite(sprite);
-    if (texture == NULL) return;
-    const int width = (int) texture->width * scale;
-    const int height = (int) texture->height * scale;
-    texture_draw_rle(GRAPHICS_TARGET_BOTH, x - width / 2, y - height,
-                     width, height, texture);
+    if (texture == NULL || scale <= 0) return;
+
+    /* The general asset renderer uses linear filtering for photographic FNaF
+     * material. Follow Me is integer-scaled pixel art, so draw each RLE run as
+     * exact pixel blocks here. This keeps the minigame crisp without changing
+     * the filter used by cameras, office panoramas or menus. */
+    const int origin_x = x - ((int) texture->width * scale) / 2;
+    const int origin_y = y - (int) texture->height * scale;
+    for (uint32_t source_y = 0u; source_y < texture->height; ++source_y) {
+        const uint16_t row_start = texture->row_offsets[source_y];
+        const uint16_t row_end = texture->row_offsets[source_y + 1u];
+        uint32_t source_x = 0u;
+        for (uint16_t offset = row_start;
+             offset + 1u < row_end;
+             offset += 2u) {
+            const uint8_t run_length = texture->runs[offset];
+            const uint8_t palette_index = texture->runs[offset + 1u];
+            if (palette_index != texture->transparent_index && run_length > 0u) {
+                graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                                   origin_x + (int) source_x * scale,
+                                   origin_y + (int) source_y * scale,
+                                   (int) run_length * scale,
+                                   scale,
+                                   texture->palette[palette_index]);
+            }
+            source_x += run_length;
+        }
+    }
 }
 
 static void follow_me_pc_draw_env(FollowMePcEnvSprite sprite, int x, int y,
