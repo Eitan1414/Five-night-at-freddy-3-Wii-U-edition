@@ -20,7 +20,10 @@
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
+#define draw_office_gamepad draw_office_gamepad_legacy
 #include "main_v3_parts/main_04.inc"
+#undef draw_office_gamepad
+#include "main_v3_parts/main_office_touch_ui.inc"
 
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
