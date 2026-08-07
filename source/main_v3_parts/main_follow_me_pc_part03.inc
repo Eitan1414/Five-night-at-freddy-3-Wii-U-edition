@@ -30,8 +30,6 @@ static void follow_me_pc_draw_room(const Game *game)
         follow_me_pc_draw_env(FOLLOW_ME_ENV_POSTERS, 555, 92, 1);
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 320, 420, 220, 60,
                            GRAPHICS_RGB(3, 3, 5));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 330, 25, 2,
-                           "SHOW STAGE", GRAPHICS_RGB(148, 148, 153));
     } else if (sFollowMePc.room == FOLLOW_ROOM_DINING) {
         follow_me_pc_draw_env(FOLLOW_ME_ENV_TABLE_CLEAN, 82, 128, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_TABLE_SPIKY_A, 346, 128, 2);
@@ -42,8 +40,6 @@ static void follow_me_pc_draw_room(const Game *game)
                            GRAPHICS_RGB(3, 3, 5));
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 816, 165, 38, 195,
                            GRAPHICS_RGB(3, 3, 5));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 325, 25, 2,
-                           "DINING AREA", GRAPHICS_RGB(148, 148, 153));
     } else if (sFollowMePc.room == FOLLOW_ROOM_WEST_HALL) {
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 165, 40, 205,
                            GRAPHICS_RGB(3, 3, 5));
@@ -52,8 +48,6 @@ static void follow_me_pc_draw_room(const Game *game)
         follow_me_pc_draw_env(FOLLOW_ME_ENV_POSTERS, 94, 82, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_DESK_FAN, 336, 218, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_ARCADE, 670, 246, 2);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 328, 25, 2,
-                           "WEST HALL", GRAPHICS_RGB(148, 148, 153));
     } else if (sFollowMePc.room == FOLLOW_ROOM_EAST_HALL) {
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 165, 40, 205,
                            GRAPHICS_RGB(3, 3, 5));
@@ -87,16 +81,12 @@ static void follow_me_pc_draw_room(const Game *game)
             graphics_draw_rect(GRAPHICS_TARGET_BOTH, 169, 216, 7, 15,
                                GRAPHICS_RGB(18, 5, 24));
         }
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 328, 25, 2,
-                           "EAST HALL", GRAPHICS_RGB(148, 148, 153));
     } else if (sFollowMePc.room == FOLLOW_ROOM_PIRATE_COVE) {
         follow_me_pc_draw_env(FOLLOW_ME_ENV_CURTAIN, 82, 70, 3);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_POSTERS, 320, 100, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_ARCADE, 650, 245, 2);
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 815, 165, 39, 230,
                            GRAPHICS_RGB(3, 3, 5));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 320, 25, 2,
-                           "PIRATE COVE", GRAPHICS_RGB(148, 148, 153));
     } else if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE) {
         follow_me_pc_draw_env(FOLLOW_ME_ENV_PARTY_TABLE, 165, 250, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_DESK_FAN, 392, 216, 2);
@@ -105,11 +95,7 @@ static void follow_me_pc_draw_room(const Game *game)
                            GRAPHICS_RGB(2, 2, 4));
         graphics_draw_frame(GRAPHICS_TARGET_BOTH, 606, 60, 178, 50, 3,
                             GRAPHICS_RGB(83, 80, 85));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 266, 25, 2,
-                           "SAFE ROOM ENTRANCE", GRAPHICS_RGB(148, 148, 153));
     } else {
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 335, 25, 2,
-                           "SAFE ROOM", GRAPHICS_RGB(148, 148, 153));
         follow_me_pc_draw_env(FOLLOW_ME_ENV_ARCADE, 112, 278, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_DESK_FAN, 274, 92, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_TABLE_STAINED, 380, 94, 2);
