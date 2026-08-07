@@ -168,10 +168,16 @@ int fnaf3_content_main(int argc, char **argv)
 #undef update_game
 #undef main
 
+/* Add native Wii U GamePad touch handling for the PC click-based secret
+ * minigame triggers without replacing the existing controller fallbacks. */
+#include "main_v3_parts/main_complete_touch.inc"
+
 #define main fnaf3_full_audio_main
 #define update_game fnaf3_full_audio_update_game
 #define render_game fnaf3_full_audio_render_game
+#define fnaf3_complete_update_game fnaf3_touch_update_game
 #include "main_v3_parts/main_full_audio.inc"
+#undef fnaf3_complete_update_game
 #undef render_game
 #undef update_game
 #undef main
