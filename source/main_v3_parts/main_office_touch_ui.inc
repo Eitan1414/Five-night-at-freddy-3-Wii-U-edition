@@ -1,8 +1,10 @@
 /* Wii U GamePad presentation for PC office-click secret triggers.
  *
- * The TV keeps the authentic office panorama. The GamePad normally shows the
- * office-control helper, so expose only the relevant wall target when the
- * player is already looking toward that side of the office.
+ * This file is deliberately an overlay only. main_04.inc and main_05.inc split
+ * a legacy renderer function across two include fragments, so replacing
+ * draw_office_gamepad between them would place these definitions inside that
+ * function. The final original-UI office renderer calls this overlay after the
+ * normal GamePad office screen has been drawn.
  */
 
 static void office_touch_draw_stage01_panel(const Game *game)
@@ -60,9 +62,8 @@ static void office_touch_draw_shadow_figure(const Game *game)
                      x, y, width, height, &gMiniShadowRight);
 }
 
-static void draw_office_gamepad(const Game *game)
+static void office_touch_draw_overlay(const Game *game)
 {
-    draw_office_gamepad_legacy(game);
     office_touch_draw_stage01_panel(game);
     office_touch_draw_shadow_figure(game);
 }
