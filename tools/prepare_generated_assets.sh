@@ -14,14 +14,13 @@ restore_extended_cameras() {
     temporary="${output}.xz"
     trimmed="${output}.trimmed"
 
-    # The historical upload contains all seven camera textures, followed by
-    # a duplicated Springtrap sprite section whose final XZ fragment was never
-    # committed. Recover the emitted C source, then discard that incomplete
-    # duplicate tail. The complete Springtrap sprites are restored separately.
+    # Retain the historical camera pack as a build fallback. The active camera
+    # feeds are generated directly from the original PSX TIMs later in this
+    # script, so this truncated archive is no longer used by gameplay.
     # shellcheck disable=SC2086
     cat $source_pattern | base64 -d > "$temporary"
     if ! xz -dc "$temporary" > "$output"; then
-        echo "warning: recovered camera textures from truncated XZ stream" >&2
+        echo "warning: recovered legacy camera textures from truncated XZ stream" >&2
     fi
     rm -f "$temporary"
 
@@ -81,6 +80,11 @@ python3 tools/convert_camera_springtrap.py \
     "$TIM_ROOT/camera/cams/map" \
     source/camera_springtrap_assets.c \
     include/assets/camera_springtrap_assets.h
+
+python3 tools/convert_camera_backgrounds.py \
+    "$TIM_ROOT/camera/cams/map" \
+    source/camera_psx_background_assets.c \
+    include/assets/camera_psx_background_assets.h
 
 python3 tools/convert_jumpscare_tim.py \
     "$SCREAMER_ROOT" \
