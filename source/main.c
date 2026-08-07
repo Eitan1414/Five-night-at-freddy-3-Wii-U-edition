@@ -46,16 +46,15 @@
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
 
-/* main_04.inc ends in the middle of a legacy renderer function and main_05.inc
- * continues it. Keep the two fragments contiguous; office-touch UI is an
- * overlay and is included only after the split function has closed. */
+/* main_05.inc opens draw_victory() and main_06.inc closes it. Keep all three
+ * legacy renderer fragments contiguous at the C level; the touch UI is an
+ * overlay and must be declared only after main_06 has returned to file scope. */
 #include "main_v3_parts/main_04.inc"
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
-#include "main_v3_parts/main_office_touch_ui.inc"
-
 #include "main_v3_parts/main_06.inc"
+#include "main_v3_parts/main_office_touch_ui.inc"
 
 #undef render_game
 #undef update_game
