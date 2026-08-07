@@ -1,8 +1,27 @@
+#include "assets/menu_pc_assets.h"
+
 static void complete_draw_title(const Game *game)
 {
     static const char *const items[TITLE_ITEM_COUNT] = {
         "NEW GAME", "LOAD GAME", "EXTRAS"
     };
+    static const TextureRle *const pc_title_frames[TITLE_FRAME_COUNT] = {
+        &gPcTitleSpringtrap1,
+        &gPcTitleSpringtrap2,
+        &gPcTitleSpringtrap3,
+        &gPcTitleSpringtrap4,
+        &gPcTitleSpringtrap5
+    };
+
+    menu_pc_assets_init();
+    const bool pc_title_ready =
+        gPcTitleLogo.width > 0u &&
+        gPcTitleSpringtrap1.width > 0u &&
+        gPcTitleSpringtrap2.width > 0u &&
+        gPcTitleSpringtrap3.width > 0u &&
+        gPcTitleSpringtrap4.width > 0u &&
+        gPcTitleSpringtrap5.width > 0u;
+
     const int frame = title_frame_index(game);
     const int glitch = frame == 0
         ? (int) ((game->seed >> 8) % 7u) - 3
@@ -11,13 +30,21 @@ static void complete_draw_title(const Game *game)
     graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(1, 4, 2));
     graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 0, 410, 480,
                        GRAPHICS_RGB(2, 7, 4));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 47, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 119, 7, "N", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 191, 7, "A", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 263, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 349, 8, "3", COLOUR_GREEN);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 120, 72, 2,
-                       "FIVE NIGHTS AT FREDDYS 3", COLOUR_GREEN);
+
+    if (pc_title_ready) {
+        /* Original narrow PC FNAF3 logo, kept at its native aspect ratio. */
+        texture_draw_rle(GRAPHICS_TARGET_BOTH, 39, 45, 55, 377,
+                         &gPcTitleLogo);
+    } else {
+        /* Safe fallback if the packed PC asset cannot be decoded. */
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 47, 7, "F", COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 119, 7, "N", COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 191, 7, "A", COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 263, 7, "F", COLOUR_WHITE);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 349, 8, "3", COLOUR_GREEN);
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 120, 72, 2,
+                           "FIVE NIGHTS AT FREDDYS 3", COLOUR_GREEN);
+    }
 
     char continue_text[32];
     snprintf(continue_text, sizeof(continue_text),
@@ -64,7 +91,8 @@ static void complete_draw_title(const Game *game)
 
     graphics_draw_rect(GRAPHICS_TARGET_BOTH, 410, 0, 444, 480, COLOUR_BLACK);
     texture_draw_rle(GRAPHICS_TARGET_BOTH, 410 + glitch, 16, 444, 448,
-                     kTitleFrames[frame]);
+                     pc_title_ready ? pc_title_frames[frame]
+                                    : kTitleFrames[frame]);
     draw_scanlines(GRAPHICS_TARGET_BOTH,
                    game->seed + game->screen_frames);
     graphics_present(GRAPHICS_TARGET_BOTH);
