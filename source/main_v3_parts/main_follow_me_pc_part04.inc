@@ -15,15 +15,36 @@ static void follow_me_pc_draw_remains(void)
 static void follow_me_pc_draw_safe_room_ghosts(void)
 {
     if (sFollowMePc.room != FOLLOW_ROOM_SAFE_ROOM) return;
-    static const int xs[4] = {310, 390, 470, 550};
+
+    /* Four spirits already occupy the room; the player is the fifth child. */
+    static const int xs[4] = {190, 315, 540, 670};
+    static const int ys[4] = {210, 405, 405, 210};
     for (int index = 0; index < 4; ++index)
         follow_me_pc_draw_sprite((FollowMePcSprite)
-            (FOLLOW_ME_PC_GHOST_0 + (index & 1)), xs[index], 416, 3);
+            (FOLLOW_ME_PC_GHOST_0 + (index & 1)), xs[index], ys[index], 3);
+}
+
+static void follow_me_pc_draw_safe_room_drips(uint32_t frame)
+{
+    if (sFollowMePc.room != FOLLOW_ROOM_SAFE_ROOM) return;
+    if (sFollowMePc.phase != FOLLOW_PHASE_SUIT &&
+        sFollowMePc.phase != FOLLOW_PHASE_SPRINGLOCK) return;
+
+    uint32_t seed = frame * 1103515245u + 12345u;
+    for (int index = 0; index < 18; ++index) {
+        seed = seed * 1664525u + 1013904223u;
+        const int x = 35 + (int) ((seed >> 8) % 785u);
+        seed = seed * 1664525u + 1013904223u;
+        const int y = 65 + (int) ((seed >> 9) % 300u);
+        const int length = 4 + (int) ((seed >> 20) % 11u);
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH, x, y, 2, length,
+                           GRAPHICS_RGB(88, 105, 119));
+    }
 }
 
 static FollowMePcSprite follow_me_pc_spring_frame(void)
 {
-    uint32_t frame = sFollowMePc.phase_frames / 24u;
+    uint32_t frame = sFollowMePc.phase_frames / 30u;
     if (frame > 8u) frame = 8u;
     return (FollowMePcSprite) (FOLLOW_ME_PC_SPRING_0 + (int) frame);
 }
@@ -71,16 +92,25 @@ static void follow_me_pc_draw(const Game *game)
             follow_me_pc_draw_sprite(FOLLOW_ME_PC_SPRING_0, 742, 205, 3);
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK) {
         follow_me_pc_draw_sprite(follow_me_pc_spring_frame(), 742, 235, 3);
-        if (((sFollowMePc.phase_frames / 7u) & 1u) != 0u)
+        if (sFollowMePc.phase_frames >= 92u &&
+            ((sFollowMePc.phase_frames / 7u) & 1u) != 0u)
             graphics_draw_rect(GRAPHICS_TARGET_BOTH, 683, 257, 116, 11,
                                GRAPHICS_RGB(143, 8, 13));
     }
+
+    follow_me_pc_draw_safe_room_drips(sFollowMePc.frames);
 
     if (sFollowMePc.phase == FOLLOW_PHASE_DISMANTLED) {
         const FollowMePcSprite wreck = (FollowMePcSprite)
             (FOLLOW_ME_PC_WRECK_0 + sFollowMePc.chapter - 1);
         follow_me_pc_draw_sprite(wreck, sFollowMePc.player_x,
                                  sFollowMePc.player_y + 12, 2);
+    } else if (sFollowMePc.chapter == 5) {
+        /* Keep the fifth spirit visible while Purple Guy runs to the suit and
+         * during the springlock failure, like the PC cutscene. */
+        follow_me_pc_draw_sprite(follow_me_pc_player_sprite(),
+                                 sFollowMePc.player_x,
+                                 sFollowMePc.player_y, 3);
     } else if (sFollowMePc.phase != FOLLOW_PHASE_SPRINGLOCK &&
                sFollowMePc.phase != FOLLOW_PHASE_SUIT) {
         follow_me_pc_draw_sprite(follow_me_pc_player_sprite(),

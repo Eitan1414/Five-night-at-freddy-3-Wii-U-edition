@@ -15,35 +15,48 @@ static void follow_me_pc_update_hunt(void)
 
 static void follow_me_pc_update_ghost_chase(void)
 {
-    static const int targets[4][2] = {
-        {195, 132}, {680, 126}, {690, 337}, {220, 334}
+    /* Final Follow Me: the fifth child enters the safe room and completes the
+     * circle around Purple Guy. Once the player gets close enough, Purple Guy
+     * panics and runs a fixed escape pattern instead of requiring four
+     * artificial player collisions. */
+    static const int targets[5][2] = {
+        {640, 325}, {430, 350}, {270, 245}, {500, 135}, {655, 190}
     };
-    ++sFollowMePc.phase_frames;
-    if (sFollowMePc.contact_cooldown > 0u)
-        --sFollowMePc.contact_cooldown;
 
-    const int dx = sFollowMePc.player_x - sFollowMePc.purple_x;
-    const int dy = sFollowMePc.player_y - sFollowMePc.purple_y;
-    const int distance = follow_me_pc_abs(dx) + follow_me_pc_abs(dy);
-    if (distance < 105 && sFollowMePc.contact_cooldown == 0u) {
-        ++sFollowMePc.chase_contacts;
-        sFollowMePc.contact_cooldown = 55u;
-        sFollowMePc.purple_target = (sFollowMePc.purple_target + 1) & 3;
-        audio_play(AUDIO_CUE_SELECT, 0.32f, false);
+    ++sFollowMePc.phase_frames;
+
+    if (sFollowMePc.chase_contacts == 0) {
+        const int dx = sFollowMePc.player_x - sFollowMePc.purple_x;
+        const int dy = sFollowMePc.player_y - sFollowMePc.purple_y;
+        const int distance = follow_me_pc_abs(dx) + follow_me_pc_abs(dy);
+        if (distance < 145 || sFollowMePc.phase_frames >= 240u) {
+            sFollowMePc.chase_contacts = 1;
+            sFollowMePc.purple_target = 0;
+            sFollowMePc.phase_frames = 0u;
+            audio_play(AUDIO_CUE_SELECT, 0.35f, false);
+        } else {
+            return;
+        }
     }
 
-    if (sFollowMePc.chase_contacts >= 4 || sFollowMePc.phase_frames >= 720u) {
+    if (sFollowMePc.purple_target >= 5) {
         sFollowMePc.phase = FOLLOW_PHASE_SUIT;
-        sFollowMePc.phase_frames = 1u;
+        sFollowMePc.phase_frames = 0u;
         return;
     }
 
     const int tx = targets[sFollowMePc.purple_target][0];
     const int ty = targets[sFollowMePc.purple_target][1];
-    if (sFollowMePc.purple_x < tx) sFollowMePc.purple_x += 3;
-    else if (sFollowMePc.purple_x > tx) sFollowMePc.purple_x -= 3;
+    if (sFollowMePc.purple_x < tx) sFollowMePc.purple_x += 4;
+    else if (sFollowMePc.purple_x > tx) sFollowMePc.purple_x -= 4;
     if (sFollowMePc.purple_y < ty) sFollowMePc.purple_y += 3;
     else if (sFollowMePc.purple_y > ty) sFollowMePc.purple_y -= 3;
+
+    if (follow_me_pc_near(sFollowMePc.purple_x, sFollowMePc.purple_y,
+                          tx, ty, 10)) {
+        ++sFollowMePc.purple_target;
+        audio_play(AUDIO_CUE_SELECT, 0.22f, false);
+    }
 }
 
 static void follow_me_pc_update_suit(void)
@@ -51,13 +64,23 @@ static void follow_me_pc_update_suit(void)
     ++sFollowMePc.phase_frames;
     const int suit_x = 718;
     const int suit_y = 170;
+
     if (sFollowMePc.purple_x < suit_x) sFollowMePc.purple_x += 4;
+    else if (sFollowMePc.purple_x > suit_x) sFollowMePc.purple_x -= 4;
     if (sFollowMePc.purple_y > suit_y) sFollowMePc.purple_y -= 3;
     else if (sFollowMePc.purple_y < suit_y) sFollowMePc.purple_y += 3;
 
+    /* Hold briefly at the suit before the mechanisms fail. This makes the
+     * final beat read like the PC sequence rather than an instant collision. */
     if (follow_me_pc_near(sFollowMePc.purple_x, sFollowMePc.purple_y,
-                          suit_x, suit_y, 15) ||
-        sFollowMePc.phase_frames >= 150u) {
+                          suit_x, suit_y, 12)) {
+        sFollowMePc.purple_x = suit_x;
+        sFollowMePc.purple_y = suit_y;
+        if (sFollowMePc.phase_frames >= 145u) {
+            sFollowMePc.phase = FOLLOW_PHASE_SPRINGLOCK;
+            sFollowMePc.phase_frames = 1u;
+        }
+    } else if (sFollowMePc.phase_frames >= 190u) {
         sFollowMePc.phase = FOLLOW_PHASE_SPRINGLOCK;
         sFollowMePc.phase_frames = 1u;
     }
@@ -90,11 +113,11 @@ static void follow_me_pc_update(Game *game, const InputState *input)
         }
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK) {
         ++sFollowMePc.phase_frames;
-        if (!sFollowMePc.crush_played && sFollowMePc.phase_frames >= 65u) {
+        if (!sFollowMePc.crush_played && sFollowMePc.phase_frames >= 92u) {
             sFollowMePc.crush_played = true;
             audio_play(AUDIO_CUE_MINIGAME_CRUSH, 0.92f, false);
         }
-        if (sFollowMePc.phase_frames >= 260u) {
+        if (sFollowMePc.phase_frames >= 310u) {
             memset(&sFollowMePc, 0, sizeof(sFollowMePc));
             finishing_complete_minigame(game);
             return;
