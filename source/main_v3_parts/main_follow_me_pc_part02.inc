@@ -161,9 +161,19 @@ static void follow_me_pc_draw_sprite(FollowMePcSprite sprite, int x, int y,
                      width, height, texture);
 }
 
+static void follow_me_pc_draw_env(FollowMePcEnvSprite sprite, int x, int y,
+                                  int scale)
+{
+    const TextureRle *texture = follow_me_pc_env_sprite(sprite);
+    if (texture == NULL) return;
+    texture_draw_rle(GRAPHICS_TARGET_BOTH, x, y,
+                     (int) texture->width * scale,
+                     (int) texture->height * scale, texture);
+}
+
 static void follow_me_pc_draw_checker_floor(int top)
 {
-    const int cell = 32;
+    const int cell = 24;
     for (int y = top; y < 480; y += cell) {
         for (int x = 0; x < 854; x += cell) {
             const bool alternate = (((x / cell) + (y / cell)) & 1) != 0;
