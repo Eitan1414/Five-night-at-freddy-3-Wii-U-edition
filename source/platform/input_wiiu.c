@@ -6,6 +6,9 @@
 
 static uint32_t sLastHeld = 0u;
 static bool sConnected = true;
+static bool sLastTouchHeld = false;
+static int sLastTouchX = 0;
+static int sLastTouchY = 0;
 
 static uint32_t map_buttons(uint32_t raw)
 {
@@ -48,10 +51,42 @@ static uint32_t map_buttons(uint32_t raw)
     return mapped;
 }
 
+static void update_touch(InputState *state, const VPADStatus *status)
+{
+    VPADTouchData calibrated;
+    memset(&calibrated, 0, sizeof(calibrated));
+    VPADGetTPCalibratedPointEx(VPAD_CHAN_0,
+                               VPAD_TP_854X480,
+                               &calibrated,
+                               &status->tpNormal);
+
+    const bool valid = calibrated.validity == VPAD_VALID;
+    const bool touched = valid && calibrated.touched != 0u;
+
+    state->touch_held = touched;
+    state->touch_pressed = touched && !sLastTouchHeld;
+    state->touch_released = !touched && sLastTouchHeld;
+
+    if (touched) {
+        state->touch_x = (int) calibrated.x;
+        state->touch_y = (int) calibrated.y;
+        sLastTouchX = state->touch_x;
+        sLastTouchY = state->touch_y;
+    } else {
+        state->touch_x = sLastTouchX;
+        state->touch_y = sLastTouchY;
+    }
+
+    sLastTouchHeld = touched;
+}
+
 void input_init(void)
 {
     sLastHeld = 0u;
     sConnected = true;
+    sLastTouchHeld = false;
+    sLastTouchX = 0;
+    sLastTouchY = 0;
 }
 
 void input_update(InputState *state)
@@ -71,6 +106,7 @@ void input_update(InputState *state)
         state->pressed = map_buttons(status.trigger);
         state->released = map_buttons(status.release);
         state->connected = true;
+        update_touch(state, &status);
         sLastHeld = state->held;
         sConnected = true;
         return;
@@ -78,12 +114,18 @@ void input_update(InputState *state)
 
     state->held = sLastHeld;
     state->connected = sConnected;
+    state->touch_held = sLastTouchHeld;
+    state->touch_x = sLastTouchX;
+    state->touch_y = sLastTouchY;
 
     if (error == VPAD_READ_INVALID_CONTROLLER ||
         error == VPAD_READ_UNINITIALIZED) {
         state->held = 0u;
         state->connected = false;
+        state->touch_held = false;
+        state->touch_released = sLastTouchHeld;
         sLastHeld = 0u;
+        sLastTouchHeld = false;
         sConnected = false;
     }
 }
