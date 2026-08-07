@@ -3,6 +3,7 @@
 #include "assets/original_ui_assets.h"
 #include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
+#include "assets/camera_psx_background_assets.h"
 #include "assets/office_assets.h"
 #include "assets/minigame_pc_assets.h"
 #include "assets/minigame_pc_extended_assets.h"
@@ -15,7 +16,25 @@
 #define update_game fnaf3_legacy_update_game
 #define render_game fnaf3_legacy_render_game
 
+/* Keep the previous camera array compiled as a fallback, but route all later
+ * camera rendering through the full-resolution PSX TIM conversions generated
+ * by tools/prepare_generated_assets.sh. */
+#define kCameraTextures kCameraTextures_legacy
 #include "main_v3_parts/main_00.inc"
+#undef kCameraTextures
+static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
+    &gPsxCamera01Texture,
+    &gPsxCamera02Texture,
+    &gPsxCamera03Texture,
+    &gPsxCamera04Texture,
+    &gPsxCamera05Texture,
+    &gPsxCamera06Texture,
+    &gPsxCamera07Texture,
+    &gPsxCamera08Texture,
+    &gPsxCamera09Texture,
+    &gPsxCamera10Texture,
+};
+
 #include "main_v3_parts/main_01.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
