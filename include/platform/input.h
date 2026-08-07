@@ -23,6 +23,13 @@ typedef struct InputState {
     uint32_t pressed;
     uint32_t released;
     bool connected;
+
+    /* Wii U GamePad touch state in the logical 854x480 coordinate space. */
+    bool touch_held;
+    bool touch_pressed;
+    bool touch_released;
+    int touch_x;
+    int touch_y;
 } InputState;
 
 void input_init(void);
@@ -36,4 +43,15 @@ static inline bool input_is_held(const InputState *state, GameButton button)
 static inline bool input_was_pressed(const InputState *state, GameButton button)
 {
     return state != NULL && (state->pressed & (uint32_t) button) != 0u;
+}
+
+static inline bool input_touch_in_rect(const InputState *state,
+                                       int x,
+                                       int y,
+                                       int width,
+                                       int height)
+{
+    return state != NULL && state->touch_held &&
+           state->touch_x >= x && state->touch_x < x + width &&
+           state->touch_y >= y && state->touch_y < y + height;
 }
