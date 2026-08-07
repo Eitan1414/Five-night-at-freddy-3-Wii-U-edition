@@ -47,15 +47,19 @@
  * delegates to the existing finishing/save layer. */
 #include "main_v3_parts/main_follow_me_pc.inc"
 
+/* Replace only the Nightmare / Night 6 newspaper presentation. The Bad Ending,
+ * Follow Me and all normal finishing/save behaviour still delegate below. */
+#include "main_v3_parts/main_night6_newspaper.inc"
+
 /* Keep the original secret-minigame renderer compiled as a safe fallback,
  * but route gameplay and active rendering through the authentic PC pass.
- * The finishing calls inside this layer are redirected through Follow Me so
- * the six secret minigames and the five post-night chapters can coexist. */
+ * The finishing calls inside this layer are redirected through Follow Me and
+ * the Night 6 newspaper pass so every finishing layer can coexist. */
 #define main fnaf3_content_main_legacy
 #define update_game fnaf3_content_update_game
 #define render_game fnaf3_content_render_game_legacy
 #define fnaf3_finishing_update_game fnaf3_follow_me_update_game
-#define fnaf3_finishing_render_game fnaf3_follow_me_render_game
+#define fnaf3_finishing_render_game fnaf3_night6_render_game
 #define secret_update_active secret_update_active_legacy
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #undef secret_update_active
