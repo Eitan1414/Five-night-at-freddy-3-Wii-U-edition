@@ -1,5 +1,6 @@
 #include "game/progress_save.h"
 #include "assets/ending_assets.h"
+#include "assets/good_ending_pc_asset.h"
 #include "assets/original_ui_assets.h"
 #include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
@@ -91,9 +92,14 @@
 
 #include "main_v3_parts/main_minigame_pc_bb.inc"
 
+/* Keep the simplified ending compiled only as a fallback. The active PC pass
+ * below uses the original supplied ending artwork. */
 #define secret_update_active secret_update_active_pc
+#define secret_draw_good_ending secret_draw_good_ending_legacy
 #include "main_v3_parts/main_secret_minigames_02.inc"
+#undef secret_draw_good_ending
 #undef secret_update_active
+#include "main_v3_parts/main_good_ending_pc.inc"
 #undef fnaf3_finishing_render_game
 #undef fnaf3_finishing_update_game
 #undef render_game
