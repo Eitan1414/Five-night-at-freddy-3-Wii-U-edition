@@ -4,6 +4,7 @@
 #include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
 #include "assets/office_assets.h"
+#include "assets/follow_me_pc_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -37,11 +38,19 @@
 #undef update_game
 #undef main
 
+/* Replace only the five post-night Follow Me sequences. Everything else still
+ * delegates to the existing finishing layer. */
+#include "main_v3_parts/main_follow_me_pc.inc"
+
 #define main fnaf3_content_main
 #define update_game fnaf3_content_update_game
 #define render_game fnaf3_content_render_game
+#define fnaf3_finishing_update_game fnaf3_follow_me_update_game
+#define fnaf3_finishing_render_game fnaf3_follow_me_render_game
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #include "main_v3_parts/main_secret_minigames_02.inc"
+#undef fnaf3_finishing_render_game
+#undef fnaf3_finishing_update_game
 #undef render_game
 #undef update_game
 #undef main
