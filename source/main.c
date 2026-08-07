@@ -16,26 +16,32 @@
 #define update_game fnaf3_legacy_update_game
 #define render_game fnaf3_legacy_render_game
 
-/* Keep the previous camera array compiled as a fallback, but route all later
- * camera rendering through the full-resolution PSX TIM conversions generated
- * by tools/prepare_generated_assets.sh. */
-#define kCameraTextures kCameraTextures_legacy
+/* main_00.inc owns the canonical kCameraTextures table and is split from
+ * main_01.inc inside legacy code. Redirect the ten symbols while that table is
+ * compiled instead of inserting a second declaration between split fragments. */
+#define gCamera01Texture gPsxCamera01Texture
+#define gCamera02Texture gPsxCamera02Texture
+#define gCamera03Texture gPsxCamera03Texture
+#define gCamera04Texture gPsxCamera04Texture
+#define gCamera05Texture gPsxCamera05Texture
+#define gCamera06Texture gPsxCamera06Texture
+#define gCamera07Texture gPsxCamera07Texture
+#define gCamera08Texture gPsxCamera08Texture
+#define gCamera09Texture gPsxCamera09Texture
+#define gCamera10Texture gPsxCamera10Texture
 #include "main_v3_parts/main_00.inc"
-#undef kCameraTextures
-static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
-    &gPsxCamera01Texture,
-    &gPsxCamera02Texture,
-    &gPsxCamera03Texture,
-    &gPsxCamera04Texture,
-    &gPsxCamera05Texture,
-    &gPsxCamera06Texture,
-    &gPsxCamera07Texture,
-    &gPsxCamera08Texture,
-    &gPsxCamera09Texture,
-    &gPsxCamera10Texture,
-};
-
+#undef gCamera10Texture
+#undef gCamera09Texture
+#undef gCamera08Texture
+#undef gCamera07Texture
+#undef gCamera06Texture
+#undef gCamera05Texture
+#undef gCamera04Texture
+#undef gCamera03Texture
+#undef gCamera02Texture
+#undef gCamera01Texture
 #include "main_v3_parts/main_01.inc"
+
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
