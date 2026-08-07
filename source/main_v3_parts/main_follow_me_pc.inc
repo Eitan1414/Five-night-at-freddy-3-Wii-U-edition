@@ -1,3 +1,4 @@
+#include "assets/follow_me_pc_env_assets.h"
 #include "main_follow_me_pc_part01.inc"
 #include "main_follow_me_pc_part02.inc"
 #include "main_follow_me_pc_part03.inc"
