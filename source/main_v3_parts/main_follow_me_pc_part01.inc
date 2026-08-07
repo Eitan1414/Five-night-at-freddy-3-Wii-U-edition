@@ -2,8 +2,7 @@
  *
  * This layer leaves the existing finishing/save flow intact and intercepts only
  * FINISHING_FOLLOW_ME. Original PC sprites are supplied through
- * follow_me_pc_assets.c; the room graph and events mirror the five post-night
- * sequences while remaining controller-friendly on Wii U.
+ * follow_me_pc_assets.c; the room graph mirrors the post-night FNaF 1 route.
  */
 
 #include <stdio.h>
@@ -12,7 +11,8 @@
 typedef enum FollowMePcRoom {
     FOLLOW_ROOM_SHOW_STAGE = 0,
     FOLLOW_ROOM_DINING,
-    FOLLOW_ROOM_HALL,
+    FOLLOW_ROOM_WEST_HALL,
+    FOLLOW_ROOM_EAST_HALL,
     FOLLOW_ROOM_PIRATE_COVE,
     FOLLOW_ROOM_SAFE_ENTRANCE,
     FOLLOW_ROOM_SAFE_ROOM
@@ -74,14 +74,18 @@ static const FollowMePcObstacle kFollowMePcObstacles[] = {
     { FOLLOW_ROOM_DINING, 602, 132, 180, 118 },
     { FOLLOW_ROOM_DINING, 205, 286, 180, 118 },
     { FOLLOW_ROOM_DINING, 470, 286, 180, 118 },
-    { FOLLOW_ROOM_HALL, 330, 268, 190, 135 },
-    { FOLLOW_ROOM_HALL, 650, 252, 110, 150 },
+    { FOLLOW_ROOM_WEST_HALL, 94, 82, 205, 132 },
+    { FOLLOW_ROOM_WEST_HALL, 334, 244, 190, 160 },
+    { FOLLOW_ROOM_EAST_HALL, 88, 118, 172, 104 },
+    { FOLLOW_ROOM_EAST_HALL, 620, 246, 136, 158 },
     { FOLLOW_ROOM_PIRATE_COVE, 82, 88, 130, 230 },
     { FOLLOW_ROOM_SAFE_ENTRANCE, 165, 270, 205, 130 },
     { FOLLOW_ROOM_SAFE_ENTRANCE, 390, 260, 205, 140 },
+    { FOLLOW_ROOM_SAFE_ROOM, 112, 278, 108, 126 },
     { FOLLOW_ROOM_SAFE_ROOM, 265, 86, 102, 126 },
     { FOLLOW_ROOM_SAFE_ROOM, 382, 86, 102, 126 },
-    { FOLLOW_ROOM_SAFE_ROOM, 500, 86, 102, 126 }
+    { FOLLOW_ROOM_SAFE_ROOM, 500, 86, 102, 126 },
+    { FOLLOW_ROOM_SAFE_ROOM, 714, 82, 108, 160 }
 };
 
 static int follow_me_pc_abs(int value)
@@ -192,12 +196,16 @@ static void follow_me_pc_enter_room(FollowMePcRoom room, int x, int y)
     sFollowMePc.phase_frames = 0u;
     switch (room) {
         case FOLLOW_ROOM_DINING:
-            sFollowMePc.shadow_x = 245;
-            sFollowMePc.shadow_y = 354;
+            sFollowMePc.shadow_x = 300;
+            sFollowMePc.shadow_y = 355;
             break;
-        case FOLLOW_ROOM_HALL:
-            sFollowMePc.shadow_x = 220;
+        case FOLLOW_ROOM_WEST_HALL:
+            sFollowMePc.shadow_x = 590;
             sFollowMePc.shadow_y = 320;
+            break;
+        case FOLLOW_ROOM_EAST_HALL:
+            sFollowMePc.shadow_x = 265;
+            sFollowMePc.shadow_y = 318;
             break;
         case FOLLOW_ROOM_PIRATE_COVE:
             sFollowMePc.shadow_x = 705;
@@ -225,7 +233,10 @@ static void follow_me_pc_update_shadow(void)
     } else if (sFollowMePc.room == FOLLOW_ROOM_DINING) {
         target_x = 776;
         target_y = 240;
-    } else if (sFollowMePc.room == FOLLOW_ROOM_HALL) {
+    } else if (sFollowMePc.room == FOLLOW_ROOM_WEST_HALL) {
+        target_x = 790;
+        target_y = 300;
+    } else if (sFollowMePc.room == FOLLOW_ROOM_EAST_HALL) {
         target_x = 665;
         target_y = 96;
     } else if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE) {
@@ -246,12 +257,6 @@ static void follow_me_pc_update_room_transitions(void)
 {
     if (sFollowMePc.phase != FOLLOW_PHASE_GUIDE) return;
 
-    if (sFollowMePc.room == FOLLOW_ROOM_PIRATE_COVE &&
-        sFollowMePc.player_x >= 816 &&
-        sFollowMePc.player_y >= 170 && sFollowMePc.player_y <= 420) {
-        follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 42, 300);
-        return;
-    }
     if (sFollowMePc.room == FOLLOW_ROOM_SHOW_STAGE &&
         sFollowMePc.player_y >= 425 &&
         sFollowMePc.player_x >= 320 && sFollowMePc.player_x <= 540) {
@@ -264,19 +269,47 @@ static void follow_me_pc_update_room_transitions(void)
         follow_me_pc_enter_room(FOLLOW_ROOM_SHOW_STAGE, 430, 420);
         return;
     }
+
     if (sFollowMePc.room == FOLLOW_ROOM_DINING &&
-        sFollowMePc.player_x >= 816 &&
-        sFollowMePc.player_y >= 165 && sFollowMePc.player_y <= 335) {
-        follow_me_pc_enter_room(FOLLOW_ROOM_HALL, 42, 300);
+        sFollowMePc.player_x <= 38 &&
+        sFollowMePc.player_y >= 165 && sFollowMePc.player_y <= 360) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_WEST_HALL, 812, 300);
         return;
     }
-    if (sFollowMePc.room == FOLLOW_ROOM_HALL &&
+    if (sFollowMePc.room == FOLLOW_ROOM_WEST_HALL &&
+        sFollowMePc.player_x >= 816 &&
+        sFollowMePc.player_y >= 165 && sFollowMePc.player_y <= 370) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 42, 300);
+        return;
+    }
+
+    if (sFollowMePc.room == FOLLOW_ROOM_PIRATE_COVE &&
+        sFollowMePc.player_x >= 816 &&
+        sFollowMePc.player_y >= 170 && sFollowMePc.player_y <= 420) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_WEST_HALL, 42, 300);
+        return;
+    }
+    if (sFollowMePc.room == FOLLOW_ROOM_WEST_HALL &&
         sFollowMePc.player_x <= 38 &&
         sFollowMePc.player_y >= 170 && sFollowMePc.player_y <= 370) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_PIRATE_COVE, 812, 300);
+        return;
+    }
+
+    if (sFollowMePc.room == FOLLOW_ROOM_DINING &&
+        sFollowMePc.player_x >= 816 &&
+        sFollowMePc.player_y >= 165 && sFollowMePc.player_y <= 360) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_EAST_HALL, 42, 300);
+        return;
+    }
+    if (sFollowMePc.room == FOLLOW_ROOM_EAST_HALL &&
+        sFollowMePc.player_x <= 38 &&
+        sFollowMePc.player_y >= 165 && sFollowMePc.player_y <= 370) {
         follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 812, 300);
         return;
     }
-    if (sFollowMePc.room == FOLLOW_ROOM_HALL &&
+
+    if (sFollowMePc.room == FOLLOW_ROOM_EAST_HALL &&
         sFollowMePc.player_y <= 72 &&
         sFollowMePc.player_x >= 560 && sFollowMePc.player_x <= 760) {
         follow_me_pc_enter_room(FOLLOW_ROOM_SAFE_ENTRANCE, 650, 420);
@@ -285,9 +318,10 @@ static void follow_me_pc_update_room_transitions(void)
     if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE &&
         sFollowMePc.player_y >= 426 &&
         sFollowMePc.player_x >= 560 && sFollowMePc.player_x <= 760) {
-        follow_me_pc_enter_room(FOLLOW_ROOM_HALL, 650, 78);
+        follow_me_pc_enter_room(FOLLOW_ROOM_EAST_HALL, 650, 78);
         return;
     }
+
     if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE &&
         sFollowMePc.player_y <= 78 &&
         sFollowMePc.player_x >= 610 && sFollowMePc.player_x <= 780) {
