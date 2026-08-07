@@ -38,20 +38,20 @@ static void follow_me_pc_draw(const Game *game)
     graphics_draw_text(GRAPHICS_TARGET_BOTH, 18, 25, 2, chapter,
                        GRAPHICS_RGB(177, 72, 185));
 
+    if (sFollowMePc.frames < 180u && sFollowMePc.phase == FOLLOW_PHASE_GUIDE)
+        follow_me_pc_draw_env(FOLLOW_ME_ENV_WASD, 20, 372, 1);
+
     if (sFollowMePc.chapter < 5 && sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
         sFollowMePc.room != FOLLOW_ROOM_SHOW_STAGE) {
         const int shadow_frame = (int) ((sFollowMePc.frames / 9u) & 1u);
         follow_me_pc_draw_sprite((FollowMePcSprite)
             (FOLLOW_ME_PC_SHADOW_0 + shadow_frame),
             sFollowMePc.shadow_x, sFollowMePc.shadow_y, 3);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 33, 444, 2,
-                           "FOLLOW ME", GRAPHICS_RGB(179, 72, 188));
+        follow_me_pc_draw_env(FOLLOW_ME_ENV_FOLLOW_TEXT, 30, 438, 1);
     }
 
-    if (sFollowMePc.phase == FOLLOW_PHASE_ERR) {
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 444, 3,
-                           "ERR", COLOUR_RED);
-    }
+    if (sFollowMePc.phase == FOLLOW_PHASE_ERR)
+        follow_me_pc_draw_env(FOLLOW_ME_ENV_ERR, 38, 438, 1);
 
     if (sFollowMePc.chapter == 5 && sFollowMePc.room == FOLLOW_ROOM_SAFE_ROOM)
         follow_me_pc_draw_safe_room_ghosts();
