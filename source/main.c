@@ -39,14 +39,15 @@ static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 #include "main_v3_parts/main_03.inc"
-#define draw_office_gamepad draw_office_gamepad_legacy
-#include "main_v3_parts/main_04.inc"
-#undef draw_office_gamepad
-#include "main_v3_parts/main_office_touch_ui.inc"
 
+/* main_04.inc ends in the middle of a legacy renderer function and main_05.inc
+ * continues it. Keep the two fragments contiguous; office-touch UI is an
+ * overlay and is included only after the split function has closed. */
+#include "main_v3_parts/main_04.inc"
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
+#include "main_v3_parts/main_office_touch_ui.inc"
 
 #include "main_v3_parts/main_06.inc"
 
