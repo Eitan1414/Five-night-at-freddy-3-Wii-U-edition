@@ -15,12 +15,12 @@ static void follow_me_pc_update_hunt(void)
 
 static void follow_me_pc_update_ghost_chase(void)
 {
-    /* Final Follow Me: the fifth child enters the safe room and completes the
-     * circle around Purple Guy. Once the player gets close enough, Purple Guy
-     * panics and runs a fixed escape pattern instead of requiring four
-     * artificial player collisions. */
-    static const int targets[5][2] = {
-        {640, 325}, {430, 350}, {270, 245}, {500, 135}, {655, 190}
+    /* Final Follow Me: the four released spirits block the exit while the
+     * fifth child chases Purple Guy around the safe room. Purple Guy follows
+     * a short panic path before committing to the Spring Bonnie suit. */
+    static const int targets[6][2] = {
+        {365, 245}, {535, 220}, {330, 320},
+        {585, 330}, {625, 255}, {690, 220}
     };
 
     ++sFollowMePc.phase_frames;
@@ -29,7 +29,7 @@ static void follow_me_pc_update_ghost_chase(void)
         const int dx = sFollowMePc.player_x - sFollowMePc.purple_x;
         const int dy = sFollowMePc.player_y - sFollowMePc.purple_y;
         const int distance = follow_me_pc_abs(dx) + follow_me_pc_abs(dy);
-        if (distance < 145 || sFollowMePc.phase_frames >= 240u) {
+        if (distance < 135 || sFollowMePc.phase_frames >= 210u) {
             sFollowMePc.chase_contacts = 1;
             sFollowMePc.purple_target = 0;
             sFollowMePc.phase_frames = 0u;
@@ -39,9 +39,10 @@ static void follow_me_pc_update_ghost_chase(void)
         }
     }
 
-    if (sFollowMePc.purple_target >= 5) {
+    if (sFollowMePc.purple_target >= 6) {
         sFollowMePc.phase = FOLLOW_PHASE_SUIT;
         sFollowMePc.phase_frames = 0u;
+        sFollowMePc.contact_cooldown = 0u;
         return;
     }
 
@@ -62,27 +63,29 @@ static void follow_me_pc_update_ghost_chase(void)
 static void follow_me_pc_update_suit(void)
 {
     ++sFollowMePc.phase_frames;
-    const int suit_x = 718;
-    const int suit_y = 170;
+    const int suit_x = 742;
+    const int suit_y = 235;
 
-    if (sFollowMePc.purple_x < suit_x) sFollowMePc.purple_x += 4;
-    else if (sFollowMePc.purple_x > suit_x) sFollowMePc.purple_x -= 4;
-    if (sFollowMePc.purple_y > suit_y) sFollowMePc.purple_y -= 3;
-    else if (sFollowMePc.purple_y < suit_y) sFollowMePc.purple_y += 3;
+    if (!follow_me_pc_near(sFollowMePc.purple_x, sFollowMePc.purple_y,
+                           suit_x, suit_y, 12)) {
+        if (sFollowMePc.purple_x < suit_x) sFollowMePc.purple_x += 4;
+        else if (sFollowMePc.purple_x > suit_x) sFollowMePc.purple_x -= 4;
+        if (sFollowMePc.purple_y > suit_y) sFollowMePc.purple_y -= 3;
+        else if (sFollowMePc.purple_y < suit_y) sFollowMePc.purple_y += 3;
+        sFollowMePc.contact_cooldown = 0u;
+        return;
+    }
 
-    /* Hold briefly at the suit before the mechanisms fail. This makes the
-     * final beat read like the PC sequence rather than an instant collision. */
-    if (follow_me_pc_near(sFollowMePc.purple_x, sFollowMePc.purple_y,
-                          suit_x, suit_y, 12)) {
-        sFollowMePc.purple_x = suit_x;
-        sFollowMePc.purple_y = suit_y;
-        if (sFollowMePc.phase_frames >= 145u) {
-            sFollowMePc.phase = FOLLOW_PHASE_SPRINGLOCK;
-            sFollowMePc.phase_frames = 1u;
-        }
-    } else if (sFollowMePc.phase_frames >= 190u) {
+    /* Once inside the suit, hold on the intact Spring Bonnie frame for a
+     * readable beat before the springlocks fail. contact_cooldown is free at
+     * this point and acts as the suit-hold timer. */
+    sFollowMePc.purple_x = suit_x;
+    sFollowMePc.purple_y = suit_y;
+    ++sFollowMePc.contact_cooldown;
+    if (sFollowMePc.contact_cooldown >= 96u) {
         sFollowMePc.phase = FOLLOW_PHASE_SPRINGLOCK;
         sFollowMePc.phase_frames = 1u;
+        sFollowMePc.contact_cooldown = 0u;
     }
 }
 
@@ -113,11 +116,11 @@ static void follow_me_pc_update(Game *game, const InputState *input)
         }
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK) {
         ++sFollowMePc.phase_frames;
-        if (!sFollowMePc.crush_played && sFollowMePc.phase_frames >= 92u) {
+        if (!sFollowMePc.crush_played && sFollowMePc.phase_frames >= 112u) {
             sFollowMePc.crush_played = true;
             audio_play(AUDIO_CUE_MINIGAME_CRUSH, 0.92f, false);
         }
-        if (sFollowMePc.phase_frames >= 310u) {
+        if (sFollowMePc.phase_frames >= 330u) {
             memset(&sFollowMePc, 0, sizeof(sFollowMePc));
             finishing_complete_minigame(game);
             return;
