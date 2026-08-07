@@ -6,6 +6,7 @@
 #include "assets/office_assets.h"
 #include "assets/minigame_pc_assets.h"
 #include "assets/minigame_pc_extended_assets.h"
+#include "assets/follow_me_pc_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -39,14 +40,19 @@
 #undef update_game
 #undef main
 
+/* Replace only the five post-night Follow Me sequences. Everything else still
+ * delegates to the existing finishing/save layer. */
+#include "main_v3_parts/main_follow_me_pc.inc"
+
 /* Keep the original secret-minigame renderer compiled as a safe fallback,
  * but route gameplay and active rendering through the authentic PC pass.
- * Renaming the complete legacy renderer avoids macro-renaming its individual
- * draw-function definitions, which previously produced duplicate symbols.
- */
+ * The finishing calls inside this layer are redirected through Follow Me so
+ * the six secret minigames and the five post-night chapters can coexist. */
 #define main fnaf3_content_main_legacy
 #define update_game fnaf3_content_update_game
 #define render_game fnaf3_content_render_game_legacy
+#define fnaf3_finishing_update_game fnaf3_follow_me_update_game
+#define fnaf3_finishing_render_game fnaf3_follow_me_render_game
 #define secret_update_active secret_update_active_legacy
 #include "main_v3_parts/main_secret_minigames_01.inc"
 #undef secret_update_active
@@ -56,6 +62,8 @@
 #define secret_update_active secret_update_active_pc
 #include "main_v3_parts/main_secret_minigames_02.inc"
 #undef secret_update_active
+#undef fnaf3_finishing_render_game
+#undef fnaf3_finishing_update_game
 #undef render_game
 #undef update_game
 #undef main
