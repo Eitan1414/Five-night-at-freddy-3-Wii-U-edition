@@ -13,6 +13,7 @@ typedef enum FollowMePcRoom {
     FOLLOW_ROOM_SHOW_STAGE = 0,
     FOLLOW_ROOM_DINING,
     FOLLOW_ROOM_HALL,
+    FOLLOW_ROOM_PIRATE_COVE,
     FOLLOW_ROOM_SAFE_ENTRANCE,
     FOLLOW_ROOM_SAFE_ROOM
 } FollowMePcRoom;
@@ -56,7 +57,32 @@ typedef struct FollowMePcState {
     bool crush_played;
 } FollowMePcState;
 
+typedef struct FollowMePcObstacle {
+    FollowMePcRoom room;
+    int x;
+    int y;
+    int width;
+    int height;
+} FollowMePcObstacle;
+
 static FollowMePcState sFollowMePc;
+
+static const FollowMePcObstacle kFollowMePcObstacles[] = {
+    { FOLLOW_ROOM_SHOW_STAGE, 145, 105, 565, 185 },
+    { FOLLOW_ROOM_DINING, 72, 132, 180, 118 },
+    { FOLLOW_ROOM_DINING, 336, 132, 180, 118 },
+    { FOLLOW_ROOM_DINING, 602, 132, 180, 118 },
+    { FOLLOW_ROOM_DINING, 205, 286, 180, 118 },
+    { FOLLOW_ROOM_DINING, 470, 286, 180, 118 },
+    { FOLLOW_ROOM_HALL, 330, 268, 190, 135 },
+    { FOLLOW_ROOM_HALL, 650, 252, 110, 150 },
+    { FOLLOW_ROOM_PIRATE_COVE, 82, 88, 130, 230 },
+    { FOLLOW_ROOM_SAFE_ENTRANCE, 165, 270, 205, 130 },
+    { FOLLOW_ROOM_SAFE_ENTRANCE, 390, 260, 205, 140 },
+    { FOLLOW_ROOM_SAFE_ROOM, 265, 86, 102, 126 },
+    { FOLLOW_ROOM_SAFE_ROOM, 382, 86, 102, 126 },
+    { FOLLOW_ROOM_SAFE_ROOM, 500, 86, 102, 126 }
+};
 
 static int follow_me_pc_abs(int value)
 {
@@ -69,25 +95,53 @@ static bool follow_me_pc_near(int ax, int ay, int bx, int by, int radius)
            follow_me_pc_abs(ay - by) <= radius;
 }
 
+static bool follow_me_pc_position_blocked(int x, int y)
+{
+    const int half_width = 13;
+    const int foot_height = 17;
+    const int left = x - half_width;
+    const int right = x + half_width;
+    const int top = y - foot_height;
+    const int bottom = y + 2;
+
+    for (size_t index = 0u;
+         index < sizeof(kFollowMePcObstacles) / sizeof(kFollowMePcObstacles[0]);
+         ++index) {
+        const FollowMePcObstacle *obstacle = &kFollowMePcObstacles[index];
+        if (obstacle->room != sFollowMePc.room) continue;
+        if (right <= obstacle->x || left >= obstacle->x + obstacle->width ||
+            bottom <= obstacle->y || top >= obstacle->y + obstacle->height)
+            continue;
+        return true;
+    }
+    return false;
+}
+
 static void follow_me_pc_reset(int chapter)
 {
     memset(&sFollowMePc, 0, sizeof(sFollowMePc));
     sFollowMePc.initialized = true;
     sFollowMePc.chapter = chapter;
     sFollowMePc.direction = FOLLOW_DIR_DOWN;
-    sFollowMePc.room = chapter == 5
-        ? FOLLOW_ROOM_SAFE_ENTRANCE : FOLLOW_ROOM_SHOW_STAGE;
     sFollowMePc.phase = FOLLOW_PHASE_GUIDE;
-    if (chapter == 5) {
-        sFollowMePc.player_x = 430;
-        sFollowMePc.player_y = 390;
-        sFollowMePc.shadow_x = -100;
-        sFollowMePc.shadow_y = -100;
+
+    if (chapter == 4) {
+        sFollowMePc.room = FOLLOW_ROOM_PIRATE_COVE;
+        sFollowMePc.player_x = 240;
+        sFollowMePc.player_y = 352;
+        sFollowMePc.shadow_x = 705;
+        sFollowMePc.shadow_y = 345;
     } else {
+        sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE;
         sFollowMePc.player_x = 430;
-        sFollowMePc.player_y = 305;
-        sFollowMePc.shadow_x = 430;
-        sFollowMePc.shadow_y = 392;
+        sFollowMePc.player_y = 325;
+        if (chapter == 5) {
+            sFollowMePc.shadow_x = -100;
+            sFollowMePc.shadow_y = -100;
+        } else {
+            sFollowMePc.shadow_x = 430;
+            sFollowMePc.shadow_y = 395;
+        }
     }
 }
 
@@ -117,12 +171,17 @@ static void follow_me_pc_move_player(const InputState *input)
     else if (dy < 0) sFollowMePc.direction = FOLLOW_DIR_UP;
     else if (dy > 0) sFollowMePc.direction = FOLLOW_DIR_DOWN;
 
-    sFollowMePc.player_x += dx;
-    sFollowMePc.player_y += dy;
-    if (sFollowMePc.player_x < 35) sFollowMePc.player_x = 35;
-    if (sFollowMePc.player_x > 819) sFollowMePc.player_x = 819;
-    if (sFollowMePc.player_y < 68) sFollowMePc.player_y = 68;
-    if (sFollowMePc.player_y > 428) sFollowMePc.player_y = 428;
+    int next_x = sFollowMePc.player_x + dx;
+    if (next_x < 35) next_x = 35;
+    if (next_x > 819) next_x = 819;
+    if (!follow_me_pc_position_blocked(next_x, sFollowMePc.player_y))
+        sFollowMePc.player_x = next_x;
+
+    int next_y = sFollowMePc.player_y + dy;
+    if (next_y < 68) next_y = 68;
+    if (next_y > 428) next_y = 428;
+    if (!follow_me_pc_position_blocked(sFollowMePc.player_x, next_y))
+        sFollowMePc.player_y = next_y;
 }
 
 static void follow_me_pc_enter_room(FollowMePcRoom room, int x, int y)
@@ -140,6 +199,10 @@ static void follow_me_pc_enter_room(FollowMePcRoom room, int x, int y)
             sFollowMePc.shadow_x = 220;
             sFollowMePc.shadow_y = 320;
             break;
+        case FOLLOW_ROOM_PIRATE_COVE:
+            sFollowMePc.shadow_x = 705;
+            sFollowMePc.shadow_y = 345;
+            break;
         case FOLLOW_ROOM_SAFE_ENTRANCE:
             sFollowMePc.shadow_x = 580;
             sFollowMePc.shadow_y = 340;
@@ -156,7 +219,10 @@ static void follow_me_pc_update_shadow(void)
 
     int target_x = sFollowMePc.shadow_x;
     int target_y = sFollowMePc.shadow_y;
-    if (sFollowMePc.room == FOLLOW_ROOM_DINING) {
+    if (sFollowMePc.room == FOLLOW_ROOM_PIRATE_COVE) {
+        target_x = 790;
+        target_y = 345;
+    } else if (sFollowMePc.room == FOLLOW_ROOM_DINING) {
         target_x = 776;
         target_y = 240;
     } else if (sFollowMePc.room == FOLLOW_ROOM_HALL) {
@@ -180,24 +246,22 @@ static void follow_me_pc_update_room_transitions(void)
 {
     if (sFollowMePc.phase != FOLLOW_PHASE_GUIDE) return;
 
-    if (sFollowMePc.chapter == 5) {
-        if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE &&
-            sFollowMePc.player_y <= 74 &&
-            sFollowMePc.player_x >= 610 && sFollowMePc.player_x <= 780) {
-            follow_me_pc_enter_room(FOLLOW_ROOM_SAFE_ROOM, 430, 394);
-            sFollowMePc.phase = FOLLOW_PHASE_GHOST_CHASE;
-            sFollowMePc.purple_x = 565;
-            sFollowMePc.purple_y = 210;
-            sFollowMePc.purple_target = 0;
-            audio_play(AUDIO_CUE_MINIGAME_GLITCH, 0.55f, false);
-        }
+    if (sFollowMePc.room == FOLLOW_ROOM_PIRATE_COVE &&
+        sFollowMePc.player_x >= 816 &&
+        sFollowMePc.player_y >= 170 && sFollowMePc.player_y <= 420) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 42, 300);
         return;
     }
-
     if (sFollowMePc.room == FOLLOW_ROOM_SHOW_STAGE &&
         sFollowMePc.player_y >= 425 &&
         sFollowMePc.player_x >= 320 && sFollowMePc.player_x <= 540) {
         follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 430, 78);
+        return;
+    }
+    if (sFollowMePc.room == FOLLOW_ROOM_DINING &&
+        sFollowMePc.player_y <= 72 &&
+        sFollowMePc.player_x >= 320 && sFollowMePc.player_x <= 540) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_SHOW_STAGE, 430, 420);
         return;
     }
     if (sFollowMePc.room == FOLLOW_ROOM_DINING &&
@@ -207,17 +271,38 @@ static void follow_me_pc_update_room_transitions(void)
         return;
     }
     if (sFollowMePc.room == FOLLOW_ROOM_HALL &&
+        sFollowMePc.player_x <= 38 &&
+        sFollowMePc.player_y >= 170 && sFollowMePc.player_y <= 370) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_DINING, 812, 300);
+        return;
+    }
+    if (sFollowMePc.room == FOLLOW_ROOM_HALL &&
         sFollowMePc.player_y <= 72 &&
         sFollowMePc.player_x >= 560 && sFollowMePc.player_x <= 760) {
         follow_me_pc_enter_room(FOLLOW_ROOM_SAFE_ENTRANCE, 650, 420);
         return;
     }
     if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE &&
+        sFollowMePc.player_y >= 426 &&
+        sFollowMePc.player_x >= 560 && sFollowMePc.player_x <= 760) {
+        follow_me_pc_enter_room(FOLLOW_ROOM_HALL, 650, 78);
+        return;
+    }
+    if (sFollowMePc.room == FOLLOW_ROOM_SAFE_ENTRANCE &&
         sFollowMePc.player_y <= 78 &&
         sFollowMePc.player_x >= 610 && sFollowMePc.player_x <= 780) {
-        sFollowMePc.phase = FOLLOW_PHASE_ERR;
-        sFollowMePc.phase_frames = 1u;
-        sFollowMePc.player_y = 116;
-        audio_play(AUDIO_CUE_MINIGAME_GLITCH, 0.72f, false);
+        if (sFollowMePc.chapter == 5) {
+            follow_me_pc_enter_room(FOLLOW_ROOM_SAFE_ROOM, 430, 394);
+            sFollowMePc.phase = FOLLOW_PHASE_GHOST_CHASE;
+            sFollowMePc.purple_x = 565;
+            sFollowMePc.purple_y = 210;
+            sFollowMePc.purple_target = 0;
+            audio_play(AUDIO_CUE_MINIGAME_GLITCH, 0.55f, false);
+        } else {
+            sFollowMePc.phase = FOLLOW_PHASE_ERR;
+            sFollowMePc.phase_frames = 1u;
+            sFollowMePc.player_y = 116;
+            audio_play(AUDIO_CUE_MINIGAME_GLITCH, 0.72f, false);
+        }
     }
 }
