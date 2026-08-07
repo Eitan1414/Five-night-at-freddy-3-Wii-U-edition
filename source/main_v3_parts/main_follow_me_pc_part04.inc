@@ -71,11 +71,6 @@ static void follow_me_pc_draw(const Game *game)
     follow_me_pc_draw_remains();
     follow_me_pc_draw_rain(sFollowMePc.frames);
 
-    char chapter[24];
-    snprintf(chapter, sizeof(chapter), "FOLLOW ME %d/5", sFollowMePc.chapter);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 18, 25, 2, chapter,
-                       GRAPHICS_RGB(177, 72, 185));
-
     if (sFollowMePc.frames < 180u && sFollowMePc.phase == FOLLOW_PHASE_GUIDE)
         follow_me_pc_draw_env(FOLLOW_ME_ENV_WASD, 20, 372, 1);
 
