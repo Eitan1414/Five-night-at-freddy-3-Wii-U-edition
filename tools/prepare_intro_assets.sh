@@ -4,7 +4,7 @@ set -eu
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 OUT="${1:-$ROOT/.wup-intro}"
 WORK="${TMPDIR:-/tmp}/fnaf3-intro.$$"
-EXPECTED_VIDEO_SHA256="b379e1fbb288d83b5dfc32ff5976046b58dd68d0f3ae9553189bc8628761e25e"
+EXPECTED_VIDEO_SHA256="700da6cfaf73c76b140c13a372610f4479694978cd1832a547d50a6fcd72e075"
 EXPECTED_AUDIO_OPUS_SHA256="dac8f09c1e9cc8fc155529eb846ec70a12502d19290577df7592f025b4bc5c10"
 
 cleanup() { rm -rf "$WORK"; }
@@ -21,7 +21,7 @@ for tool in base64 ffmpeg sha256sum; do
 done
 
 cat "$ROOT"/assets/intro/intro.f3v.b64.* | base64 -d > "$OUT/intro.f3v"
-cat "$ROOT"/assets/intro/intro_audio.opus.b64 | base64 -d > "$WORK/intro_audio.opus"
+cat "$ROOT"/assets/intro/intro_audio.opus.b64.* | base64 -d > "$WORK/intro_audio.opus"
 
 video_sha="$(sha256sum "$OUT/intro.f3v" | awk '{print $1}')"
 audio_sha="$(sha256sum "$WORK/intro_audio.opus" | awk '{print $1}')"
