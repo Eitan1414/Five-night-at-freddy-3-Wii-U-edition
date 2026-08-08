@@ -53,28 +53,35 @@ static uint32_t map_buttons(uint32_t raw)
 
 static void update_touch(InputState *state, const VPADStatus *status)
 {
-    VPADTouchData calibrated;
-    memset(&calibrated, 0, sizeof(calibrated));
-    VPADGetTPCalibratedPointEx(VPAD_CHAN_0,
-                               VPAD_TP_854X480,
-                               &calibrated,
-                               &status->tpNormal);
+    bool touched = false;
+    int touch_x = sLastTouchX;
+    int touch_y = sLastTouchY;
 
-    const bool valid = calibrated.validity == VPAD_VALID;
-    const bool touched = valid && calibrated.touched != 0u;
+    /* Calibrating the GamePad coordinates is unnecessary on idle frames. */
+    if (status->tpNormal.touched != 0u) {
+        VPADTouchData calibrated;
+        memset(&calibrated, 0, sizeof(calibrated));
+        VPADGetTPCalibratedPointEx(VPAD_CHAN_0,
+                                   VPAD_TP_854X480,
+                                   &calibrated,
+                                   &status->tpNormal);
+
+        if (calibrated.validity == VPAD_VALID && calibrated.touched != 0u) {
+            touched = true;
+            touch_x = (int) calibrated.x;
+            touch_y = (int) calibrated.y;
+        }
+    }
 
     state->touch_held = touched;
     state->touch_pressed = touched && !sLastTouchHeld;
     state->touch_released = !touched && sLastTouchHeld;
+    state->touch_x = touch_x;
+    state->touch_y = touch_y;
 
     if (touched) {
-        state->touch_x = (int) calibrated.x;
-        state->touch_y = (int) calibrated.y;
-        sLastTouchX = state->touch_x;
-        sLastTouchY = state->touch_y;
-    } else {
-        state->touch_x = sLastTouchX;
-        state->touch_y = sLastTouchY;
+        sLastTouchX = touch_x;
+        sLastTouchY = touch_y;
     }
 
     sLastTouchHeld = touched;
