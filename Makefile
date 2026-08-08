@@ -29,6 +29,9 @@ ARTWORK_DIR := .wiiu-artwork
 ICON        := $(ARTWORK_DIR)/icon.png
 TV_SPLASH   := $(ARTWORK_DIR)/boot-tv.png
 DRC_SPLASH  := $(ARTWORK_DIR)/boot-drc.png
+PC_BB_ARCHIVE := source/generated/phantom_bb_pc_assets.c.xz
+PC_BB_SOURCE  := source/phantom_bb_pc_assets.c
+PC_BB_SHA256  := 23113f8d19056e44c2844cb9bada1f8a6b74de4307c268acaa6f104b6647cb51
 
 #-------------------------------------------------------------------------------
 # Compiler and linker options
@@ -105,31 +108,47 @@ else ifneq (,$(wildcard $(TOPDIR)/splash.png))
 export APP_DRC_SPLASH := $(TOPDIR)/splash.png
 endif
 
-.PHONY: all clean artwork $(BUILD)
+.PHONY: all clean artwork pc-bb-assets $(BUILD)
 
 all: $(BUILD)
 
 artwork:
 	@bash tools/prepare_wiiu_artwork.sh
 
-$(BUILD): artwork
+pc-bb-assets:
+	@test -f "$(PC_BB_ARCHIVE)"
+	@printf '%s  %s\n' "$(PC_BB_SHA256)" "$(PC_BB_ARCHIVE)" | sha256sum -c -
+	@xz -dc "$(PC_BB_ARCHIVE)" > "$(PC_BB_SOURCE)"
+	@grep -q "const TextureRle gPhantomBBCameraTexture" "$(PC_BB_SOURCE)"
+	@grep -q "const JumpscareSequence gPhantomBBRealJumpscare" "$(PC_BB_SOURCE)"
+	@echo "Restored authentic PC Phantom BB camera sprite and jumpscare"
+
+$(BUILD): artwork pc-bb-assets
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(ARTWORK_DIR) .wuhb-content $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
+	@rm -f "$(PC_BB_SOURCE)"
 
 else
 
 DEPENDS := $(OFILES:.o=.d)
 
-.PHONY: all
+.PHONY: all weaken-pc-bb-fallbacks
 all: $(OUTPUT).wuhb
 
 $(OUTPUT).wuhb: $(OUTPUT).rpx
 $(OUTPUT).rpx: $(OUTPUT).elf
-$(OUTPUT).elf: $(OFILES)
+$(OUTPUT).elf: $(OFILES) weaken-pc-bb-fallbacks
+
+# The generated PSX assets remain as fallbacks in source, but the supplied
+# original PC BB sheet provides strong replacements for these two symbols.
+# Weaken only the two fallback definitions before the final link.
+weaken-pc-bb-fallbacks: phantom_assets.o jumpscare_assets.o
+	@powerpc-eabi-objcopy --weaken-symbol=gPhantomBBCameraTexture phantom_assets.o
+	@powerpc-eabi-objcopy --weaken-symbol=gPhantomBBRealJumpscare jumpscare_assets.o
 
 $(OFILES_SRC): $(HFILES_BIN)
 
