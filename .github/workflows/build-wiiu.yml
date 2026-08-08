@@ -56,12 +56,22 @@ jobs:
           git checkout f19e22762f48d4269e07730827d8eaab5995557b -- \
             tim/screamer tim/office tim/camera vag/screamer.vag xa/inter8.zip
 
+      - name: Fetch pinned original PC audio source
+        run: |
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/softblueish/FNAF3.git \
+            /tmp/fnaf3-pc-original
+          cd /tmp/fnaf3-pc-original
+          git checkout bdda89c00a6f5716956822ce01646013ca5708e1 -- "FNAF3 sound"
+
       - name: Prepare generated assets
         env:
           FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
         run: sh tools/prepare_generated_assets.sh
 
       - name: Prepare original WUP audio pack
+        env:
+          FNAF3_PC_AUDIO_ROOT: /tmp/fnaf3-pc-original/FNAF3 sound
         run: sh tools/prepare_wup_audio_content.sh
 
       - name: Build WUHB
