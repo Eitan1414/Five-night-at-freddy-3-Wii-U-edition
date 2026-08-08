@@ -31,7 +31,7 @@ TV_SPLASH   := $(ARTWORK_DIR)/boot-tv.png
 DRC_SPLASH  := $(ARTWORK_DIR)/boot-drc.png
 PC_BB_ARCHIVE := source/generated/phantom_bb_pc_assets.c.xz
 PC_BB_SOURCE  := source/phantom_bb_pc_assets.c
-PC_BB_SHA256  := 23113f8d19056e44c2844cb9bada1f8a6b74de4307c268acaa6f104b6647cb51
+PC_BB_SHA256  := 67d94ae9783764d50ddf8b9a6c2c28b0df526a3e4b6158b1ac87c0c33ed4e9cf
 
 #-------------------------------------------------------------------------------
 # Compiler and linker options
