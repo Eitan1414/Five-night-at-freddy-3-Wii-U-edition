@@ -11,11 +11,11 @@
 #include <whb/proc.h>
 #include <zlib.h>
 
-#define INTRO_MAGIC "F3I1"
+#define INTRO_MAGIC "F3I2"
 #define INTRO_HEADER_SIZE 16u
 #define INTRO_LOGICAL_WIDTH 854
 #define INTRO_LOGICAL_HEIGHT 480
-#define INTRO_MAX_FRAME_BYTES (640u * 360u * 2u)
+#define INTRO_MAX_FRAME_BYTES (640u * 360u)
 #define INTRO_MAX_COMPRESSED_FRAME_BYTES (512u * 1024u)
 
 typedef struct IntroRenderer {
@@ -107,8 +107,24 @@ static bool create_intro_renderer(IntroRenderer *intro,
     return true;
 }
 
+static void expand_rgb332_to_rgb565(const uint8_t *source,
+                                    uint16_t *destination,
+                                    uint32_t pixel_count)
+{
+    for (uint32_t i = 0u; i < pixel_count; ++i) {
+        const uint8_t packed = source[i];
+        const uint16_t r3 = (uint16_t) ((packed >> 5) & 0x07u);
+        const uint16_t g3 = (uint16_t) ((packed >> 2) & 0x07u);
+        const uint16_t b2 = (uint16_t) (packed & 0x03u);
+        const uint16_t r5 = (uint16_t) ((r3 * 31u + 3u) / 7u);
+        const uint16_t g6 = (uint16_t) ((g3 * 63u + 3u) / 7u);
+        const uint16_t b5 = (uint16_t) ((b2 * 31u + 1u) / 3u);
+        destination[i] = (uint16_t) ((r5 << 11) | (g6 << 5) | b5);
+    }
+}
+
 static void present_frame(IntroRenderer *intro,
-                          const uint8_t *frame,
+                          const uint16_t *frame,
                           uint16_t width)
 {
     SDL_UpdateTexture(intro->tv_texture, NULL, frame, (int) width * 2);
@@ -183,7 +199,7 @@ bool intro_play(void)
     const uint32_t frame_bytes = read_be32(packed + 12u);
 
     if (width == 0u || height == 0u || fps == 0u || frame_count == 0u ||
-        frame_bytes != (uint32_t) width * (uint32_t) height * 2u ||
+        frame_bytes != (uint32_t) width * (uint32_t) height ||
         frame_bytes > INTRO_MAX_FRAME_BYTES) {
         WHBFreeWholeFile(packed_file);
         return false;
@@ -191,9 +207,11 @@ bool intro_play(void)
 
     uint8_t *frame = (uint8_t *) malloc(frame_bytes);
     uint8_t *decoded = (uint8_t *) malloc(frame_bytes);
-    if (frame == NULL || decoded == NULL) {
+    uint16_t *rgb565 = (uint16_t *) malloc((size_t) frame_bytes * 2u);
+    if (frame == NULL || decoded == NULL || rgb565 == NULL) {
         free(frame);
         free(decoded);
+        free(rgb565);
         WHBFreeWholeFile(packed_file);
         return false;
     }
@@ -202,6 +220,7 @@ bool intro_play(void)
     if (SDL_InitSubSystem(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0) {
         free(frame);
         free(decoded);
+        free(rgb565);
         WHBFreeWholeFile(packed_file);
         return false;
     }
@@ -212,6 +231,7 @@ bool intro_play(void)
         SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
         free(frame);
         free(decoded);
+        free(rgb565);
         WHBFreeWholeFile(packed_file);
         return false;
     }
@@ -255,7 +275,8 @@ bool intro_play(void)
             break;
         }
 
-        present_frame(&renderer, frame, width);
+        expand_rgb332_to_rgb565(frame, rgb565, frame_bytes);
+        present_frame(&renderer, rgb565, width);
         played = true;
 
         const uint32_t deadline = start_ticks +
@@ -274,6 +295,7 @@ bool intro_play(void)
     SDL_QuitSubSystem(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER);
     free(frame);
     free(decoded);
+    free(rgb565);
     WHBFreeWholeFile(packed_file);
     return played;
 }
