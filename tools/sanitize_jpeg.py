@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Strip optional JPEG APP/COM metadata while preserving encoded image data.
-
-Some of the original Wii U artwork JPEGs contain APP metadata that strict
-homebrew image loaders reject even though the actual JPEG scan is intact.
-This creates a metadata-free JPEG without re-encoding the image.
-"""
+"""Repair metadata/padding damage in JPEG artwork without re-encoding it."""
 from __future__ import annotations
 
 import argparse
@@ -21,6 +16,24 @@ RST_FIRST = 0xD0
 RST_LAST = 0xD7
 
 
+def next_marker(data: bytes, pos: int) -> int:
+    """Find the next plausible JPEG marker before the entropy-coded scan."""
+    while True:
+        pos = data.find(b"\xff", pos)
+        if pos < 0:
+            return -1
+        j = pos + 1
+        while j < len(data) and data[j] == 0xFF:
+            j += 1
+        if j >= len(data):
+            return -1
+        marker = data[j]
+        # 00 is byte stuffing, and FF is fill. Neither begins a segment here.
+        if marker not in (0x00, 0xFF):
+            return pos
+        pos = j + 1
+
+
 def sanitize(data: bytes) -> bytes:
     if len(data) < 4 or not data.startswith(SOI):
         raise ValueError("not a JPEG stream")
@@ -28,12 +41,17 @@ def sanitize(data: bytes) -> bytes:
     out = bytearray(SOI)
     pos = 2
     removed = 0
+    resynced = 0
 
     while pos < len(data):
-        marker_start = pos
         if data[pos] != 0xFF:
-            raise ValueError(f"expected JPEG marker at offset {pos}")
+            recovered = next_marker(data, pos + 1)
+            if recovered < 0:
+                raise ValueError(f"could not resync after offset {pos}")
+            resynced += recovered - pos
+            pos = recovered
 
+        marker_start = pos
         while pos < len(data) and data[pos] == 0xFF:
             pos += 1
         if pos >= len(data):
@@ -42,38 +60,45 @@ def sanitize(data: bytes) -> bytes:
         marker = data[pos]
         pos += 1
 
-        if marker == 0x00:
-            raise ValueError("unexpected stuffed byte before SOS")
-
         if marker == SOS:
             if pos + 2 > len(data):
                 raise ValueError("truncated SOS")
             seg_len = int.from_bytes(data[pos:pos + 2], "big")
             if seg_len < 2 or pos + seg_len > len(data):
                 raise ValueError("invalid SOS length")
-            # Preserve SOS header and the entire entropy-coded scan verbatim.
+            # Once SOS begins, preserve all entropy-coded data exactly as-is.
             out.extend(data[marker_start:])
             if not out.endswith(b"\xff\xd9"):
                 raise ValueError("JPEG scan has no EOI marker")
-            return bytes(out)
+            return bytes(out), removed, resynced
 
         if marker == EOI:
             out.extend(b"\xff\xd9")
-            return bytes(out)
+            return bytes(out), removed, resynced
 
-        # Standalone markers have no length field.
         if marker == TEM or RST_FIRST <= marker <= RST_LAST:
             out.extend(data[marker_start:pos])
             continue
 
         if pos + 2 > len(data):
-            raise ValueError("truncated segment length")
+            recovered = next_marker(data, marker_start + 2)
+            if recovered < 0:
+                raise ValueError("truncated segment length")
+            resynced += recovered - marker_start
+            pos = recovered
+            continue
+
         seg_len = int.from_bytes(data[pos:pos + 2], "big")
-        if seg_len < 2:
-            raise ValueError(f"invalid segment length for marker FF{marker:02X}")
         seg_end = pos + seg_len
-        if seg_end > len(data):
-            raise ValueError(f"segment FF{marker:02X} overruns file")
+        if seg_len < 2 or seg_end > len(data):
+            # A damaged length field should not prevent recovery of later
+            # structural markers. Drop this damaged segment and resync.
+            recovered = next_marker(data, marker_start + 2)
+            if recovered < 0:
+                raise ValueError(f"cannot recover marker FF{marker:02X}")
+            removed += recovered - marker_start
+            pos = recovered
+            continue
 
         if APP_FIRST <= marker <= APP_LAST or marker == COM:
             removed += seg_end - marker_start
@@ -90,10 +115,13 @@ def main() -> None:
     parser.add_argument("destination", type=Path)
     args = parser.parse_args()
 
-    clean = sanitize(args.source.read_bytes())
+    clean, removed, resynced = sanitize(args.source.read_bytes())
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     args.destination.write_bytes(clean)
-    print(f"sanitized {args.source.name}: {len(clean)} bytes")
+    print(
+        f"sanitized {args.source.name}: {len(clean)} bytes "
+        f"(removed {removed}, resynced {resynced})"
+    )
 
 
 if __name__ == "__main__":
