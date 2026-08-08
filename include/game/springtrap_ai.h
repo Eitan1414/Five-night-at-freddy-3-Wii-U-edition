@@ -73,25 +73,14 @@ typedef struct SpringtrapAI {
 } SpringtrapAI;
 
 void springtrap_ai_reset(SpringtrapAI *ai, int night_number, uint32_t seed);
-
-/* Legacy-compatible entry point used by the Extras aggressive cheat. */
 SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
                                      int night_number,
                                      int current_hour,
                                      uint32_t movement_opportunity_frames,
                                      SpringtrapVent sealed_vent,
                                      bool directly_observed,
-                                     bool player_blinded);
-
-/* Full office-aware update used by normal gameplay. */
-SpringtrapEvent springtrap_ai_update_ex(SpringtrapAI *ai,
-                                        int night_number,
-                                        int current_hour,
-                                        uint32_t movement_opportunity_frames,
-                                        SpringtrapVent sealed_vent,
-                                        bool directly_observed,
-                                        bool player_blinded,
-                                        bool panel_open);
+                                     bool player_blinded,
+                                     bool panel_open);
 SpringtrapEvent springtrap_ai_lure(SpringtrapAI *ai,
                                    int target_camera,
                                    int night_number);
