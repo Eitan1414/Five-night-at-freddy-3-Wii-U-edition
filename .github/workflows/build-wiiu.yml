@@ -67,12 +67,25 @@ jobs:
       - name: Prepare generated assets
         env:
           FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
+          FNAF3_USER_AUDIO_ROOT: /tmp/fnaf3-pc-original/assets/audio
         run: sh tools/prepare_generated_assets.sh
 
-      - name: Prepare original WUP audio pack
+      - name: Prepare authentic embedded Wii U audio
         env:
           FNAF3_PC_AUDIO_ROOT: /tmp/fnaf3-pc-original/assets/audio
         run: sh tools/prepare_wup_audio_content.sh
+
+      - name: Verify authentic embedded audio
+        run: |
+          test "$(find data/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          test "$(find .wup-audio/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          for file in .wup-audio/audio/*.bin; do
+            name="$(basename "$file")"
+            test -s "data/audio/$name"
+            cmp -s "$file" "data/audio/$name"
+          done
+          echo 'Verified 49 authentic PC cues for direct RPX embedding.'
+          du -sh data/audio
 
       - name: Prepare startup intro
         run: sh tools/prepare_intro_assets.sh
@@ -80,12 +93,11 @@ jobs:
       - name: Prepare WUHB packaged content
         run: |
           rm -rf .wuhb-content
-          mkdir -p .wuhb-content/audio .wuhb-content/intro
-          cp .wup-audio/audio/*.bin .wuhb-content/audio/
+          mkdir -p .wuhb-content/intro
           cp .wup-intro/intro.f3v .wup-intro/intro_audio.bin .wuhb-content/intro/
-          test "$(find .wuhb-content/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
           test -s .wuhb-content/intro/intro.f3v
           test -s .wuhb-content/intro/intro_audio.bin
+          test ! -d .wuhb-content/audio
 
       - name: Build WUHB
         run: make -j2
@@ -98,25 +110,24 @@ jobs:
           test -f .wiiu-artwork/icon.png
           test -f .wiiu-artwork/boot-tv.png
           test -f .wiiu-artwork/boot-drc.png
-          test "$(find .wup-audio/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          test "$(find data/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
           test -s .wup-intro/intro.f3v
           test -s .wup-intro/intro_audio.bin
           ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
           ls -lh .wiiu-artwork/*.png .wup-intro/*
-          du -sh .wup-audio/audio .wuhb-content
+          du -sh data/audio .wuhb-content
 
       - name: Generate code content meta tree
         run: |
           python3 tools/generate_wup_channel.py \
             --rpx fnaf3-wiiu.rpx \
             --output build-wup/channel
-          mkdir -p build-wup/channel/content/audio build-wup/channel/content/intro
-          cp .wup-audio/audio/*.bin build-wup/channel/content/audio/
+          mkdir -p build-wup/channel/content/intro
           cp .wup-intro/intro.f3v .wup-intro/intro_audio.bin build-wup/channel/content/intro/
-          test "$(find build-wup/channel/content/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          test ! -d build-wup/channel/content/audio
           test -s build-wup/channel/content/intro/intro.f3v
           test -s build-wup/channel/content/intro/intro_audio.bin
-          du -sh build-wup/channel/content/audio build-wup/channel/content/intro
+          du -sh build-wup/channel/content/intro
 
       - name: Validate restored Wii U artwork and packaged content
         run: |
@@ -141,12 +152,13 @@ jobs:
           for filename in ('app.xml', 'cos.xml', 'fnaf3-wiiu.rpx'):
               if not (Path('build-wup/channel/code') / filename).is_file():
                   raise SystemExit(f'missing {filename}')
-          audio = Path('build-wup/channel/content/audio')
-          files = sorted(audio.glob('*.bin'))
-          if len(files) != 49:
-              raise SystemExit(f'expected 49 packaged audio cues, got {len(files)}')
-          if any(path.stat().st_size == 0 for path in files):
-              raise SystemExit('one or more packaged audio cues are empty')
+          embedded_audio = sorted(Path('data/audio').glob('*.bin'))
+          if len(embedded_audio) != 49:
+              raise SystemExit(f'expected 49 embedded audio cues, got {len(embedded_audio)}')
+          if any(path.stat().st_size == 0 for path in embedded_audio):
+              raise SystemExit('one or more embedded audio cues are empty')
+          if Path('build-wup/channel/content/audio').exists():
+              raise SystemExit('audio must be embedded in the RPX, not duplicated in WUP content')
           intro = Path('build-wup/channel/content/intro')
           video = intro / 'intro.f3v'
           intro_audio = intro / 'intro_audio.bin'
@@ -154,7 +166,7 @@ jobs:
               raise SystemExit('invalid startup intro header')
           if intro_audio.stat().st_size == 0:
               raise SystemExit('startup intro audio is empty')
-          print('packaged audio cues:', len(files))
+          print('embedded authentic audio cues:', len(embedded_audio))
           print('startup intro bytes:', video.stat().st_size, intro_audio.stat().st_size)
           PY
 
