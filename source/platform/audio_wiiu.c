@@ -50,6 +50,25 @@ DECLARE_AUDIO_BIN(lever2);
 DECLARE_AUDIO_BIN(stare);
 DECLARE_AUDIO_BIN(titlemusic);
 DECLARE_AUDIO_BIN(startday);
+DECLARE_AUDIO_BIN(tablefan);
+DECLARE_AUDIO_BIN(rainstorm2);
+DECLARE_AUDIO_BIN(danger2b);
+DECLARE_AUDIO_BIN(scanner4);
+DECLARE_AUDIO_BIN(done);
+DECLARE_AUDIO_BIN(collect);
+DECLARE_AUDIO_BIN(feed);
+DECLARE_AUDIO_BIN(glitch2);
+DECLARE_AUDIO_BIN(crowd_children);
+DECLARE_AUDIO_BIN(clock_chimes);
+DECLARE_AUDIO_BIN(party_favor);
+DECLARE_AUDIO_BIN(desolate_underworld);
+DECLARE_AUDIO_BIN(crush);
+DECLARE_AUDIO_BIN(mb1);
+DECLARE_AUDIO_BIN(mb2);
+DECLARE_AUDIO_BIN(mb4b);
+DECLARE_AUDIO_BIN(mb5);
+DECLARE_AUDIO_BIN(mb8);
+DECLARE_AUDIO_BIN(mb9);
 
 typedef struct AudioClip {
     const uint8_t *data;
@@ -60,10 +79,6 @@ typedef struct AudioVoiceSlot {
     AXVoice *voice;
     bool configured;
 } AudioVoiceSlot;
-
-/* New full-pack cues are optional. Silence is their safe embedded fallback. */
-static const uint8_t kSilence[64] __attribute__((aligned(AUDIO_ALIGNMENT))) = {0};
-#define SILENT_CLIP {kSilence, kSilence + sizeof(kSilence)}
 
 static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_VENT_QUIET_1] = {vent_quiet1_bin, vent_quiet1_bin_end},
@@ -96,25 +111,25 @@ static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_GAME_OVER_AMBIENCE] = {stare_bin, stare_bin_end},
     [AUDIO_CUE_TITLE_MUSIC] = {titlemusic_bin, titlemusic_bin_end},
     [AUDIO_CUE_START_DAY] = {startday_bin, startday_bin_end},
-    [AUDIO_CUE_OFFICE_FAN] = SILENT_CLIP,
-    [AUDIO_CUE_RAIN_AMBIENCE] = SILENT_CLIP,
-    [AUDIO_CUE_DANGER] = SILENT_CLIP,
-    [AUDIO_CUE_REPAIR_SCANNER] = SILENT_CLIP,
-    [AUDIO_CUE_REPAIR_DONE] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_COLLECT] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_FEED] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_GLITCH] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_CROWD] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_CHIMES] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_PARTY_FAVOR] = SILENT_CLIP,
-    [AUDIO_CUE_ENDING_DESOLATE] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_CRUSH] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_BB_MUSIC] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_MANGLE_MUSIC] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_CHICA_MUSIC] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_STAGE01_MUSIC] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_SHADOW_MUSIC] = SILENT_CLIP,
-    [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = SILENT_CLIP,
+    [AUDIO_CUE_OFFICE_FAN] = {tablefan_bin, tablefan_bin_end},
+    [AUDIO_CUE_RAIN_AMBIENCE] = {rainstorm2_bin, rainstorm2_bin_end},
+    [AUDIO_CUE_DANGER] = {danger2b_bin, danger2b_bin_end},
+    [AUDIO_CUE_REPAIR_SCANNER] = {scanner4_bin, scanner4_bin_end},
+    [AUDIO_CUE_REPAIR_DONE] = {done_bin, done_bin_end},
+    [AUDIO_CUE_MINIGAME_COLLECT] = {collect_bin, collect_bin_end},
+    [AUDIO_CUE_MINIGAME_FEED] = {feed_bin, feed_bin_end},
+    [AUDIO_CUE_MINIGAME_GLITCH] = {glitch2_bin, glitch2_bin_end},
+    [AUDIO_CUE_MINIGAME_CROWD] = {crowd_children_bin, crowd_children_bin_end},
+    [AUDIO_CUE_MINIGAME_CHIMES] = {clock_chimes_bin, clock_chimes_bin_end},
+    [AUDIO_CUE_MINIGAME_PARTY_FAVOR] = {party_favor_bin, party_favor_bin_end},
+    [AUDIO_CUE_ENDING_DESOLATE] = {desolate_underworld_bin, desolate_underworld_bin_end},
+    [AUDIO_CUE_MINIGAME_CRUSH] = {crush_bin, crush_bin_end},
+    [AUDIO_CUE_MINIGAME_BB_MUSIC] = {mb1_bin, mb1_bin_end},
+    [AUDIO_CUE_MINIGAME_MANGLE_MUSIC] = {mb2_bin, mb2_bin_end},
+    [AUDIO_CUE_MINIGAME_CHICA_MUSIC] = {mb4b_bin, mb4b_bin_end},
+    [AUDIO_CUE_MINIGAME_STAGE01_MUSIC] = {mb5_bin, mb5_bin_end},
+    [AUDIO_CUE_MINIGAME_SHADOW_MUSIC] = {mb8_bin, mb8_bin_end},
+    [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = {mb9_bin, mb9_bin_end},
 };
 
 static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
@@ -249,7 +264,7 @@ static void load_external_audio(AudioCue cue)
     /* SD files remain the highest-priority user override. */
     uint8_t *data = copy_sd_audio(path, &byte_size);
 
-    /* Installed WUP channels carry the full restored pack in /vol/content. */
+    /* Packaged audio is optional; the authentic release pack is embedded. */
     if (data == NULL) data = copy_packaged_audio(path, &byte_size);
     if (data == NULL) return;
 
@@ -301,7 +316,7 @@ bool audio_init(void)
     memset(sOwnedAudio, 0, sizeof(sOwnedAudio));
     memcpy(sClips, kEmbeddedClips, sizeof(sClips));
 
-    /* The WUP content fallback must also work when no SD card is mounted. */
+    /* Optional SD overrides can replace any embedded cue at runtime. */
     (void) storage_init();
     for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
         load_external_audio((AudioCue) cue);
