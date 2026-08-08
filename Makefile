@@ -25,9 +25,10 @@ SOURCES     := source source/game source/platform source/renderer
 DATA        := data data/audio
 INCLUDES    := include
 CONTENT     :=
-ICON        := icon.jpg
-TV_SPLASH   := boot-tv.jpg
-DRC_SPLASH  := boot-drc.jpg
+ARTWORK_DIR := .wiiu-artwork
+ICON        := $(ARTWORK_DIR)/icon.png
+TV_SPLASH   := $(ARTWORK_DIR)/boot-tv.png
+DRC_SPLASH  := $(ARTWORK_DIR)/boot-drc.png
 
 #-------------------------------------------------------------------------------
 # Compiler and linker options
@@ -104,17 +105,20 @@ else ifneq (,$(wildcard $(TOPDIR)/splash.png))
 export APP_DRC_SPLASH := $(TOPDIR)/splash.png
 endif
 
-.PHONY: all clean $(BUILD)
+.PHONY: all clean artwork $(BUILD)
 
 all: $(BUILD)
 
-$(BUILD):
+artwork:
+	@bash tools/prepare_wiiu_artwork.sh
+
+$(BUILD): artwork
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
+	@rm -fr $(BUILD) $(ARTWORK_DIR) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
 
 else
 
