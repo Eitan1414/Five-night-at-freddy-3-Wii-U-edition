@@ -32,7 +32,10 @@ rebuild_jpeg() {
     exit 1
   }
 
-  cat "${parts[@]}" | tr -d '\r\n' | base64 -d > "$OUT/$output"
+  # Some historical chunks picked up non-base64 transport bytes.  Ignore only
+  # those bytes here, then verify the exact decoded payload with SHA-256 below.
+  # This keeps the build strict: any missing/altered image data still fails.
+  cat "${parts[@]}" | tr -d '\r\n' | base64 --decode --ignore-garbage > "$OUT/$output"
   echo "$expected_sha  $OUT/$output" | sha256sum -c -
 
   local dimensions
@@ -74,9 +77,9 @@ print(f'{p.name}: {len(data)} bytes')
 PY
 }
 
-# The original boot JPG files in the historical branch are truncated.  These
+# The original boot JPG files in the historical branch are truncated. These
 # chunk files are clean, visually identical derivatives of the supplied PNG
-# artwork.  They are ASCII on purpose so GitHub preserves the bytes reliably.
+# artwork. They are ASCII on purpose so GitHub preserves the bytes reliably.
 rebuild_jpeg boot-tv-q65 boot-tv-clean.jpg \
   7c19a128361a6e8b8cd735967c184080c452aa0f9ab9f9ad9ea11973ddefda92 1280x720
 rebuild_jpeg boot-drc-q65 boot-drc-clean.jpg \
