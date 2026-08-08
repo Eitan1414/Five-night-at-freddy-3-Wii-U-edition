@@ -40,6 +40,31 @@ restore_xz_base64 \
     "source/generated/camera_springtrap_textures.c.xz.b64" \
     "source/camera_springtrap_textures.c"
 
+# The supplied PC room/vent sheets are converted once into a compact generated
+# C payload. Source checkouts keep a tiny NULL stub; official builds overwrite
+# it only when the verified payload is present on the branch.
+PC_CAMERA_FRAME_ARCHIVE="source/generated/pc_camera_frame_assets.c.xz"
+PC_CAMERA_FRAME_SHA256="5dd9456c332eaba54ef6d8cac0dbcded76148c6be2adf821003bc6eec7ff620e"
+if [ -f "$PC_CAMERA_FRAME_ARCHIVE" ]; then
+    actual_pc_frame_sha="$(sha256sum "$PC_CAMERA_FRAME_ARCHIVE" | awk '{print $1}')"
+    if [ "$actual_pc_frame_sha" != "$PC_CAMERA_FRAME_SHA256" ]; then
+        echo "PC camera/vent frame payload checksum mismatch: $actual_pc_frame_sha" >&2
+        exit 1
+    fi
+    xz -dc "$PC_CAMERA_FRAME_ARCHIVE" > source/pc_camera_frame_assets.c
+    grep -q "const PcCameraFrameSet gPcCameraBaseSets" source/pc_camera_frame_assets.c
+    grep -q "const TextureRle \*const gPcVentSpringtrapTextures" source/pc_camera_frame_assets.c
+
+    # 73 supplied PC frames can be visited during a full six-night session.
+    # Give the persistent Wii U GPU cache enough slots for those plus monitor UI.
+    sed -i 's/#define TEXTURE_CACHE_CAPACITY 64u/#define TEXTURE_CACHE_CAPACITY 128u/' \
+        source/platform/graphics_wiiu.c
+    grep -q '#define TEXTURE_CACHE_CAPACITY 128u' source/platform/graphics_wiiu.c
+    echo "Restored authentic PC camera/vent frame payload (73 frames)"
+else
+    echo "warning: authentic PC camera/vent payload missing; keeping PSX visual fallback" >&2
+fi
+
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "ffmpeg is required to prepare audio assets" >&2
     exit 1
