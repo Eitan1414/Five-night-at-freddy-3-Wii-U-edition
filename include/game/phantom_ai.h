@@ -36,6 +36,7 @@ typedef struct PhantomEvent {
 
 typedef struct PhantomSystem {
     int night;
+    int ai_level;
     bool aggressive_mode;
     uint32_t rng;
     uint32_t attacked_mask;
@@ -49,6 +50,7 @@ typedef struct PhantomSystem {
 
     bool freddy_walking;
     bool freddy_countered;
+    uint32_t freddy_spawn_frames;
     uint32_t freddy_walk_frames;
     uint32_t freddy_duck_frames;
 
@@ -78,14 +80,18 @@ void phantoms_reset(PhantomSystem *system,
                     bool aggressive_mode,
                     uint32_t seed);
 
-PhantomEvent phantoms_on_panel_opened(PhantomSystem *system);
+PhantomEvent phantoms_on_camera_toggled(PhantomSystem *system,
+                                        bool opening,
+                                        int office_pan,
+                                        int springtrap_camera);
 PhantomEvent phantoms_on_hour_changed(PhantomSystem *system, int hour);
 PhantomEvent phantoms_update(PhantomSystem *system,
                              int hour,
                              bool camera_open,
                              bool maintenance_open,
                              int selected_camera,
-                             int office_pan);
+                             int office_pan,
+                             int springtrap_camera);
 
 PhantomId phantoms_camera_overlay(const PhantomSystem *system,
                                   int selected_camera);
