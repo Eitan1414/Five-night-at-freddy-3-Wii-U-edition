@@ -107,13 +107,20 @@ def validate_tga(path, width, height, bpp):
 
 def main():
     root=Path(__file__).resolve().parents[1]
+    artwork=root/'.wiiu-artwork'
     p=argparse.ArgumentParser()
     p.add_argument('--rpx',type=Path,default=root/RPX)
     p.add_argument('--output',type=Path,default=root/'build-wup'/'channel')
-    p.add_argument('--icon',type=Path,default=root/'icon.jpg')
-    p.add_argument('--tv',type=Path,default=root/'boot-tv.jpg')
-    p.add_argument('--drc',type=Path,default=root/'boot-drc.jpg')
+    p.add_argument('--icon',type=Path,default=artwork/'icon.png')
+    p.add_argument('--tv',type=Path,default=artwork/'boot-tv.png')
+    p.add_argument('--drc',type=Path,default=artwork/'boot-drc.png')
     a=p.parse_args()
+
+    if not all(source.is_file() for source in (a.icon,a.tv,a.drc)):
+        prep=root/'tools'/'prepare_wiiu_artwork.sh'
+        if prep.is_file():
+            subprocess.run(['bash',str(prep)],check=True)
+
     for source in (a.rpx,a.icon,a.tv,a.drc):
         if not source.is_file(): raise SystemExit(f'Missing required file: {source}')
     out=a.output.resolve()
