@@ -5,7 +5,6 @@ static void open_maintenance(Game *game)
     game->vent_map_open = false;
     game->maintenance_selection = 0;
     game->idle_frames = 0u;
-    process_phantom_event(game, phantoms_on_panel_opened(&game->phantoms));
     audio_stop(AUDIO_CUE_STATIC);
     audio_play(AUDIO_CUE_WAIT, 0.45f, false);
     game->dirty = true;
@@ -15,9 +14,11 @@ static bool office_activity(const Game *game, const InputState *input)
 {
     if (game->camera_open || game->maintenance_open ||
         phantoms_blocks_input(&game->phantoms)) return true;
-    return input_is_held(input, GAME_BUTTON_LEFT) ||
-           input_is_held(input, GAME_BUTTON_RIGHT) ||
-           input_was_pressed(input, GAME_BUTTON_PANEL) ||
+
+    /* Simply staring/turning in the office does not count as activity. This
+     * preserves the ten-second ventilation-error pressure while holding
+     * Springtrap at the window or door. */
+    return input_was_pressed(input, GAME_BUTTON_PANEL) ||
            input_was_pressed(input, GAME_BUTTON_SELECT) ||
            input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
            input_was_pressed(input, GAME_BUTTON_MODE) ||
@@ -104,7 +105,8 @@ static void update_active_game(Game *game, const InputState *input)
 
     PhantomEvent phantom_event = phantoms_update(
         &game->phantoms, game->hour == 12 ? 0 : game->hour, game->camera_open,
-        game->maintenance_open, game->selected_camera, game->office_pan);
+        game->maintenance_open, game->selected_camera, game->office_pan,
+        springtrap_ai_camera(&game->springtrap));
     process_phantom_event(game, phantom_event);
 
     if (config->springtrap_enabled) {
@@ -113,7 +115,8 @@ static void update_active_game(Game *game, const InputState *input)
         SpringtrapEvent event = springtrap_ai_update(
             &game->springtrap, game->night, game->hour == 12 ? 0 : game->hour,
             springtrap_interval(game), game->sealed_vent,
-            springtrap_directly_observed(game), game->player_blinded);
+            springtrap_directly_observed(game), game->player_blinded,
+            game->camera_open || game->maintenance_open);
         process_springtrap_event(game, event, attack_side);
     }
 
