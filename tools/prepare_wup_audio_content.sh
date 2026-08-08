@@ -7,6 +7,7 @@ CORE_OUT="$ROOT/data/audio"
 WORK="${TMPDIR:-/tmp}/fnaf3-wup-audio.$$"
 ARCHIVE="$WORK/fnaf3-sounds.zip"
 EXTRACTED="$WORK/extracted"
+SOURCE_ROOT=""
 EXPECTED_ARCHIVE_SHA256="128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e"
 EXPECTED_SIX_AM_OPUS_SHA256="aa977226f8b91941f158d39f5712d8f03ce0a150cbaf95e6e6e91aaa37da79e6"
 
@@ -16,7 +17,7 @@ mkdir -p "$WORK" "$EXTRACTED"
 rm -rf "$OUT"
 mkdir -p "$OUT" "$CORE_OUT"
 
-for tool in curl unzip ffmpeg sha256sum base64; do
+for tool in ffmpeg sha256sum base64; do
     command -v "$tool" >/dev/null 2>&1 || {
         echo "Missing required tool: $tool" >&2
         exit 1
@@ -34,6 +35,13 @@ verify_sha256() {
 }
 
 download_archive() {
+    for tool in curl unzip; do
+        command -v "$tool" >/dev/null 2>&1 || {
+            echo "Missing required archive tool: $tool" >&2
+            exit 1
+        }
+    done
+
     if [ -n "${FNAF3_SOUND_ARCHIVE:-}" ]; then
         cp "$FNAF3_SOUND_ARCHIVE" "$ARCHIVE"
         verify_sha256 "$ARCHIVE" "$EXPECTED_ARCHIVE_SHA256"
@@ -63,9 +71,25 @@ https://sounds.spriters-resource.com/download/398090/"
     exit 1
 }
 
+prepare_source_root() {
+    if [ -n "${FNAF3_PC_AUDIO_ROOT:-}" ]; then
+        [ -d "$FNAF3_PC_AUDIO_ROOT" ] || {
+            echo "FNAF3_PC_AUDIO_ROOT is not a directory: $FNAF3_PC_AUDIO_ROOT" >&2
+            exit 1
+        }
+        SOURCE_ROOT="$FNAF3_PC_AUDIO_ROOT"
+        echo "Using pinned PC audio source: $SOURCE_ROOT"
+        return 0
+    fi
+
+    download_archive
+    unzip -q "$ARCHIVE" -d "$EXTRACTED"
+    SOURCE_ROOT="$EXTRACTED"
+}
+
 find_sound() {
     name="$1"
-    found="$(find "$EXTRACTED" -type f -name "$name" -print -quit)"
+    found="$(find "$SOURCE_ROOT" -type f -name "$name" -print -quit)"
     [ -n "$found" ] || {
         echo "Missing source WAV: $name" >&2
         exit 1
@@ -85,8 +109,7 @@ convert_sound() {
     }
 }
 
-download_archive
-unzip -q "$ARCHIVE" -d "$EXTRACTED"
+prepare_source_root
 
 convert_sound alarm alarm.wav
 convert_sound breathing breathing.wav
