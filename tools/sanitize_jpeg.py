@@ -34,7 +34,7 @@ def next_marker(data: bytes, pos: int) -> int:
         pos = j + 1
 
 
-def sanitize(data: bytes) -> bytes:
+def sanitize(data: bytes) -> tuple[bytes, int, int, bool]:
     if len(data) < 4 or not data.startswith(SOI):
         raise ValueError("not a JPEG stream")
 
@@ -42,6 +42,7 @@ def sanitize(data: bytes) -> bytes:
     pos = 2
     removed = 0
     resynced = 0
+    appended_eoi = False
 
     while pos < len(data):
         if data[pos] != 0xFF:
@@ -69,12 +70,16 @@ def sanitize(data: bytes) -> bytes:
             # Once SOS begins, preserve all entropy-coded data exactly as-is.
             out.extend(data[marker_start:])
             if not out.endswith(b"\xff\xd9"):
-                raise ValueError("JPEG scan has no EOI marker")
-            return bytes(out), removed, resynced
+                # The supplied splash JPEGs have a complete entropy-coded scan
+                # but lost their final EOI marker. JPEG decoders accept the
+                # stream once the standard FF D9 terminator is restored.
+                out.extend(b"\xff\xd9")
+                appended_eoi = True
+            return bytes(out), removed, resynced, appended_eoi
 
         if marker == EOI:
             out.extend(b"\xff\xd9")
-            return bytes(out), removed, resynced
+            return bytes(out), removed, resynced, appended_eoi
 
         if marker == TEM or RST_FIRST <= marker <= RST_LAST:
             out.extend(data[marker_start:pos])
@@ -115,12 +120,13 @@ def main() -> None:
     parser.add_argument("destination", type=Path)
     args = parser.parse_args()
 
-    clean, removed, resynced = sanitize(args.source.read_bytes())
+    clean, removed, resynced, appended_eoi = sanitize(args.source.read_bytes())
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     args.destination.write_bytes(clean)
     print(
         f"sanitized {args.source.name}: {len(clean)} bytes "
-        f"(removed {removed}, resynced {resynced})"
+        f"(removed {removed}, resynced {resynced}, "
+        f"EOI restored={appended_eoi})"
     )
 
 
