@@ -17,7 +17,7 @@ mkdir -p "$WORK" "$EXTRACTED"
 rm -rf "$OUT"
 mkdir -p "$OUT" "$CORE_OUT"
 
-for tool in ffmpeg sha256sum base64; do
+for tool in ffmpeg sha256sum base64 cmp; do
     command -v "$tool" >/dev/null 2>&1 || {
         echo "Missing required tool: $tool" >&2
         exit 1
@@ -182,18 +182,31 @@ for file in "$OUT"/*.bin; do
     }
 done
 
-# Keep the RPX's embedded core cues authentic as well. This deliberately runs
-# after prepare_generated_assets.sh and replaces any generated temporary tone.
-for name in \
-    vent_quiet1 vent_quiet2 vent_closer1 vent_louder2 \
-    alarm breathing wait static_sound scream3 garble1 mask \
-    echo1 echo3b echo4b \
-    phone_night1 phone_night2 phone_night3 phone_night4 phone_night5 phone_night6 \
-    six_am select end crank1 crank2 lever1 lever2 stare titlemusic startday
-do
-    cp "$OUT/$name.bin" "$CORE_OUT/$name.bin"
+# The official WUHB/WUP release must never depend on a generated tone or a
+# silent RPX placeholder. Embed every restored PC cue in data/audio as well as
+# packaging the same bytes in /vol/content/audio. SD overrides remain optional.
+for file in "$OUT"/*.bin; do
+    name="$(basename "$file")"
+    cp "$file" "$CORE_OUT/$name"
+    cmp -s "$file" "$CORE_OUT/$name" || {
+        echo "Embedded audio verification failed: $name" >&2
+        exit 1
+    }
 done
 
 core_count="$(find "$CORE_OUT" -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')"
-echo "Prepared $count original-game WUP audio cues in $OUT"
-echo "Restored authentic embedded core audio cues in $CORE_OUT ($core_count total generated bins)"
+[ "$core_count" = "49" ] || {
+    echo "Expected 49 authentic embedded audio cues, got $core_count" >&2
+    exit 1
+}
+
+for file in "$OUT"/*.bin; do
+    name="$(basename "$file")"
+    [ -s "$CORE_OUT/$name" ] && cmp -s "$file" "$CORE_OUT/$name" || {
+        echo "Authentic RPX fallback mismatch: $name" >&2
+        exit 1
+    }
+done
+
+echo "Prepared $count original-game audio cues for WUHB/WUP content"
+echo "Verified all $core_count authentic cues as RPX embedded fallbacks"
