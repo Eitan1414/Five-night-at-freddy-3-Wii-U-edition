@@ -139,7 +139,8 @@ static void complete_apply_aggressive_ai(Game *game)
         springtrap_interval(game),
         game->sealed_vent,
         springtrap_directly_observed(game),
-        game->player_blinded);
+        game->player_blinded,
+        game->camera_open || game->maintenance_open);
     process_springtrap_event(game, event, attack_side);
 }
 
