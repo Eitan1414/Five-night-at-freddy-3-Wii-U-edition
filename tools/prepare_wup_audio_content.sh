@@ -3,6 +3,7 @@ set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 OUT="${1:-$ROOT/.wup-audio/audio}"
+CORE_OUT="$ROOT/data/audio"
 WORK="${TMPDIR:-/tmp}/fnaf3-wup-audio.$$"
 ARCHIVE="$WORK/fnaf3-sounds.zip"
 EXTRACTED="$WORK/extracted"
@@ -13,7 +14,7 @@ cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT INT TERM
 mkdir -p "$WORK" "$EXTRACTED"
 rm -rf "$OUT"
-mkdir -p "$OUT"
+mkdir -p "$OUT" "$CORE_OUT"
 
 for tool in curl unzip ffmpeg sha256sum base64; do
     command -v "$tool" >/dev/null 2>&1 || {
@@ -158,4 +159,18 @@ for file in "$OUT"/*.bin; do
     }
 done
 
+# Keep the RPX's embedded core cues authentic as well. This deliberately runs
+# after prepare_generated_assets.sh and replaces any generated temporary tone.
+for name in \
+    vent_quiet1 vent_quiet2 vent_closer1 vent_louder2 \
+    alarm breathing wait static_sound scream3 garble1 mask \
+    echo1 echo3b echo4b \
+    phone_night1 phone_night2 phone_night3 phone_night4 phone_night5 phone_night6 \
+    six_am select end crank1 crank2 lever1 lever2 stare titlemusic startday
+do
+    cp "$OUT/$name.bin" "$CORE_OUT/$name.bin"
+done
+
+core_count="$(find "$CORE_OUT" -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')"
 echo "Prepared $count original-game WUP audio cues in $OUT"
+echo "Restored authentic embedded core audio cues in $CORE_OUT ($core_count total generated bins)"
