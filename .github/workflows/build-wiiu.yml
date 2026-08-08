@@ -60,19 +60,97 @@ jobs:
       - name: Build WUHB
         run: make -j2
 
-      - name: Verify outputs
+      - name: Verify native outputs
         run: |
           test -f fnaf3-wiiu.elf
           test -f fnaf3-wiiu.rpx
           test -f fnaf3-wiiu.wuhb
           ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
 
-      - name: Upload Wii U build
+      - name: Upload native Wii U build
         uses: actions/upload-artifact@v4
         with:
-          name: fnaf3-wiiu
+          name: fnaf3-wiiu-native
           if-no-files-found: error
           path: |
             fnaf3-wiiu.elf
             fnaf3-wiiu.rpx
             fnaf3-wiiu.wuhb
+
+  package-wup:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download RPX build
+        uses: actions/download-artifact@v4
+        with:
+          name: fnaf3-wiiu-native
+          path: native
+
+      - name: Install WUP artwork tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+
+      - name: Generate code content meta tree
+        run: |
+          python3 tools/generate_wup_channel.py \
+            --rpx native/fnaf3-wiiu.rpx \
+            --output build-wup/channel
+
+      - name: Validate restored Wii U artwork
+        run: |
+          python3 - <<'PY'
+          import struct
+          from pathlib import Path
+          expected = {
+              'iconTex.tga': (128, 128, 32),
+              'bootTvTex.tga': (1280, 720, 24),
+              'bootDrcTex.tga': (854, 480, 24),
+          }
+          meta = Path('build-wup/channel/meta')
+          for filename, wanted in expected.items():
+              data = (meta / filename).read_bytes()
+              got = struct.unpack_from('<HHB', data, 12)
+              if got != wanted:
+                  raise SystemExit(f'{filename}: {got} != {wanted}')
+              print(filename, got)
+          PY
+
+      - name: Upload installable channel source
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu-wup-channel
+          if-no-files-found: error
+          path: build-wup/channel/**
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Package encrypted WUP installer when key is configured
+        id: package
+        env:
+          WIIU_COMMON_KEY: ${{ secrets.WIIU_COMMON_KEY }}
+        run: |
+          if printf '%s' "$WIIU_COMMON_KEY" | grep -Eq '^[0-9A-Fa-f]{32}$'; then
+            chmod +x tools/package_wup.sh
+            tools/package_wup.sh build-wup/channel build-wup/install
+            echo 'packaged=true' >> "$GITHUB_OUTPUT"
+          else
+            echo '::warning::WIIU_COMMON_KEY is not configured; channel source was generated but encrypted WUP files were skipped.'
+            echo 'packaged=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload WUP install package
+        if: steps.package.outputs.packaged == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu-wup-install
+          if-no-files-found: error
+          path: build-wup/install/**
