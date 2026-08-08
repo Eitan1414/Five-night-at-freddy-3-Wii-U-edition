@@ -24,7 +24,7 @@ BUILD       := build
 SOURCES     := source source/game source/platform source/renderer
 DATA        := data data/audio
 INCLUDES    := include
-CONTENT     :=
+CONTENT     := .wuhb-content
 ARTWORK_DIR := .wiiu-artwork
 ICON        := $(ARTWORK_DIR)/icon.png
 TV_SPLASH   := $(ARTWORK_DIR)/boot-tv.png
@@ -118,7 +118,7 @@ $(BUILD): artwork
 
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(ARTWORK_DIR) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
+	@rm -fr $(BUILD) $(ARTWORK_DIR) .wuhb-content $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
 
 else
 
