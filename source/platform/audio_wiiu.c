@@ -9,6 +9,7 @@
 #include <coreinit/cache.h>
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
+#include <whb/file.h>
 
 #include "platform/storage.h"
 
@@ -189,6 +190,54 @@ static void release_external_audio(void)
     }
 }
 
+static uint8_t *copy_packaged_audio(const char *path, size_t *byte_size_out)
+{
+    uint32_t packaged_size = 0u;
+    char *packaged = WHBReadWholeFile(path, &packaged_size);
+    if (packaged == NULL) return NULL;
+
+    if (packaged_size < 2u || packaged_size > AUDIO_EXTERNAL_MAX_BYTES) {
+        WHBFreeWholeFile(packaged);
+        return NULL;
+    }
+
+    const size_t byte_size = (size_t) packaged_size & ~(size_t) 1u;
+    const size_t allocation_size =
+        (byte_size + AUDIO_ALIGNMENT - 1u) & ~(AUDIO_ALIGNMENT - 1u);
+    uint8_t *data = (uint8_t *) memalign(AUDIO_ALIGNMENT, allocation_size);
+    if (data != NULL) memcpy(data, packaged, byte_size);
+    WHBFreeWholeFile(packaged);
+
+    if (data == NULL) return NULL;
+    *byte_size_out = byte_size;
+    return data;
+}
+
+static uint8_t *copy_sd_audio(const char *path, size_t *byte_size_out)
+{
+    size_t byte_size = 0u;
+    if (!storage_file_size(path, &byte_size) || byte_size < 2u ||
+        byte_size > AUDIO_EXTERNAL_MAX_BYTES) {
+        return NULL;
+    }
+
+    byte_size &= ~(size_t) 1u;
+    const size_t allocation_size =
+        (byte_size + AUDIO_ALIGNMENT - 1u) & ~(AUDIO_ALIGNMENT - 1u);
+    uint8_t *data = (uint8_t *) memalign(AUDIO_ALIGNMENT, allocation_size);
+    if (data == NULL) return NULL;
+
+    size_t bytes_read = 0u;
+    if (!storage_read(path, data, byte_size, &bytes_read) ||
+        bytes_read != byte_size) {
+        free(data);
+        return NULL;
+    }
+
+    *byte_size_out = byte_size;
+    return data;
+}
+
 static void load_external_audio(AudioCue cue)
 {
     if (cue < 0 || cue >= AUDIO_CUE_COUNT) return;
@@ -196,22 +245,13 @@ static void load_external_audio(AudioCue cue)
     if (path == NULL) return;
 
     size_t byte_size = 0u;
-    if (!storage_file_size(path, &byte_size) || byte_size < 2u ||
-        byte_size > AUDIO_EXTERNAL_MAX_BYTES) {
-        return;
-    }
-    byte_size &= ~(size_t) 1u;
-    const size_t allocation_size =
-        (byte_size + AUDIO_ALIGNMENT - 1u) & ~(AUDIO_ALIGNMENT - 1u);
-    uint8_t *data = (uint8_t *) memalign(AUDIO_ALIGNMENT, allocation_size);
-    if (data == NULL) return;
 
-    size_t bytes_read = 0u;
-    if (!storage_read(path, data, byte_size, &bytes_read) ||
-        bytes_read != byte_size) {
-        free(data);
-        return;
-    }
+    /* SD files remain the highest-priority user override. */
+    uint8_t *data = copy_sd_audio(path, &byte_size);
+
+    /* Installed WUP channels carry the full restored pack in /vol/content. */
+    if (data == NULL) data = copy_packaged_audio(path, &byte_size);
+    if (data == NULL) return;
 
     sOwnedAudio[cue] = data;
     sClips[cue].data = data;
@@ -261,10 +301,10 @@ bool audio_init(void)
     memset(sOwnedAudio, 0, sizeof(sOwnedAudio));
     memcpy(sClips, kEmbeddedClips, sizeof(sClips));
 
-    if (storage_init()) {
-        for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
-            load_external_audio((AudioCue) cue);
-    }
+    /* The WUP content fallback must also work when no SD card is mounted. */
+    (void) storage_init();
+    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
+        load_external_audio((AudioCue) cue);
 
     AXInitParams params = {
         .renderer = AX_INIT_RENDERER_32KHZ,
