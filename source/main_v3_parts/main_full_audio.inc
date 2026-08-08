@@ -1,5 +1,7 @@
 /* Full original FNaF 3 sound-pack integration layer. */
 
+#include "platform/intro.h"
+
 static AudioCue full_audio_secret_music(SecretMinigameKind kind)
 {
     switch (kind) {
@@ -152,6 +154,12 @@ int main(int argc, char **argv)
     (void) argc;
     (void) argv;
     WHBProcInit();
+
+    /* The custom studio intro owns a short-lived SDL TV/GamePad renderer and
+     * closes it before the normal FNaF 3 renderer is created. Missing intro
+     * content is non-fatal and simply falls through to the title screen. */
+    (void) intro_play();
+
     if (!graphics_init()) {
         WHBProcShutdown();
         return 1;
