@@ -10,6 +10,7 @@
 #define STORAGE_PATH_CAPACITY 512
 
 static bool s_storage_ready = false;
+static bool s_sd_mounted = false;
 static char s_storage_root[STORAGE_PATH_CAPACITY];
 
 static bool ensure_directory(const char *path)
@@ -32,15 +33,42 @@ static bool build_path(char *output,
     return written > 0 && (size_t) written < output_size;
 }
 
+static bool build_content_path(char *output,
+                               size_t output_size,
+                               const char *relative_path)
+{
+    if (output == NULL || output_size == 0u || relative_path == NULL ||
+        relative_path[0] == '\0') {
+        return false;
+    }
+
+    const int written = snprintf(output, output_size, "/vol/content/%s",
+                                 relative_path);
+    return written > 0 && (size_t) written < output_size;
+}
+
+static void use_content_storage(void)
+{
+    snprintf(s_storage_root, sizeof(s_storage_root), "/vol/content");
+    s_sd_mounted = false;
+    s_storage_ready = true;
+}
+
 bool storage_init(void)
 {
     if (s_storage_ready) return true;
-    if (!WHBMountSdCard()) return false;
+
+    if (!WHBMountSdCard()) {
+        use_content_storage();
+        return true;
+    }
+    s_sd_mounted = true;
 
     const char *mount_path = WHBGetSdCardMountPath();
     if (mount_path == NULL || mount_path[0] == '\0') {
         WHBUnmountSdCard();
-        return false;
+        use_content_storage();
+        return true;
     }
 
     char path[STORAGE_PATH_CAPACITY];
@@ -48,14 +76,16 @@ bool storage_init(void)
     if (written <= 0 || (size_t) written >= sizeof(path) ||
         !ensure_directory(path)) {
         WHBUnmountSdCard();
-        return false;
+        use_content_storage();
+        return true;
     }
 
     written = snprintf(path, sizeof(path), "%s/wiiu/apps", mount_path);
     if (written <= 0 || (size_t) written >= sizeof(path) ||
         !ensure_directory(path)) {
         WHBUnmountSdCard();
-        return false;
+        use_content_storage();
+        return true;
     }
 
     written = snprintf(s_storage_root, sizeof(s_storage_root),
@@ -64,7 +94,8 @@ bool storage_init(void)
         !ensure_directory(s_storage_root)) {
         s_storage_root[0] = '\0';
         WHBUnmountSdCard();
-        return false;
+        use_content_storage();
+        return true;
     }
 
     s_storage_ready = true;
@@ -74,8 +105,9 @@ bool storage_init(void)
 void storage_shutdown(void)
 {
     if (!s_storage_ready) return;
-    WHBUnmountSdCard();
+    if (s_sd_mounted) WHBUnmountSdCard();
     s_storage_ready = false;
+    s_sd_mounted = false;
     s_storage_root[0] = '\0';
 }
 
@@ -90,10 +122,13 @@ bool storage_file_size(const char *relative_path, size_t *size)
     if (size == NULL) return false;
 
     char path[STORAGE_PATH_CAPACITY];
-    if (!build_path(path, sizeof(path), relative_path)) return false;
-
-    FILE *file = fopen(path, "rb");
+    FILE *file = NULL;
+    if (build_path(path, sizeof(path), relative_path))
+        file = fopen(path, "rb");
+    if (file == NULL && build_content_path(path, sizeof(path), relative_path))
+        file = fopen(path, "rb");
     if (file == NULL) return false;
+
     const bool seek_ok = fseek(file, 0, SEEK_END) == 0;
     const long length = seek_ok ? ftell(file) : -1L;
     fclose(file);
@@ -111,9 +146,11 @@ bool storage_read(const char *relative_path,
     if (data == NULL || capacity == 0u) return false;
 
     char path[STORAGE_PATH_CAPACITY];
-    if (!build_path(path, sizeof(path), relative_path)) return false;
-
-    FILE *file = fopen(path, "rb");
+    FILE *file = NULL;
+    if (build_path(path, sizeof(path), relative_path))
+        file = fopen(path, "rb");
+    if (file == NULL && build_content_path(path, sizeof(path), relative_path))
+        file = fopen(path, "rb");
     if (file == NULL) return false;
 
     const size_t count = fread(data, 1u, capacity, file);
@@ -128,7 +165,7 @@ bool storage_write_atomic(const char *relative_path,
                           const void *data,
                           size_t size)
 {
-    if (data == NULL || size == 0u) return false;
+    if (data == NULL || size == 0u || !s_sd_mounted) return false;
 
     char final_path[STORAGE_PATH_CAPACITY];
     char temporary_path[STORAGE_PATH_CAPACITY];

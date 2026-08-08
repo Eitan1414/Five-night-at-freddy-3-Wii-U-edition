@@ -27,7 +27,7 @@ jobs:
       - name: Install asset tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch
+          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch unzip
 
       - name: Build official Wii U SDL2 port
         run: |
@@ -61,6 +61,9 @@ jobs:
           FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
         run: sh tools/prepare_generated_assets.sh
 
+      - name: Prepare original WUP audio pack
+        run: sh tools/prepare_wup_audio_content.sh
+
       - name: Build WUHB
         run: make -j2
 
@@ -72,14 +75,20 @@ jobs:
           test -f .wiiu-artwork/icon.png
           test -f .wiiu-artwork/boot-tv.png
           test -f .wiiu-artwork/boot-drc.png
+          test "$(find .wup-audio/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
           ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
           ls -lh .wiiu-artwork/*.png
+          du -sh .wup-audio/audio
 
       - name: Generate code content meta tree
         run: |
           python3 tools/generate_wup_channel.py \
             --rpx fnaf3-wiiu.rpx \
             --output build-wup/channel
+          mkdir -p build-wup/channel/content/audio
+          cp .wup-audio/audio/*.bin build-wup/channel/content/audio/
+          test "$(find build-wup/channel/content/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          du -sh build-wup/channel/content/audio
 
       - name: Validate restored Wii U artwork
         run: |
@@ -104,6 +113,13 @@ jobs:
           for filename in ('app.xml', 'cos.xml', 'fnaf3-wiiu.rpx'):
               if not (Path('build-wup/channel/code') / filename).is_file():
                   raise SystemExit(f'missing {filename}')
+          audio = Path('build-wup/channel/content/audio')
+          files = sorted(audio.glob('*.bin'))
+          if len(files) != 49:
+              raise SystemExit(f'expected 49 packaged audio cues, got {len(files)}')
+          if any(path.stat().st_size == 0 for path in files):
+              raise SystemExit('one or more packaged audio cues are empty')
+          print('packaged audio cues:', len(files))
           PY
 
       - name: Package encrypted WUP installer when key is configured
