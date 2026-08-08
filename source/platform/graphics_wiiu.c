@@ -7,6 +7,7 @@
 #include <SDL2/SDL.h>
 
 #define TEXTURE_CACHE_CAPACITY 64u
+#define TEXT_RECT_BATCH_CAPACITY 256
 
 typedef struct RenderTarget {
     uint32_t target;
@@ -28,6 +29,10 @@ static SDL_Renderer *sTvRenderer = NULL;
 static SDL_Renderer *sGamePadRenderer = NULL;
 static CachedTexture sTextureCache[TEXTURE_CACHE_CAPACITY];
 static uint32_t sTextureCacheCount = 0u;
+static uint32_t sTvDrawColour = 0u;
+static uint32_t sGamePadDrawColour = 0u;
+static bool sTvDrawColourValid = false;
+static bool sGamePadDrawColourValid = false;
 
 static RenderTarget get_target(uint32_t index)
 {
@@ -50,11 +55,51 @@ static RenderTarget get_target(uint32_t index)
 
 static void set_draw_colour(SDL_Renderer *renderer, uint32_t colour)
 {
+    uint32_t *cached_colour = NULL;
+    bool *cached_valid = NULL;
+
+    if (renderer == sTvRenderer) {
+        cached_colour = &sTvDrawColour;
+        cached_valid = &sTvDrawColourValid;
+    } else if (renderer == sGamePadRenderer) {
+        cached_colour = &sGamePadDrawColour;
+        cached_valid = &sGamePadDrawColourValid;
+    }
+
+    if (cached_valid != NULL && *cached_valid &&
+        cached_colour != NULL && *cached_colour == colour) {
+        return;
+    }
+
     const uint8_t red = (uint8_t) ((colour >> 24) & 0xFFu);
     const uint8_t green = (uint8_t) ((colour >> 16) & 0xFFu);
     const uint8_t blue = (uint8_t) ((colour >> 8) & 0xFFu);
     const uint8_t alpha = (uint8_t) (colour & 0xFFu);
     SDL_SetRenderDrawColor(renderer, red, green, blue, alpha);
+
+    if (cached_valid != NULL && cached_colour != NULL) {
+        *cached_colour = colour;
+        *cached_valid = true;
+    }
+}
+
+static void fill_rects(uint32_t targets,
+                       const SDL_Rect *rectangles,
+                       int count,
+                       uint32_t colour)
+{
+    if (rectangles == NULL || count <= 0) {
+        return;
+    }
+
+    for (uint32_t index = 0u; index < 2u; ++index) {
+        const RenderTarget target = get_target(index);
+        if ((targets & target.target) == 0u || target.renderer == NULL) {
+            continue;
+        }
+        set_draw_colour(target.renderer, colour);
+        SDL_RenderFillRects(target.renderer, rectangles, count);
+    }
 }
 
 static void destroy_texture_cache(void)
@@ -369,6 +414,8 @@ bool graphics_init(void)
         return false;
     }
 
+    sTvDrawColourValid = false;
+    sGamePadDrawColourValid = false;
     graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(0, 0, 0));
     graphics_present(GRAPHICS_TARGET_BOTH);
     return true;
@@ -395,6 +442,8 @@ void graphics_shutdown(void)
         sGamePadWindow = NULL;
     }
 
+    sTvDrawColourValid = false;
+    sGamePadDrawColourValid = false;
     SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
@@ -439,15 +488,8 @@ void graphics_draw_rect(uint32_t targets,
         return;
     }
 
-    SDL_Rect rectangle = {x, y, width, height};
-    for (uint32_t index = 0u; index < 2u; ++index) {
-        const RenderTarget target = get_target(index);
-        if ((targets & target.target) == 0u || target.renderer == NULL) {
-            continue;
-        }
-        set_draw_colour(target.renderer, colour);
-        SDL_RenderFillRect(target.renderer, &rectangle);
-    }
+    const SDL_Rect rectangle = {x, y, width, height};
+    fill_rects(targets, &rectangle, 1, colour);
 }
 
 void graphics_draw_frame(uint32_t targets,
@@ -458,20 +500,17 @@ void graphics_draw_frame(uint32_t targets,
                          int thickness,
                          uint32_t colour)
 {
-    graphics_draw_rect(targets, x, y, width, thickness, colour);
-    graphics_draw_rect(targets,
-                       x,
-                       y + height - thickness,
-                       width,
-                       thickness,
-                       colour);
-    graphics_draw_rect(targets, x, y, thickness, height, colour);
-    graphics_draw_rect(targets,
-                       x + width - thickness,
-                       y,
-                       thickness,
-                       height,
-                       colour);
+    if (width <= 0 || height <= 0 || thickness <= 0) {
+        return;
+    }
+
+    const SDL_Rect rectangles[4] = {
+        {x, y, width, thickness},
+        {x, y + height - thickness, width, thickness},
+        {x, y, thickness, height},
+        {x + width - thickness, y, thickness, height},
+    };
+    fill_rects(targets, rectangles, 4, colour);
 }
 
 void graphics_draw_ellipse(uint32_t targets,
@@ -488,32 +527,34 @@ void graphics_draw_ellipse(uint32_t targets,
     const int64_t radius_x_squared = (int64_t) radius_x * radius_x;
     const int64_t radius_y_squared = (int64_t) radius_y * radius_y;
     const int64_t limit = radius_x_squared * radius_y_squared;
+    int ellipse_x = radius_x;
 
-    for (int ellipse_y = -radius_y; ellipse_y <= radius_y; ++ellipse_y) {
-        int first_x = radius_x;
-        int last_x = -radius_x;
-
-        for (int ellipse_x = -radius_x;
-             ellipse_x <= radius_x;
-             ++ellipse_x) {
+    /* The maximum valid X only decreases as Y moves away from the centre.
+     * Reusing it makes this O(radius_x + radius_y) instead of scanning the
+     * entire bounding rectangle for every ellipse. */
+    for (int ellipse_y = 0; ellipse_y <= radius_y; ++ellipse_y) {
+        while (ellipse_x > 0) {
             const int64_t value =
                 (int64_t) ellipse_x * ellipse_x * radius_y_squared +
                 (int64_t) ellipse_y * ellipse_y * radius_x_squared;
             if (value <= limit) {
-                if (ellipse_x < first_x) {
-                    first_x = ellipse_x;
-                }
-                if (ellipse_x > last_x) {
-                    last_x = ellipse_x;
-                }
+                break;
             }
+            --ellipse_x;
         }
 
-        if (last_x >= first_x) {
+        const int row_width = ellipse_x * 2 + 1;
+        graphics_draw_rect(targets,
+                           centre_x - ellipse_x,
+                           centre_y + ellipse_y,
+                           row_width,
+                           1,
+                           colour);
+        if (ellipse_y != 0) {
             graphics_draw_rect(targets,
-                               centre_x + first_x,
-                               centre_y + ellipse_y,
-                               last_x - first_x + 1,
+                               centre_x - ellipse_x,
+                               centre_y - ellipse_y,
+                               row_width,
                                1,
                                colour);
         }
@@ -533,6 +574,8 @@ void graphics_draw_text(uint32_t targets,
 
     int cursor_x = x;
     uint8_t rows[7];
+    SDL_Rect rectangles[TEXT_RECT_BATCH_CAPACITY];
+    int rectangle_count = 0;
 
     while (*text != '\0') {
         if (*text == '\n') {
@@ -545,13 +588,22 @@ void graphics_draw_text(uint32_t targets,
         if (get_glyph(*text, rows)) {
             for (int row = 0; row < 7; ++row) {
                 for (int column = 0; column < 5; ++column) {
-                    if ((rows[row] & (1u << (4 - column))) != 0u) {
-                        graphics_draw_rect(targets,
-                                           cursor_x + column * scale,
-                                           y + row * scale,
-                                           scale,
-                                           scale,
-                                           colour);
+                    if ((rows[row] & (1u << (4 - column))) == 0u) {
+                        continue;
+                    }
+
+                    rectangles[rectangle_count++] = (SDL_Rect) {
+                        cursor_x + column * scale,
+                        y + row * scale,
+                        scale,
+                        scale,
+                    };
+                    if (rectangle_count == TEXT_RECT_BATCH_CAPACITY) {
+                        fill_rects(targets,
+                                   rectangles,
+                                   rectangle_count,
+                                   colour);
+                        rectangle_count = 0;
                     }
                 }
             }
@@ -560,6 +612,8 @@ void graphics_draw_text(uint32_t targets,
         cursor_x += 6 * scale;
         ++text;
     }
+
+    fill_rects(targets, rectangles, rectangle_count, colour);
 }
 
 void graphics_draw_indexed_rle(uint32_t targets,
