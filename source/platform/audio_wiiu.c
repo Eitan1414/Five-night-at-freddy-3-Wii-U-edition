@@ -9,7 +9,6 @@
 #include <coreinit/cache.h>
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
-#include <whb/file.h>
 
 #include "platform/storage.h"
 
@@ -77,7 +76,7 @@ typedef struct AudioClip {
 
 typedef struct AudioVoiceSlot {
     AXVoice *voice;
-    bool configured;
+    bool cache_flushed;
 } AudioVoiceSlot;
 
 static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
@@ -205,29 +204,6 @@ static void release_external_audio(void)
     }
 }
 
-static uint8_t *copy_packaged_audio(const char *path, size_t *byte_size_out)
-{
-    uint32_t packaged_size = 0u;
-    char *packaged = WHBReadWholeFile(path, &packaged_size);
-    if (packaged == NULL) return NULL;
-
-    if (packaged_size < 2u || packaged_size > AUDIO_EXTERNAL_MAX_BYTES) {
-        WHBFreeWholeFile(packaged);
-        return NULL;
-    }
-
-    const size_t byte_size = (size_t) packaged_size & ~(size_t) 1u;
-    const size_t allocation_size =
-        (byte_size + AUDIO_ALIGNMENT - 1u) & ~(AUDIO_ALIGNMENT - 1u);
-    uint8_t *data = (uint8_t *) memalign(AUDIO_ALIGNMENT, allocation_size);
-    if (data != NULL) memcpy(data, packaged, byte_size);
-    WHBFreeWholeFile(packaged);
-
-    if (data == NULL) return NULL;
-    *byte_size_out = byte_size;
-    return data;
-}
-
 static uint8_t *copy_sd_audio(const char *path, size_t *byte_size_out)
 {
     size_t byte_size = 0u;
@@ -260,12 +236,7 @@ static void load_external_audio(AudioCue cue)
     if (path == NULL) return;
 
     size_t byte_size = 0u;
-
-    /* SD files remain the highest-priority user override. */
     uint8_t *data = copy_sd_audio(path, &byte_size);
-
-    /* Packaged audio is optional; the authentic release pack is embedded. */
-    if (data == NULL) data = copy_packaged_audio(path, &byte_size);
     if (data == NULL) return;
 
     sOwnedAudio[cue] = data;
@@ -273,14 +244,28 @@ static void load_external_audio(AudioCue cue)
     sClips[cue].end = data + byte_size;
 }
 
-static void configure_voice(AudioCue cue, bool loop, float volume)
+static AXVoice *ensure_voice(AudioCue cue)
 {
-    if (cue < 0 || cue >= AUDIO_CUE_COUNT || sVoices[cue].voice == NULL) return;
+    if (cue < 0 || cue >= AUDIO_CUE_COUNT) return NULL;
 
-    AXVoice *voice = sVoices[cue].voice;
+    AudioVoiceSlot *slot = &sVoices[cue];
+    if (slot->voice == NULL) {
+        slot->voice = AXAcquireVoice(31u, NULL, NULL);
+        slot->cache_flushed = false;
+    }
+    return slot->voice;
+}
+
+static bool configure_voice(AudioCue cue, bool loop, float volume)
+{
+    AXVoice *voice = ensure_voice(cue);
+    if (voice == NULL) return false;
+
+    AudioVoiceSlot *slot = &sVoices[cue];
     const AudioClip *clip = &sClips[cue];
     const uint32_t byte_size = (uint32_t) (clip->end - clip->data);
     const uint32_t sample_count = byte_size / 2u;
+    if (byte_size < 2u || sample_count == 0u) return false;
 
     AXVoiceDeviceMixData mix[6];
     memset(mix, 0, sizeof(mix));
@@ -297,7 +282,11 @@ static void configure_voice(AudioCue cue, bool loop, float volume)
         .data = clip->data,
     };
 
-    DCFlushRange((void *) clip->data, byte_size);
+    if (!slot->cache_flushed) {
+        DCFlushRange((void *) clip->data, byte_size);
+        slot->cache_flushed = true;
+    }
+
     AXVoiceBegin(voice);
     AXSetVoiceType(voice, AX_VOICE_TYPE_UNKNOWN);
     AXSetVoiceVe(voice, &ve);
@@ -307,7 +296,7 @@ static void configure_voice(AudioCue cue, bool loop, float volume)
     (void) AXSetVoiceSrcRatio(voice, 0.5f);
     AXSetVoiceOffsets(voice, &offsets);
     AXVoiceEnd(voice);
-    sVoices[cue].configured = true;
+    return true;
 }
 
 bool audio_init(void)
@@ -316,7 +305,7 @@ bool audio_init(void)
     memset(sOwnedAudio, 0, sizeof(sOwnedAudio));
     memcpy(sClips, kEmbeddedClips, sizeof(sClips));
 
-    /* Optional SD overrides can replace any embedded cue at runtime. */
+    /* SD files remain optional overrides; the release audio itself is embedded. */
     (void) storage_init();
     for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
         load_external_audio((AudioCue) cue);
@@ -332,16 +321,8 @@ bool audio_init(void)
         return false;
     }
 
-    for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue) {
-        sVoices[cue].voice = AXAcquireVoice(31u, NULL, NULL);
-        if (sVoices[cue].voice == NULL) {
-            sAvailable = false;
-            break;
-        }
-        configure_voice((AudioCue) cue, false, 1.0f);
-    }
-    if (!sAvailable) audio_shutdown();
-    return sAvailable;
+    /* Voices are acquired and sample caches are flushed only on first use. */
+    return true;
 }
 
 void audio_shutdown(void)
@@ -351,7 +332,7 @@ void audio_shutdown(void)
             AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_STOPPED);
             AXFreeVoice(sVoices[cue].voice);
             sVoices[cue].voice = NULL;
-            sVoices[cue].configured = false;
+            sVoices[cue].cache_flushed = false;
         }
     }
     if (AXIsInit()) AXQuit();
@@ -361,9 +342,9 @@ void audio_shutdown(void)
 
 void audio_play(AudioCue cue, float volume, bool loop)
 {
-    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT ||
-        sVoices[cue].voice == NULL) return;
-    configure_voice(cue, loop, volume);
+    if (!sAvailable || cue < 0 || cue >= AUDIO_CUE_COUNT) return;
+    if (!configure_voice(cue, loop, volume)) return;
+
     AXSetVoiceCurrentOffset(sVoices[cue].voice, 0u);
     AXSetVoiceState(sVoices[cue].voice, AX_VOICE_STATE_PLAYING);
 }
