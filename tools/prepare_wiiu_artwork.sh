@@ -21,17 +21,16 @@ done
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
-check_source() {
+probe_source() {
   local source="$1"
-  local expected="$2"
   local dimensions
   dimensions="$(ffprobe -v error -select_streams v:0 \
     -show_entries stream=width,height -of csv=s=x:p=0 "$source")"
-  [[ "$dimensions" == "$expected" ]] || {
-    echo "$(basename "$source") has invalid dimensions: $dimensions (expected $expected)" >&2
+  [[ -n "$dimensions" ]] || {
+    echo "$(basename "$source") is not a decodable image" >&2
     exit 1
   }
-  echo "$(basename "$source"): $dimensions"
+  echo "$(basename "$source"): source $dimensions"
 }
 
 convert_png() {
@@ -64,8 +63,11 @@ print(f'{p.name}: {len(data)} bytes')
 PY
 }
 
-check_source "$ROOT/boot-tv.jpg" 1280x720
-check_source "$ROOT/boot-drc.jpg" 854x480
+# Historical channel artwork is intentionally kept in its original source
+# resolution. The Wii U output sizes are enforced only on the generated PNGs.
+probe_source "$ROOT/icon.jpg"
+probe_source "$ROOT/boot-tv.jpg"
+probe_source "$ROOT/boot-drc.jpg"
 
 convert_png "$ROOT/icon.jpg" icon.png 128 128
 convert_png "$ROOT/boot-tv.jpg" boot-tv.png 1280 720
