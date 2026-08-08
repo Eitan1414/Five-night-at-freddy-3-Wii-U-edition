@@ -62,7 +62,7 @@ jobs:
             https://github.com/softblueish/FNAF3.git \
             /tmp/fnaf3-pc-original
           cd /tmp/fnaf3-pc-original
-          git checkout bdda89c00a6f5716956822ce01646013ca5708e1 -- "FNAF3 sound"
+          git checkout bdda89c00a6f5716956822ce01646013ca5708e1 -- assets/audio
 
       - name: Prepare generated assets
         env:
@@ -71,7 +71,7 @@ jobs:
 
       - name: Prepare original WUP audio pack
         env:
-          FNAF3_PC_AUDIO_ROOT: /tmp/fnaf3-pc-original/FNAF3 sound
+          FNAF3_PC_AUDIO_ROOT: /tmp/fnaf3-pc-original/assets/audio
         run: sh tools/prepare_wup_audio_content.sh
 
       - name: Build WUHB
