@@ -133,6 +133,15 @@ static void process_springtrap_event(Game *game,
             ? AUDIO_CUE_VENT_CLOSER_1 : AUDIO_CUE_VENT_LOUDER_2,
             0.82f, false);
     }
+    if ((event.flags & SPRINGTRAP_EVENT_FORCE_CLOSE_PANEL) != 0u) {
+        game->camera_open = false;
+        game->maintenance_open = false;
+        game->vent_map_open = false;
+        game->repairing = false;
+        game->repair_frames = 0u;
+        audio_stop(AUDIO_CUE_STATIC);
+        audio_stop(AUDIO_CUE_WAIT);
+    }
     if ((event.flags & SPRINGTRAP_EVENT_DANGER_SOFT) != 0u)
         set_message(game, MESSAGE_DANGER_SOFT);
     if ((event.flags & SPRINGTRAP_EVENT_DANGER_LOUD) != 0u)
@@ -244,8 +253,10 @@ static void open_cameras(Game *game)
     game->maintenance_open = false;
     game->vent_map_open = false;
     game->idle_frames = 0u;
-    process_phantom_event(game, phantoms_on_panel_opened(&game->phantoms));
-    restart_camera_static();
+    process_phantom_event(game, phantoms_on_camera_toggled(
+        &game->phantoms, true, game->office_pan,
+        springtrap_ai_camera(&game->springtrap)));
+    if (game->camera_open) restart_camera_static();
     game->dirty = true;
 }
 
@@ -254,6 +265,9 @@ static void close_cameras(Game *game)
     game->camera_open = false;
     game->vent_map_open = false;
     audio_stop(AUDIO_CUE_STATIC);
+    process_phantom_event(game, phantoms_on_camera_toggled(
+        &game->phantoms, false, game->office_pan,
+        springtrap_ai_camera(&game->springtrap)));
     game->dirty = true;
 }
 
