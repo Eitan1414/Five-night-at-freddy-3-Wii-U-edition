@@ -12,6 +12,10 @@ command -v ffprobe >/dev/null 2>&1 || {
   echo 'ffprobe is required to validate Wii U channel artwork.' >&2
   exit 1
 }
+command -v python3 >/dev/null 2>&1 || {
+  echo 'python3 is required to prepare Wii U channel artwork.' >&2
+  exit 1
+}
 
 for source in icon.jpg boot-tv.jpg boot-drc.jpg; do
   [[ -s "$ROOT/$source" ]] || {
@@ -20,16 +24,23 @@ for source in icon.jpg boot-tv.jpg boot-drc.jpg; do
   }
 done
 
+rm -rf "$OUT"
 mkdir -p "$OUT"
 
-convert_png() {
+sanitize_jpeg() {
   local source="$1"
+  local output="$2"
+  python3 "$ROOT/tools/sanitize_jpeg.py" "$ROOT/$source" "$OUT/$output"
+}
+
+convert_png() {
+  local source_path="$1"
   local output="$2"
   local width="$3"
   local height="$4"
 
   ffmpeg -hide_banner -loglevel error -y \
-    -i "$ROOT/$source" \
+    -i "$source_path" \
     -vf "scale=${width}:${height}:flags=lanczos,format=rgb24" \
     -frames:v 1 \
     "$OUT/$output"
@@ -54,8 +65,14 @@ print(f'{p.name}: {len(data)} bytes')
 PY
 }
 
-convert_png icon.jpg icon.png 128 128
-convert_png boot-tv.jpg boot-tv.png 1280 720
-convert_png boot-drc.jpg boot-drc.png 854 480
+# icon.jpg is already accepted by the toolchain. The two splash JPEGs contain
+# optional APP metadata that strict Wii U image loaders reject; strip only that
+# metadata before decoding, leaving the encoded picture data untouched.
+convert_png "$ROOT/icon.jpg" icon.png 128 128
+sanitize_jpeg boot-tv.jpg boot-tv-clean.jpg
+sanitize_jpeg boot-drc.jpg boot-drc-clean.jpg
+convert_png "$OUT/boot-tv-clean.jpg" boot-tv.png 1280 720
+convert_png "$OUT/boot-drc-clean.jpg" boot-drc.png 854 480
+rm -f "$OUT/boot-tv-clean.jpg" "$OUT/boot-drc-clean.jpg"
 
 echo "Prepared Wii U artwork in $OUT"
