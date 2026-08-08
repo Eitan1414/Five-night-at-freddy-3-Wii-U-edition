@@ -9,7 +9,7 @@ ARCHIVE="$WORK/fnaf3-sounds.zip"
 EXTRACTED="$WORK/extracted"
 SOURCE_ROOT=""
 EXPECTED_ARCHIVE_SHA256="128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e"
-EXPECTED_SIX_AM_OPUS_SHA256="aa977226f8b91941f158d39f5712d8f03ce0a150cbaf95e6e6e91aaa37da79e6"
+EXPECTED_SIX_AM_MP3_SHA256="cbb29cabb06a6884ad50c343c89d788445d5d06583df65c2df66afef62401210"
 
 cleanup() { rm -rf "$WORK"; }
 trap cleanup EXIT INT TERM
@@ -160,13 +160,13 @@ convert_sound vent_quiet1 vent_quiet1.wav
 convert_sound vent_quiet2 vent_quiet2.wav
 convert_sound wait wait.wav
 
-# six_am was supplied separately during the original audio-restoration pass.
-# It is stored in compact Opus form as text chunks so the WUP build remains
-# reproducible without committing the large source MP3.
-SIX_AM_OPUS="$WORK/six_am.opus"
-cat "$ROOT"/assets/wup_audio/six_am.opus.b64.* | base64 -d > "$SIX_AM_OPUS"
-verify_sha256 "$SIX_AM_OPUS" "$EXPECTED_SIX_AM_OPUS_SHA256"
-ffmpeg -hide_banner -loglevel error -y -i "$SIX_AM_OPUS" \
+# six_am is the exact MP3 supplied for this Wii U restoration pass. Keeping
+# the source bytes as verified Base64 chunks avoids the old truncated Opus
+# fragments while preserving the provided audio before the runtime PCM step.
+SIX_AM_MP3="$WORK/six_am.mp3"
+cat "$ROOT"/assets/wup_audio/six_am.mp3.b64.* | base64 -d > "$SIX_AM_MP3"
+verify_sha256 "$SIX_AM_MP3" "$EXPECTED_SIX_AM_MP3_SHA256"
+ffmpeg -hide_banner -loglevel error -y -i "$SIX_AM_MP3" \
     -ar 16000 -ac 1 -f s16be "$OUT/six_am.bin"
 
 count="$(find "$OUT" -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')"
