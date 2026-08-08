@@ -74,6 +74,19 @@ jobs:
           FNAF3_PC_AUDIO_ROOT: /tmp/fnaf3-pc-original/assets/audio
         run: sh tools/prepare_wup_audio_content.sh
 
+      - name: Prepare startup intro
+        run: sh tools/prepare_intro_assets.sh
+
+      - name: Prepare WUHB packaged content
+        run: |
+          rm -rf .wuhb-content
+          mkdir -p .wuhb-content/audio .wuhb-content/intro
+          cp .wup-audio/audio/*.bin .wuhb-content/audio/
+          cp .wup-intro/intro.f3v .wup-intro/intro_audio.bin .wuhb-content/intro/
+          test "$(find .wuhb-content/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          test -s .wuhb-content/intro/intro.f3v
+          test -s .wuhb-content/intro/intro_audio.bin
+
       - name: Build WUHB
         run: make -j2
 
@@ -86,21 +99,26 @@ jobs:
           test -f .wiiu-artwork/boot-tv.png
           test -f .wiiu-artwork/boot-drc.png
           test "$(find .wup-audio/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
+          test -s .wup-intro/intro.f3v
+          test -s .wup-intro/intro_audio.bin
           ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
-          ls -lh .wiiu-artwork/*.png
-          du -sh .wup-audio/audio
+          ls -lh .wiiu-artwork/*.png .wup-intro/*
+          du -sh .wup-audio/audio .wuhb-content
 
       - name: Generate code content meta tree
         run: |
           python3 tools/generate_wup_channel.py \
             --rpx fnaf3-wiiu.rpx \
             --output build-wup/channel
-          mkdir -p build-wup/channel/content/audio
+          mkdir -p build-wup/channel/content/audio build-wup/channel/content/intro
           cp .wup-audio/audio/*.bin build-wup/channel/content/audio/
+          cp .wup-intro/intro.f3v .wup-intro/intro_audio.bin build-wup/channel/content/intro/
           test "$(find build-wup/channel/content/audio -maxdepth 1 -type f -name '*.bin' | wc -l)" -eq 49
-          du -sh build-wup/channel/content/audio
+          test -s build-wup/channel/content/intro/intro.f3v
+          test -s build-wup/channel/content/intro/intro_audio.bin
+          du -sh build-wup/channel/content/audio build-wup/channel/content/intro
 
-      - name: Validate restored Wii U artwork
+      - name: Validate restored Wii U artwork and packaged content
         run: |
           python3 - <<'PY'
           import struct
@@ -129,7 +147,15 @@ jobs:
               raise SystemExit(f'expected 49 packaged audio cues, got {len(files)}')
           if any(path.stat().st_size == 0 for path in files):
               raise SystemExit('one or more packaged audio cues are empty')
+          intro = Path('build-wup/channel/content/intro')
+          video = intro / 'intro.f3v'
+          intro_audio = intro / 'intro_audio.bin'
+          if video.read_bytes()[:4] != b'F3I2':
+              raise SystemExit('invalid startup intro header')
+          if intro_audio.stat().st_size == 0:
+              raise SystemExit('startup intro audio is empty')
           print('packaged audio cues:', len(files))
+          print('startup intro bytes:', video.stat().st_size, intro_audio.stat().st_size)
           PY
 
       - name: Package encrypted WUP installer when key is configured
