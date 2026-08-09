@@ -30,6 +30,7 @@
 #define gCamera08Texture gPsxCamera08Texture
 #define gCamera09Texture gPsxCamera09Texture
 #define gCamera10Texture gPsxCamera10Texture
+#define process_phantom_event fnaf3_legacy_process_phantom_event
 #include "main_v3_parts/main_00.inc"
 #undef gCamera10Texture
 #undef gCamera09Texture
@@ -42,9 +43,14 @@
 #undef gCamera02Texture
 #undef gCamera01Texture
 #include "main_v3_parts/main_01.inc"
+#undef process_phantom_event
+#include "main_v3_parts/main_puppet_pc_events.inc"
 
 #include "main_v3_parts/main_phantom_visuals.inc"
+#define update_active_game fnaf3_legacy_update_active_game
 #include "main_v3_parts/main_02.inc"
+#undef update_active_game
+#include "main_v3_parts/main_puppet_pc_input.inc"
 #include "main_v3_parts/main_03.inc"
 
 /* main_05.inc opens draw_victory() and main_06.inc closes it. Keep all three
