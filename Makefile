@@ -32,17 +32,16 @@ DRC_SPLASH  := $(ARTWORK_DIR)/boot-drc.png
 PC_BB_ARCHIVE := source/generated/phantom_bb_pc_assets.c.xz
 PC_BB_SOURCE  := source/phantom_bb_pc_assets.c
 PC_BB_SHA256  := 67d94ae9783764d50ddf8b9a6c2c28b0df526a3e4b6158b1ac87c0c33ed4e9cf
-PC_PUPPET_CHUNKS  := source/generated/phantom_puppet_pc_assets.c.xz.b64.*
+PC_PUPPET_B64     := source/generated/phantom_puppet_pc_assets.fixed.b64
 PC_PUPPET_ARCHIVE := .phantom_puppet_pc_assets.c.xz
 PC_PUPPET_SOURCE  := source/phantom_puppet_pc_assets.c
-PC_PUPPET_SHA256  := 4d84dca6cbff4fc805a103cda966836b83c2a15bc66e61fbc90e987201fbf4d0
+PC_PUPPET_SHA256  := b3d88dbbce637601acb63be72f470081379dff207e7c632dce4da7d4c3428810
 
 #-------------------------------------------------------------------------------
 # Compiler and linker options
 #-------------------------------------------------------------------------------
 CFLAGS   := -g -Wall -Wextra -O2 -ffunction-sections $(MACHDEP)
 CFLAGS   += $(INCLUDE) -D__WIIU__ -D__WUT__
-CFLAGS   += $(shell $(PKGCONF) --cflags sdl2)
 CXXFLAGS := $(CFLAGS)
 ASFLAGS  := -g $(ARCH)
 LDFLAGS  := -g $(ARCH) $(RPXSPECS) -Wl,-Map,$(notdir $*.map)
@@ -130,7 +129,8 @@ pc-bb-assets:
 	@echo "Restored authentic PC Phantom BB camera sprite and jumpscare"
 
 pc-puppet-assets:
-	@cat $(PC_PUPPET_CHUNKS) | base64 -d > "$(PC_PUPPET_ARCHIVE)"
+	@test -f "$(PC_PUPPET_B64)"
+	@base64 -d "$(PC_PUPPET_B64)" > "$(PC_PUPPET_ARCHIVE)"
 	@printf '%s  %s\n' "$(PC_PUPPET_SHA256)" "$(PC_PUPPET_ARCHIVE)" | sha256sum -c -
 	@xz -t "$(PC_PUPPET_ARCHIVE)"
 	@xz -dc "$(PC_PUPPET_ARCHIVE)" > "$(PC_PUPPET_SOURCE)"
