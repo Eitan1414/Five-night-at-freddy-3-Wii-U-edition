@@ -54,6 +54,10 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 
+mkdir -p assets/user_visuals
+cat assets/user_visuals/phantom_chica_jumpscare.png.b64.part* \
+    | base64 -d > assets/user_visuals/phantom_chica_jumpscare.png
+
 if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
     temporary_user_content="${TMPDIR:-/tmp}/fnaf3-user-content.tar.xz"
     # shellcheck disable=SC2086
@@ -89,6 +93,11 @@ python3 tools/convert_jumpscare_tim.py \
     "$SCREAMER_ROOT" \
     source/jumpscare_assets.c \
     include/assets/jumpscare_assets.h
+
+python3 tools/convert_user_chica_png.py \
+    assets/user_visuals/phantom_chica_jumpscare.png \
+    source/phantom_chica_user_jumpscare.c \
+    include/assets/phantom_chica_user_jumpscare.h
 
 mkdir -p assets data/audio
 rm -rf assets/audio_low12 assets/audio_phantoms_low data/audio
