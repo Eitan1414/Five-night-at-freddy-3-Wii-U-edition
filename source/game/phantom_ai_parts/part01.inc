@@ -227,4 +227,13 @@ PhantomEvent phantoms_update(PhantomSystem *system,
             system->mangle_seen_frames = 0u;
             system->mangle_office_active = true;
             system->mangle_office_frames = mangle_duration(system);
+            /*
+             * The PSX source keeps Phantom Mangle in the office for 780
+             * frames, then spends roughly another 70 frames retreating.
+             * Keep the existing helper in use, but never shorten that
+             * original encounter window on later nights.
+             */
+            if (system->mangle_office_frames < 850u) {
+                system->mangle_office_frames = 850u;
+            }
             event.flags |= PHANTOM_EVENT_FORCE_CLOSE_PANEL |
