@@ -56,7 +56,11 @@
 /* main_05.inc opens draw_victory() and main_06.inc closes it. Keep all three
  * legacy renderer fragments contiguous at the C level; the touch UI is an
  * overlay and must be declared only after main_06 has returned to file scope. */
+#define gPhantomPuppetRealAnimation gPhantomPuppetPcAnimation
+#define sequence_ping_pong_frame puppet_pc_sequence_frame
 #include "main_v3_parts/main_04.inc"
+#undef sequence_ping_pong_frame
+#undef gPhantomPuppetRealAnimation
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
