@@ -32,7 +32,8 @@ DRC_SPLASH  := $(ARTWORK_DIR)/boot-drc.png
 PC_BB_ARCHIVE := source/generated/phantom_bb_pc_assets.c.xz
 PC_BB_SOURCE  := source/phantom_bb_pc_assets.c
 PC_BB_SHA256  := 67d94ae9783764d50ddf8b9a6c2c28b0df526a3e4b6158b1ac87c0c33ed4e9cf
-PC_PUPPET_ARCHIVE := source/generated/phantom_puppet_pc_assets.c.xz
+PC_PUPPET_CHUNKS  := source/generated/phantom_puppet_pc_assets.c.xz.b64.*
+PC_PUPPET_ARCHIVE := .phantom_puppet_pc_assets.c.xz
 PC_PUPPET_SOURCE  := source/phantom_puppet_pc_assets.c
 PC_PUPPET_SHA256  := 4d84dca6cbff4fc805a103cda966836b83c2a15bc66e61fbc90e987201fbf4d0
 
@@ -129,8 +130,9 @@ pc-bb-assets:
 	@echo "Restored authentic PC Phantom BB camera sprite and jumpscare"
 
 pc-puppet-assets:
-	@test -f "$(PC_PUPPET_ARCHIVE)"
+	@cat $(PC_PUPPET_CHUNKS) | base64 -d > "$(PC_PUPPET_ARCHIVE)"
 	@printf '%s  %s\n' "$(PC_PUPPET_SHA256)" "$(PC_PUPPET_ARCHIVE)" | sha256sum -c -
+	@xz -t "$(PC_PUPPET_ARCHIVE)"
 	@xz -dc "$(PC_PUPPET_ARCHIVE)" > "$(PC_PUPPET_SOURCE)"
 	@grep -q "const JumpscareSequence gPhantomPuppetPcAnimation" "$(PC_PUPPET_SOURCE)"
 	@echo "Restored authentic PC Phantom Puppet attack animation"
@@ -142,7 +144,7 @@ $(BUILD): artwork pc-bb-assets pc-puppet-assets
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(ARTWORK_DIR) .wuhb-content $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
-	@rm -f "$(PC_BB_SOURCE)" "$(PC_PUPPET_SOURCE)"
+	@rm -f "$(PC_BB_SOURCE)" "$(PC_PUPPET_SOURCE)" "$(PC_PUPPET_ARCHIVE)"
 
 else
 
