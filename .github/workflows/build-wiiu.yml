@@ -23,7 +23,7 @@ jobs:
       - name: Install asset tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch
+          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch python3-pil
 
       - name: Build official Wii U SDL2 port
         run: |
