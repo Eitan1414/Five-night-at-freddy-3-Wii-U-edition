@@ -37,21 +37,13 @@
 PhantomId phantoms_camera_overlay(const PhantomSystem *system,
                                   int selected_camera)
 {
-    if (system == NULL) {
-        return PHANTOM_NONE;
-    }
-    if (system->bb_camera_visible && selected_camera == system->bb_camera) {
-        return PHANTOM_BALLOON_BOY;
-    }
-    if (system->chica_camera_visible && selected_camera == 6) {
-        return PHANTOM_CHICA;
-    }
-    if (system->mangle_camera_visible && selected_camera == 3) {
-        return PHANTOM_MANGLE;
-    }
-    if (system->puppet_camera_visible && selected_camera == 7) {
-        return PHANTOM_PUPPET;
-    }
+    /*
+     * Phantom camera visuals are already baked into the user's camera pack.
+     * Keep the AI/timers above fully active, but never draw a second Phantom
+     * sprite on top of those camera images.
+     */
+    (void) system;
+    (void) selected_camera;
     return PHANTOM_NONE;
 }
 
