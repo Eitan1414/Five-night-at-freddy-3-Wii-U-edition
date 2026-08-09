@@ -18,8 +18,13 @@
             system->puppet_seen_frames = 0u;
             system->puppet_office_active = true;
             system->puppet_office_frames = puppet_duration(system);
+            /* Match the requested 10 / 13 / 15 / 17 second encounter curve. */
+            if (system->night == 4 || system->night == 5) {
+                system->puppet_office_frames += FRAMES_PER_SECOND;
+            }
             event.flags |= PHANTOM_EVENT_FORCE_CLOSE_PANEL |
                            PHANTOM_EVENT_RELEASE_SPRINGTRAP |
+                           PHANTOM_EVENT_VENTILATION_FAILURE |
                            PHANTOM_EVENT_MASK_STARTED |
                            PHANTOM_EVENT_VISUAL_CHANGED;
             event.phantom = PHANTOM_PUPPET;
