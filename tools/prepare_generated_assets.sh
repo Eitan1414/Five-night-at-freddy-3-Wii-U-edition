@@ -40,6 +40,9 @@ restore_extended_cameras \
 restore_xz_base64 \
     "source/generated/camera_springtrap_textures.c.xz.b64" \
     "source/camera_springtrap_textures.c"
+restore_xz_base64 \
+    "source/generated/phantom_mangle_user_texture.h.xz.b64" \
+    "include/assets/phantom_mangle_user_texture.h"
 
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "ffmpeg is required to prepare audio assets" >&2
