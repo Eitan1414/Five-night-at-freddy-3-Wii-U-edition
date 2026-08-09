@@ -13,6 +13,7 @@
 #define render_game fnaf3_legacy_render_game
 
 #include "main_v3_parts/main_00.inc"
+#include "assets/phantom_mangle_override.h"
 #include "main_v3_parts/main_01.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
