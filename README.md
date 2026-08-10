@@ -1,179 +1,145 @@
 # Five Nights at Freddy's 3 — Wii U Edition
 
-Native Wii U homebrew port targeting **Aroma** and the `.wuhb` format.
+An unofficial **Five Nights at Freddy's 3** port made specifically for the **Nintendo Wii U**, with support for **Aroma**, the Wii U GamePad and a number of features created especially for this edition.
 
-## Complete-current milestone
+> This is a fan-made project. It is not affiliated with, endorsed by, or supported by the original developers, publishers, Nintendo, or the respective rights holders.
 
-The current build contains:
+## About the Wii U Edition
 
-- custom Wii U icon and separate TV/GamePad boot splashes;
-- original PSX warning, animated title, office panorama and camera material;
-- progression from **12 AM to 6 AM** through Nights 1–6;
-- versioned 16-byte autosave with backup recovery, completed nights, six secret-minigame flags and four-star progress;
-- ten selectable camera nodes and five sealable ventilation routes;
-- Springtrap adjacency movement, audio lure, vents, office observation and jumpscare logic;
-- camera, audio and ventilation failures with maintenance reboots;
-- complete Phantom Foxy, Balloon Boy, Freddy, Chica, Mangle and Puppet gameplay pass;
-- original multi-frame Springtrap and Phantom jumpscare sequences;
-- real supplied Phone Guy calls for Nights 1–6 through optional SD audio overrides;
-- supplied menu, monitor, maintenance, Game Over, night-start, 6 AM and post-night sounds;
-- five playable **Follow Me** story chapters after Nights 1–5;
-- six playable Good Ending minigames with both Extras replay and hidden in-night triggers;
-- original supplied Bad Ending artwork, Night 6 fire/newspaper ending and Good Ending;
-- Extras with Animatronics, Jumpscares, Secret Minigames, Cheats and Credits;
-- original four cheat options: Fast Nights, Radar, Aggressive and No Errors;
-- four persistent title stars, including Aggressive-only Nightmare completion;
-- separate TV/GamePad rendering through Wii U SDL2/GX2;
-- GPU-cached RLE textures and Wii U `sndcore2` audio;
-- automatic `.elf`, `.rpx` and `.wuhb` builds through GitHub Actions.
+The goal of this project is to make FNaF 3 feel at home on Wii U rather than simply placing the game on another platform.
 
-## Story and unlock flow
+The port includes Wii U-specific controls, TV/GamePad rendering, adapted menus, persistent progression, additional Extras content and several quality-of-life improvements while keeping the core FNaF 3 experience recognizable.
 
-Completing a night saves immediately. Nights 1–5 enter their matching Follow Me chapter. Completing Night 5 displays the Bad Ending, unlocks Night 6 and unlocks Extras. Completing Night 6 displays the Fazbear's Fright fire/newspaper ending.
+## Features
 
-Completing all six secret minigames unlocks Happiest Day and the Good Ending. The title stars are:
+- Full **Night 1–6** progression
+- Springtrap AI, ventilation routes, audio lure and system failures
+- **Phantom Freddy, Foxy, Chica, Balloon Boy, Mangle and Puppet**
+- Camera and maintenance systems adapted for Wii U controls
+- TV + **Wii U GamePad** support
+- Phone calls and game audio support
+- Persistent save data and progression
+- Follow Me sequences and secret minigames
+- Multiple endings, including the Good Ending progression
+- **Extras** menu with additional content
+- Animatronic and jumpscare galleries
+- Secret Minigame replay menu
+- **Cheats** menu with:
+  - Fast Nights
+  - Radar
+  - Aggressive
+  - No Errors
+- Four persistent title stars
 
-1. Night 5 complete;
-2. Night 6 complete;
-3. Good Ending complete;
-4. Night 6 complete with **Aggressive enabled and every other cheat disabled**.
+### Achievements
 
-The Cheats page unlocks after Night 6 and the Good Ending are complete.
+The Wii U Edition also includes its own achievement system:
 
-## External audio package
+- **9 normal achievements**
+- Locked and unlocked achievement artwork
+- Achievement notifications with dedicated sound effects
+- Persistent achievement progress
+- `Extras > Achievements` menu
+- Progress counter from `0/9` to `9/9`
+- A special final trophy called **Utine** after completing all nine achievements
+- Dedicated Utine unlock presentation, animation and sound
 
-The game first mounts `SD:/wiiu/apps/fnaf3-wiiu/`, then loads optional raw PCM replacements from:
+The additional UI uses a visual style designed to blend with FNaF 3 while keeping the original Extras presentation intact.
+
+## Installation
+
+### Recommended: Aroma / WUHB
+
+You need a Wii U configured to run **Aroma** homebrew.
+
+1. Download the Wii U Edition release package.
+2. Open your Wii U SD card on a computer.
+3. Copy the provided `fnaf3-wiiu` folder into:
 
 ```text
-SD:/wiiu/apps/fnaf3-wiiu/audio/
+SD:/wiiu/apps/
 ```
 
-The distributed package supplies:
+The final structure should contain at least:
 
 ```text
-phone_night1.bin ... phone_night6.bin
-six_am.bin
-select.bin
-end.bin
-crank1.bin
-crank2.bin
-lever1.bin
-lever2.bin
-stare.bin
-titlemusic.bin
-startday.bin
+SD:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
 ```
 
-The format is signed 16-bit big-endian, 16 kHz, mono PCM. Every external file is optional; a missing or invalid file falls back to the embedded cue.
+If the release contains additional files or folders, keep their original structure and copy them alongside the `.wuhb` file.
 
-See [`docs/EXTERNAL_AUDIO.md`](docs/EXTERNAL_AUDIO.md).
+4. Safely eject the SD card.
+5. Insert it into the Wii U.
+6. Start the console with Aroma.
+7. Launch **Five Nights at Freddy's 3 — Wii U Edition** from the Wii U homebrew environment.
 
-## Hidden minigame triggers
-
-The six minigames remain directly replayable from Extras. They can also be found during nights with Wii U controller equivalents of the original triggers:
-
-- **BB's Air Adventure:** CAM 08, hold **L**, press **A**;
-- **Mangle's Quest:** from Night 2, CAM 07, hold **X/Y**, then enter upper-left, lower-left, upper-right, lower-right;
-- **Chica's Party:** from Night 3, hold **L** and press **A** on CAM 02, 03, 04 and 06;
-- **Stage 01:** from Night 4, pan fully left, hold **L** and press **A** for `3-9-5-2-4-8`: upper-right, lower-right, centre, up, left, down;
-- **Shadow Bonnie:** from Night 5, pan fully right, hold **L**, press **A**;
-- **Happiest Day:** CAM 03, hold **R**, press **A**.
-
-A hidden minigame pauses the night and returns to the same office when left or completed. See [`docs/SECRET_MINIGAMES.md`](docs/SECRET_MINIGAMES.md).
-
-## Cheats
-
-- **Fast Nights:** doubles clock progression;
-- **Radar:** marks Springtrap's real camera or vent source;
-- **Aggressive:** gives Springtrap a second AI update every gameplay frame;
-- **No Errors:** prevents camera, audio and ventilation failures while retaining Phantom encounters.
-
-Cheat selections last until the application closes and are not written to the save. See [`docs/CHEATS.md`](docs/CHEATS.md).
+Save data is handled automatically by the port.
 
 ## Controls
 
 ### Office
 
-- **Left/Right:** look around;
-- **X/Y:** open cameras;
-- **−:** open maintenance;
-- **R:** mute the active phone call;
-- **B:** return to title.
+- **Left / Right:** look around
+- **X / Y:** open or close cameras
+- **−:** open maintenance
+- **R:** mute an active phone call
+- **B:** return when available
 
-### Camera map
+### Cameras
 
-- **D-pad:** select a camera;
-- **A:** Play Audio;
-- **R:** switch to vent map;
-- **X/Y:** close cameras;
-- **−:** open maintenance.
-
-### Vent map
-
-- **D-pad:** select VENT 11–15;
-- **A/L:** seal or unseal;
-- **R:** return to cameras;
-- **X/Y:** close the monitor.
+- **D-pad:** select camera
+- **A:** use Play Audio
+- **R:** switch camera / vent view
+- **X / Y:** close monitor
+- **−:** open maintenance
 
 ### Maintenance
 
-- **Up/Down:** select a system;
-- **A/+**: reboot;
-- **B/−:** close when no reboot is active.
+- **Up / Down:** select system
+- **A / +:** confirm or reboot
+- **B / −:** close when available
 
-### Follow Me and secret minigames
+### Minigames
 
-- **D-pad / left stick:** move;
-- **A:** interact or change Shadow Bonnie room;
-- **R:** alternate Shadow Bonnie room control;
-- **B:** leave a replay or unfinished hidden minigame.
+- **D-pad / Left Stick:** move
+- **A:** interact
+- **B:** return when available
 
-### Extras and Cheats
+### Extras / Achievements / Cheats
 
-- **Up/Down:** select;
-- **Left/Right:** change gallery, jumpscare or chapter;
-- **A/+**: open, replay or toggle;
-- **B:** return.
+- **Up / Down:** select
+- **Left / Right:** browse supported pages
+- **A / +:** open, replay or toggle
+- **B:** back
 
-### Development shortcut
+## How the port was created
 
-Hold **+** and press **Right** in the office with panels closed to advance one hour.
+This Wii U Edition was developed as a dedicated adaptation for Nintendo Wii U.
 
-## Installation
+Code for platform integration, rendering, input handling, save management, audio playback and Wii U-specific features was written or adapted specifically for this project. Existing versions of FNaF 3 were used as behavioural and visual reference where appropriate.
 
-Copy the package's `SD` folder contents to the root of the Wii U SD card. The final layout must be:
+For copyright and project-safety reasons, the public documentation intentionally does **not** describe proprietary asset extraction procedures, internal game-data layouts, private development resources or other information that is unnecessary for players to install and use the port.
 
-```text
-SD:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
-SD:/wiiu/apps/fnaf3-wiiu/audio/*.bin
-```
+The project is designed to keep the port's own code and Wii U-specific work separate from material that should not be redistributed publicly.
 
-Launch **FNaF3 Wii U** from Aroma's homebrew menu.
+## Building and development
 
-## Build locally
+The public project documentation does not provide proprietary game data or instructions intended to extract copyrighted game resources.
 
-Install the current devkitPro Wii U packages, Wii U SDL2, Python 3 and `ffmpeg`, then run:
+Developers working on the project are expected to provide any required legally obtained source material themselves and to respect the rights of the original creators and publishers.
 
-```sh
-sh tools/prepare_generated_assets.sh
-make
-```
+The Wii U-specific codebase is built with the standard Wii U homebrew development toolchain.
 
-Expected outputs:
+## Project status
 
-```text
-fnaf3-wiiu.elf
-fnaf3-wiiu.rpx
-fnaf3-wiiu.wuhb
-```
+The port currently includes the complete main gameplay flow, Extras content, secret progression, achievements and Wii U-specific presentation systems.
 
-## Current limitations
+Development is now primarily focused on final polish, hardware testing, small visual adjustments and release preparation.
 
-- the six secret minigames and Follow Me use native Wii U pixel-art gameplay recreations based on the supplied sheets rather than full frame-for-frame PC scene conversion;
-- the supplied original Bad Ending is integrated, while the Night 6 newspaper/fire scene remains a native Wii U recreation;
-- several camera source frames remain reduced compared with the PC release;
-- the separate corrected full sound-effects archive was not available to the build environment, so the package contains every individually accessible supplied cue plus the six calls and `six_am`;
-- CI validates conversion, compilation, linking and package outputs; complete controller timing, old-save migration, SD audio memory use and TV/GamePad synchronization still require testing on real Wii U hardware;
-- converted copyrighted assets remain in this private development repository and test package.
+## Disclaimer
 
-See [`docs/PORTING_PLAN.md`](docs/PORTING_PLAN.md) for remaining visual and hardware polish.
+**Five Nights at Freddy's**, its characters, artwork, audio and other original game material belong to their respective rights holders.
+
+This repository represents an **unofficial fan-made Wii U port** and is not affiliated with or endorsed by the original developers, publishers or Nintendo.
+
+This project does not provide documentation intended to extract or reproduce proprietary game data. Original game material remains the property of its respective rights holders.
