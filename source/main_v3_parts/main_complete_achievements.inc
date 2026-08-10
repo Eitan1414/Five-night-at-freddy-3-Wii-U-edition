@@ -94,7 +94,8 @@ static void achievement_draw_normal_popup(AchievementId id)
     if (id < ACH_NIGHT_1 || id > ACH_SPRINGTRAP_JUMPSCARE) return;
 
     const uint32_t slide = achievement_normal_popup_slide();
-    const int x = 470 + (int) slide * 22;
+    /* 470 + 12 * 32 = 854: the first frame starts completely off-screen. */
+    const int x = 470 + (int) slide * 32;
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      x, 22, 360, 90,
                      gAchievementUnlockedTextures[(int) id]);
