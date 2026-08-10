@@ -109,7 +109,13 @@ static void achievement_draw_overlay(void)
 
 static void achievement_draw_menu(void)
 {
-    finishing_draw_header("EXTRAS / ACHIEVEMENTS");
+    /* Keep the normal Extras background/header block; only the lettering uses
+       the title-menu font style supplied by the user. */
+    finishing_draw_header("");
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  35, 14, 2,
+                                  "EXTRAS / ACHIEVEMENTS",
+                                  COLOUR_GREEN);
 
     /* Utine stays pinned at the top of this category at all times. */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
@@ -125,10 +131,10 @@ static void achievement_draw_menu(void)
     graphics_draw_rect(GRAPHICS_TARGET_BOTH,
                        685, 205, 91, 30,
                        GRAPHICS_RGB(0, 0, 0));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       704, 214, 2, progress,
-                       progress_save_utine_unlocked()
-                           ? COLOUR_GREEN : COLOUR_WHITE);
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  704, 212, 1, progress,
+                                  progress_save_utine_unlocked()
+                                      ? COLOUR_GREEN : COLOUR_WHITE);
 
     int first = sAchievements.menu_selection;
     if (first < 0) first = 0;
@@ -155,12 +161,12 @@ static void achievement_draw_menu(void)
     char position[16];
     snprintf(position, sizeof(position), "%d/9",
              sAchievements.menu_selection + 1);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       64, 443, 1, position,
-                       GRAPHICS_RGB(121, 161, 117));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       256, 443, 1,
-                       "UP/DOWN: SUCCES   B: BACK",
-                       GRAPHICS_RGB(121, 161, 117));
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  64, 438, 1, position,
+                                  GRAPHICS_RGB(121, 161, 117));
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  256, 438, 1,
+                                  "UP/DOWN: SUCCES   B: BACK",
+                                  GRAPHICS_RGB(121, 161, 117));
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
