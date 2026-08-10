@@ -43,7 +43,7 @@ printf '%s\n' "Five Nights at Freddy's 3 - Wii U Edition" > "$INPUT_DIR/content/
 
 python3 - "$INPUT_DIR/meta" <<'PY'
 from pathlib import Path
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 import sys
 
 meta = Path(sys.argv[1])
@@ -54,15 +54,40 @@ except AttributeError:
     resampling = Image.LANCZOS
 
 
-def convert(source, target, size):
-    with Image.open(source) as image:
-        image = image.convert("RGB")
+def open_rgb(source):
+    try:
+        with Image.open(source) as image:
+            image.load()
+            return image.convert("RGB")
+    except (FileNotFoundError, UnidentifiedImageError, OSError) as exc:
+        print(f"warning: cannot decode {source}: {exc}", file=sys.stderr)
+        return None
+
+
+def convert(source, target, size, fallback_to_icon=False):
+    image = open_rgb(source)
+    if image is not None:
         image = ImageOps.fit(image, size, method=resampling, centering=(0.5, 0.5))
-        image.save(meta / target, format="TGA")
+    else:
+        # The old boot-tv.jpg / boot-drc.jpg files in this project are not
+        # decodable JPEG streams. WUP metadata still requires valid TGA splash
+        # images, so generate a deterministic fallback instead of aborting the
+        # whole Channel package.
+        image = Image.new("RGB", size, (0, 0, 0))
+        if fallback_to_icon:
+            icon = open_rgb("icon.jpg")
+            if icon is not None:
+                max_side = min(size) // 3
+                icon.thumbnail((max_side, max_side), resampling)
+                x = (size[0] - icon.width) // 2
+                y = (size[1] - icon.height) // 2
+                image.paste(icon, (x, y))
+
+    image.save(meta / target, format="TGA")
 
 convert("icon.jpg", "iconTex.tga", (128, 128))
-convert("boot-tv.jpg", "bootTvTex.tga", (1280, 720))
-convert("boot-drc.jpg", "bootDrcTex.tga", (854, 480))
+convert("boot-tv.jpg", "bootTvTex.tga", (1280, 720), fallback_to_icon=True)
+convert("boot-drc.jpg", "bootDrcTex.tga", (854, 480), fallback_to_icon=True)
 PY
 
 if [ ! -f "$NUSPACKER_JAR" ]; then
