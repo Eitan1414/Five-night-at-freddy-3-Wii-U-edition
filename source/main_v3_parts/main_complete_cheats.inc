@@ -30,19 +30,20 @@ static bool complete_update_extras(Game *game, const InputState *input)
         const int old = sFinishing.extras_selection;
         if (input_was_pressed(input, GAME_BUTTON_UP))
             sFinishing.extras_selection =
-                (sFinishing.extras_selection + 4) % 5;
+                (sFinishing.extras_selection + 5) % 6;
         if (input_was_pressed(input, GAME_BUTTON_DOWN))
             sFinishing.extras_selection =
-                (sFinishing.extras_selection + 1) % 5;
+                (sFinishing.extras_selection + 1) % 6;
         if (old != sFinishing.extras_selection) content_play_select();
 
         if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
             input_was_pressed(input, GAME_BUTTON_START)) {
-            static const ExtrasPage pages[5] = {
+            static const ExtrasPage pages[6] = {
                 EXTRAS_PAGE_GALLERY,
                 EXTRAS_PAGE_JUMPSCARES,
                 EXTRAS_PAGE_MINIGAMES,
                 EXTRAS_PAGE_CHEATS,
+                EXTRAS_PAGE_ACHIEVEMENTS,
                 EXTRAS_PAGE_CREDITS
             };
             if (sFinishing.extras_selection == 3 &&
@@ -58,6 +59,25 @@ static bool complete_update_extras(Game *game, const InputState *input)
             content_play_select();
             finishing_return_to_title(game);
             content_start_title_music();
+        }
+        game->dirty = true;
+        return true;
+    }
+
+    if (sFinishing.extras_page == EXTRAS_PAGE_ACHIEVEMENTS) {
+        ++game->screen_frames;
+        const int old = sAchievements.menu_selection;
+        if (input_was_pressed(input, GAME_BUTTON_UP))
+            sAchievements.menu_selection =
+                (sAchievements.menu_selection + ACH_NORMAL_COUNT - 1) %
+                ACH_NORMAL_COUNT;
+        if (input_was_pressed(input, GAME_BUTTON_DOWN))
+            sAchievements.menu_selection =
+                (sAchievements.menu_selection + 1) % ACH_NORMAL_COUNT;
+        if (old != sAchievements.menu_selection) content_play_select();
+        if (input_was_pressed(input, GAME_BUTTON_BACK)) {
+            content_play_select();
+            complete_set_extras_page(game, EXTRAS_PAGE_MAIN);
         }
         game->dirty = true;
         return true;
@@ -166,34 +186,37 @@ static void complete_apply_gameplay_cheats(Game *game,
         !sCompleteCheats.radar &&
         !sCompleteCheats.no_errors) {
         progress_save_complete_aggressive_nightmare();
+        achievement_unlock(game, ACH_NIGHT_6_AGGRESSIVE);
     }
 }
 
 static void complete_draw_extras_main(void)
 {
-    static const char *const items[5] = {
+    static const char *const items[6] = {
         "ANIMATRONICS",
         "JUMPSCARES",
         "SECRET MINIGAMES",
         "CHEATS",
+        "ACHIEVEMENTS",
         "CREDITS"
     };
 
     finishing_draw_header("EXTRAS");
-    graphics_draw_frame(GRAPHICS_TARGET_BOTH, 126, 70, 602, 350, 4,
+    graphics_draw_frame(GRAPHICS_TARGET_BOTH, 126, 65, 602, 365, 4,
                         GRAPHICS_RGB(43, 91, 48));
-    for (int item = 0; item < 5; ++item) {
-        const int y = 101 + item * 62;
+    for (int item = 0; item < 6; ++item) {
+        const int y = 84 + item * 56;
         if (item == sFinishing.extras_selection)
             graphics_draw_rect(GRAPHICS_TARGET_BOTH,
-                               157, y - 11, 540, 40,
+                               157, y - 10, 540, 38,
                                GRAPHICS_RGB(24, 61, 29));
         uint32_t colour = item == sFinishing.extras_selection
             ? COLOUR_WHITE : GRAPHICS_RGB(107, 145, 104);
         if (item == 3 && !complete_cheats_unlocked())
             colour = GRAPHICS_RGB(67, 76, 67);
         graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                           190, y, item == 2 ? 3 : 4,
+                           190, y,
+                           (item == 2 || item == 4) ? 3 : 4,
                            items[item], colour);
         if (item == 3 && !complete_cheats_unlocked())
             graphics_draw_text(GRAPHICS_TARGET_BOTH,
@@ -202,11 +225,11 @@ static void complete_draw_extras_main(void)
     }
 
     if (sCompleteCheats.locked_notice_frames > 0u)
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 166, 427, 1,
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 166, 437, 1,
                            "COMPLETE NIGHT 6 AND THE GOOD ENDING",
                            COLOUR_RED);
     else
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 445, 1,
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 449, 1,
                            "A: OPEN   B: TITLE",
                            GRAPHICS_RGB(121, 161, 117));
     graphics_present(GRAPHICS_TARGET_BOTH);
@@ -263,6 +286,10 @@ static bool complete_render_extras(Game *game)
         complete_draw_extras_main();
         return true;
     }
+    if (sFinishing.extras_page == EXTRAS_PAGE_ACHIEVEMENTS) {
+        achievement_draw_menu();
+        return true;
+    }
     if (sFinishing.extras_page == EXTRAS_PAGE_CHEATS) {
         complete_draw_cheats();
         return true;
@@ -307,5 +334,6 @@ static void complete_graphics_present(uint32_t target)
 {
     finishing_draw_phone_overlay();
     complete_draw_radar();
+    achievement_draw_overlay();
     graphics_present(target);
 }
