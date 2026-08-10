@@ -66,6 +66,10 @@ jobs:
         if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}
         run: sh tools/build_wup_channel.sh
 
+      - name: Validate installable WUP package
+        if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}
+        run: python3 tools/validate_wup.py dist/fnaf3-wiiu-wup wup/app.xml wup/meta.xml
+
       - name: WUP packaging key notice
         if: ${{ env.WIIU_COMMON_KEY == '' && github.event_name != 'pull_request' }}
         run: echo "::warning::ENC_KEY repository secret is missing; WUP .app/.h3 packaging was skipped."
