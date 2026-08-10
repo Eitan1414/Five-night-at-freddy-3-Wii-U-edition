@@ -33,6 +33,8 @@ typedef enum AudioCue {
     AUDIO_CUE_GAME_OVER_AMBIENCE,
     AUDIO_CUE_TITLE_MUSIC,
     AUDIO_CUE_START_DAY,
+    AUDIO_CUE_ACHIEVEMENT,
+    AUDIO_CUE_UTINE,
 
     /* Optional full original sound-pack overrides. */
     AUDIO_CUE_OFFICE_FAN,
