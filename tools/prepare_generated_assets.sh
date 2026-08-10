@@ -66,6 +66,25 @@ if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
     rm -f "$temporary_user_content"
 fi
 
+# The achievement package contains the badge textures, the transparent Utine
+# trophy animation/static frame and the two user-supplied notification sounds.
+if ls source/generated/achievement_assets_v3.tar.xz.b64.* >/dev/null 2>&1; then
+    temporary_achievements="${TMPDIR:-/tmp}/fnaf3-achievements-v3.tar.xz"
+    # shellcheck disable=SC2086
+    cat source/generated/achievement_assets_v3.tar.xz.b64.* \
+        | base64 -d > "$temporary_achievements"
+    tar -xJf "$temporary_achievements" -C .
+    rm -f "$temporary_achievements"
+else
+    echo "Achievement asset bundle v3 is missing" >&2
+    exit 1
+fi
+
+test -s source/achievement_assets.c
+test -s include/assets/achievement_assets.h
+test -s assets/user_audio/achievement.ogg
+test -s assets/user_audio/utine.ogg
+
 PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
 TIM_ROOT="$PSX_SOURCE/tim"
 SCREAMER_ROOT="$TIM_ROOT/screamer"
@@ -182,5 +201,19 @@ convert_user_audio_or_tone lever2 data/audio/lever2.bin 300 0.50
 convert_user_audio_or_tone stare data/audio/stare.bin 55 73.88
 convert_user_audio_or_tone titlemusic data/audio/titlemusic.bin 110 40.39
 convert_user_audio_or_tone startday data/audio/startday.bin 440 4.65
+
+if achievement_input="$(user_audio_path achievement)"; then
+    convert_audio "$achievement_input" data/audio/achievement.bin
+else
+    echo "achievement notification audio is missing" >&2
+    exit 1
+fi
+
+if utine_input="$(user_audio_path utine)"; then
+    convert_audio "$utine_input" data/audio/utine.bin
+else
+    echo "Utine trophy audio is missing" >&2
+    exit 1
+fi
 
 rm -rf assets/audio_low12 assets/audio_phantoms_low
