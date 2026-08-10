@@ -9,10 +9,13 @@
 #define PROGRESS_SECRET_MINIGAME_COUNT 6
 #define PROGRESS_SECRET_COMPLETE_MASK 0x3Fu
 #define PROGRESS_ACHIEVEMENT_AGGRESSIVE 0x01u
+#define PROGRESS_BADGES_MASK 0x03FFu
+#define PROGRESS_NORMAL_BADGES_MASK 0x01FFu
 
 static uint8_t s_completed_nights_mask = 0u;
 static uint8_t s_secret_minigames_mask = 0u;
 static uint8_t s_achievement_flags = 0u;
+static uint16_t s_achievements_mask = 0u;
 static int s_highest_unlocked_night = 1;
 static SaveLoadResult s_load_result = SAVE_LOAD_EMPTY;
 static bool s_write_attempted = false;
@@ -25,13 +28,41 @@ static int clamp_night(int night)
     return night;
 }
 
+static int normal_achievement_count_from_mask(uint16_t mask)
+{
+    int count = 0;
+    uint16_t normal = mask & PROGRESS_NORMAL_BADGES_MASK;
+    while (normal != 0u) {
+        count += (normal & 1u) != 0u ? 1 : 0;
+        normal >>= 1u;
+    }
+    return count;
+}
+
+static void migrate_legacy_progress_to_achievements(void)
+{
+    /* Night-completion badges are recoverable from the original save fields,
+       so existing players do not lose credit when this system is introduced. */
+    for (int night = 1; night <= PROGRESS_NIGHT_COUNT; ++night) {
+        if ((s_completed_nights_mask & (uint8_t) (1u << (night - 1))) != 0u)
+            s_achievements_mask |= (uint16_t) (1u << (night - 1));
+    }
+    if ((s_achievement_flags & PROGRESS_ACHIEVEMENT_AGGRESSIVE) != 0u)
+        s_achievements_mask |= (uint16_t) (1u << ACH_NIGHT_6_AGGRESSIVE);
+
+    if (normal_achievement_count_from_mask(s_achievements_mask) >= ACH_NORMAL_COUNT)
+        s_achievements_mask |= (uint16_t) (1u << ACH_UTINE);
+    s_achievements_mask &= PROGRESS_BADGES_MASK;
+}
+
 static void write_current_progress(void)
 {
     const SaveData data = {
-        (uint8_t) s_highest_unlocked_night,
-        s_completed_nights_mask,
-        s_secret_minigames_mask,
-        s_achievement_flags
+        .unlocked_night = (uint8_t) s_highest_unlocked_night,
+        .completed_nights_mask = s_completed_nights_mask,
+        .secret_minigames_mask = s_secret_minigames_mask,
+        .achievement_flags = s_achievement_flags,
+        .achievements_mask = s_achievements_mask,
     };
     s_write_attempted = true;
     s_last_write_ok = save_data_write(&data);
@@ -43,6 +74,7 @@ void progress_save_init(int *unlocked_night)
     s_completed_nights_mask = 0u;
     s_secret_minigames_mask = 0u;
     s_achievement_flags = 0u;
+    s_achievements_mask = 0u;
     s_highest_unlocked_night = unlocked_night != NULL
         ? clamp_night(*unlocked_night) : 1;
     s_load_result = SAVE_LOAD_EMPTY;
@@ -56,7 +88,13 @@ void progress_save_init(int *unlocked_night)
         return;
     }
 
-    SaveData data = {1u, 0u, 0u, 0u};
+    SaveData data = {
+        .unlocked_night = 1u,
+        .completed_nights_mask = 0u,
+        .secret_minigames_mask = 0u,
+        .achievement_flags = 0u,
+        .achievements_mask = 0u,
+    };
     s_load_result = save_data_load(&data);
     if (s_load_result == SAVE_LOAD_OK ||
         s_load_result == SAVE_LOAD_RECOVERED) {
@@ -64,6 +102,8 @@ void progress_save_init(int *unlocked_night)
         s_completed_nights_mask = data.completed_nights_mask;
         s_secret_minigames_mask = data.secret_minigames_mask;
         s_achievement_flags = data.achievement_flags;
+        s_achievements_mask = data.achievements_mask & PROGRESS_BADGES_MASK;
+        migrate_legacy_progress_to_achievements();
     }
 
     if (unlocked_night != NULL)
@@ -143,6 +183,38 @@ bool progress_save_good_ending_unlocked(void)
 bool progress_save_aggressive_nightmare_completed(void)
 {
     return (s_achievement_flags & PROGRESS_ACHIEVEMENT_AGGRESSIVE) != 0u;
+}
+
+bool progress_save_unlock_achievement(AchievementId id)
+{
+    if (id < 0 || id >= ACH_COUNT) return false;
+    const uint16_t bit = (uint16_t) (1u << (uint32_t) id);
+    if ((s_achievements_mask & bit) != 0u) return false;
+    s_achievements_mask |= bit;
+    write_current_progress();
+    return true;
+}
+
+bool progress_save_achievement_unlocked(AchievementId id)
+{
+    if (id < 0 || id >= ACH_COUNT) return false;
+    return (s_achievements_mask &
+            (uint16_t) (1u << (uint32_t) id)) != 0u;
+}
+
+uint16_t progress_save_achievements_mask(void)
+{
+    return s_achievements_mask;
+}
+
+int progress_save_normal_achievement_count(void)
+{
+    return normal_achievement_count_from_mask(s_achievements_mask);
+}
+
+bool progress_save_utine_unlocked(void)
+{
+    return progress_save_achievement_unlocked(ACH_UTINE);
 }
 
 const char *progress_save_load_status_text(void)
