@@ -269,16 +269,16 @@ static void complete_draw_original_bad_ending(const Game *game)
     if (game->screen_frames >= 90u) {
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 172, 342, 510, 92,
                            GRAPHICS_RGB(0, 0, 0));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 263, 360, 3,
-                           "NIGHT 6 UNLOCKED", COLOUR_GREEN);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 279, 398, 3,
-                           "EXTRAS UNLOCKED", COLOUR_GREEN);
+        graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH, 242, 356, 2,
+                                      "NIGHT 6 UNLOCKED", COLOUR_GREEN);
+        graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH, 250, 394, 2,
+                                      "EXTRAS UNLOCKED", COLOUR_GREEN);
     }
     if (game->screen_frames >= 180u) {
         graphics_draw_rect(GRAPHICS_TARGET_BOTH, 247, 440, 360, 30,
                            GRAPHICS_RGB(0, 0, 0));
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 286, 449, 1,
-                           "A: RETURN TO TITLE", COLOUR_WHITE);
+        graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH, 286, 444, 1,
+                                      "A: RETURN TO TITLE", COLOUR_WHITE);
     }
     achievement_draw_overlay();
     graphics_present(GRAPHICS_TARGET_BOTH);
