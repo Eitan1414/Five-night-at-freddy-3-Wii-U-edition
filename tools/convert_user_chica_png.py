@@ -6,7 +6,13 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageFile
+
+# The checked-in Chica sheet is reconstructed from split development chunks.
+# Pillow is deliberately strict with a PNG whose stream ends a little early,
+# even when all useful scanlines are present. Allow that specific case so the
+# asset pipeline can recover the supplied frames instead of aborting the build.
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 FRAME_WIDTH = 303
 FRAME_HEIGHT = 227
@@ -109,6 +115,7 @@ def main() -> None:
     args = parser.parse_args()
 
     sheet = Image.open(args.input_png)
+    sheet.load()
     expected_size = (FRAME_WIDTH, FRAME_HEIGHT * FRAME_COUNT)
     if sheet.size != expected_size:
         raise ValueError(
