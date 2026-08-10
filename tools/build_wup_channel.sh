@@ -39,7 +39,7 @@ cp wup/cos.xml "$INPUT_DIR/code/cos.xml"
 cp wup/meta.xml "$INPUT_DIR/meta/meta.xml"
 
 # NUSPacker requires the content directory to contain at least one file.
-printf '%s\n' 'Five Nights at Freddy'''s 3 - Wii U Edition' > "$INPUT_DIR/content/channel.txt"
+printf '%s\n' "Five Nights at Freddy's 3 - Wii U Edition" > "$INPUT_DIR/content/channel.txt"
 
 python3 - "$INPUT_DIR/meta" <<'PY'
 from pathlib import Path
