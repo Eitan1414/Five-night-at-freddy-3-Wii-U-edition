@@ -15,15 +15,17 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkitppc:20260503
+    env:
+      WIIU_COMMON_KEY: ${{ secrets.ENC_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install asset tools
+      - name: Install asset and WUP tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch python3-pil
+          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch python3-pil openjdk-17-jre-headless
 
       - name: Build official Wii U SDL2 port
         run: |
@@ -57,17 +59,25 @@ jobs:
           FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
         run: sh tools/prepare_generated_assets.sh
 
-      - name: Build WUHB
+      - name: Build WUHB and RPX
         run: make -j2
 
-      - name: Verify outputs
+      - name: Build installable WUP channel
+        if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}
+        run: sh tools/build_wup_channel.sh
+
+      - name: WUP packaging key notice
+        if: ${{ env.WIIU_COMMON_KEY == '' && github.event_name != 'pull_request' }}
+        run: echo "::warning::ENC_KEY repository secret is missing; WUP .app/.h3 packaging was skipped."
+
+      - name: Verify homebrew outputs
         run: |
           test -f fnaf3-wiiu.elf
           test -f fnaf3-wiiu.rpx
           test -f fnaf3-wiiu.wuhb
           ls -lh fnaf3-wiiu.elf fnaf3-wiiu.rpx fnaf3-wiiu.wuhb
 
-      - name: Upload Wii U build
+      - name: Upload Wii U homebrew build
         uses: actions/upload-artifact@v4
         with:
           name: fnaf3-wiiu
@@ -76,3 +86,11 @@ jobs:
             fnaf3-wiiu.elf
             fnaf3-wiiu.rpx
             fnaf3-wiiu.wuhb
+
+      - name: Upload installable WUP build
+        if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu-wup
+          if-no-files-found: error
+          path: dist/fnaf3-wiiu-wup/*
