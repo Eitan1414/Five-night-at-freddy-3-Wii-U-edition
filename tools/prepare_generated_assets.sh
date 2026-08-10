@@ -66,17 +66,19 @@ if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
     rm -f "$temporary_user_content"
 fi
 
-# The achievement package contains the badge textures, the transparent Utine
-# trophy animation/static frame and the two user-supplied notification sounds.
-if ls source/generated/achievement_assets_v3.tar.xz.b64.* >/dev/null 2>&1; then
-    temporary_achievements="${TMPDIR:-/tmp}/fnaf3-achievements-v3.tar.xz"
+# Supplied achievement package: 9 locked/unlocked badges, transparent Utine
+# trophy animation/static frame, normal unlock sound and Utine trophy sound.
+# The compact version is sized for the Wii U's 854x480 output and keeps the
+# generated executable/data footprint under control.
+if ls source/generated/achievement_assets_micro.tar.xz.b64.* >/dev/null 2>&1; then
+    temporary_achievements="${TMPDIR:-/tmp}/fnaf3-achievements-micro.tar.xz"
     # shellcheck disable=SC2086
-    cat source/generated/achievement_assets_v3.tar.xz.b64.* \
+    cat source/generated/achievement_assets_micro.tar.xz.b64.* \
         | base64 -d > "$temporary_achievements"
     tar -xJf "$temporary_achievements" -C .
     rm -f "$temporary_achievements"
 else
-    echo "Achievement asset bundle v3 is missing" >&2
+    echo "Compact achievement asset bundle is missing" >&2
     exit 1
 fi
 
