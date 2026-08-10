@@ -49,6 +49,18 @@ void graphics_draw_text(uint32_t targets,
                         uint32_t colour);
 
 /*
+ * Pixel text styled after the original FNaF 3 title-menu lettering. This is
+ * intentionally separate from graphics_draw_text so original game/UI text is
+ * not changed when custom Wii U screens use the matching menu style.
+ */
+void graphics_draw_fnaf3_menu_text(uint32_t targets,
+                                   int x,
+                                   int y,
+                                   int scale,
+                                   const char *text,
+                                   uint32_t colour);
+
+/*
  * Uploads an indexed RLE image once and draws it as a GX2-backed SDL texture.
  * cache_key must remain stable for the lifetime of the source texture.
  */
