@@ -51,7 +51,12 @@
 
 #include "main_v3_parts/main_complete_title.inc"
 #include "main_v3_parts/main_complete_achievements.inc"
+#include "main_v3_parts/main_added_ui_font.inc"
+#define graphics_draw_text added_ui_draw_text
+#define finishing_draw_header added_ui_draw_header
 #include "main_v3_parts/main_complete_cheats.inc"
+#undef finishing_draw_header
+#undef graphics_draw_text
 #define main fnaf3_complete_main
 #define update_game fnaf3_complete_update_game
 #define render_game fnaf3_complete_render_game
