@@ -220,8 +220,31 @@ static bool complete_try_hidden_trigger(Game *game,
     return false;
 }
 
+static void complete_detect_achievement_events(Game *game,
+                                               GameScreen before_screen,
+                                               PhantomId before_phantom)
+{
+    if (before_screen == SCREEN_OFFICE && game->screen == SCREEN_VICTORY &&
+        game->night >= 1 && game->night <= 6) {
+        achievement_unlock(game,
+            (AchievementId) (ACH_NIGHT_1 + game->night - 1));
+    }
+
+    if (before_screen != SCREEN_SPRINGTRAP_JUMPSCARE &&
+        game->screen == SCREEN_SPRINGTRAP_JUMPSCARE) {
+        achievement_unlock(game, ACH_SPRINGTRAP_JUMPSCARE);
+    }
+
+    const PhantomId after_phantom = phantoms_active_jumpscare(&game->phantoms);
+    if (before_phantom == PHANTOM_NONE && after_phantom != PHANTOM_NONE)
+        achievement_unlock(game, ACH_PHANTOM_JUMPSCARE);
+}
+
 static void update_game(Game *game, const InputState *input)
 {
+    achievement_update(game);
+    if (achievement_blocks_input()) return;
+
     if (complete_update_extras(game, input)) return;
     if (complete_handle_hidden_return(game, input)) return;
 
@@ -230,7 +253,10 @@ static void update_game(Game *game, const InputState *input)
         return;
 
     const GameScreen before_screen = game->screen;
+    const PhantomId before_phantom =
+        phantoms_active_jumpscare(&game->phantoms);
     fnaf3_content_update_game(game, &filtered);
+    complete_detect_achievement_events(game, before_screen, before_phantom);
     complete_apply_gameplay_cheats(game, before_screen);
 }
 
@@ -254,6 +280,7 @@ static void complete_draw_original_bad_ending(const Game *game)
         graphics_draw_text(GRAPHICS_TARGET_BOTH, 286, 449, 1,
                            "A: RETURN TO TITLE", COLOUR_WHITE);
     }
+    achievement_draw_overlay();
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
@@ -295,6 +322,7 @@ int main(int argc, char **argv)
     memset(&sSecret, 0, sizeof(sSecret));
     memset(&sSecretTriggers, 0, sizeof(sSecretTriggers));
     memset(&sCompleteCheats, 0, sizeof(sCompleteCheats));
+    memset(&sAchievements, 0, sizeof(sAchievements));
     sTitleMusicPlaying = false;
 
     Game game;
