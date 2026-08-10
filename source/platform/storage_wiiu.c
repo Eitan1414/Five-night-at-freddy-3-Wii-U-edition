@@ -1,4 +1,5 @@
 #include "platform/storage.h"
+#include "platform/native_save_wiiu.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -8,9 +9,13 @@
 #include <whb/sdcard.h>
 
 #define STORAGE_PATH_CAPACITY 512
+#define COPY_BUFFER_SIZE 1024
 
 static bool s_storage_ready = false;
+static bool s_native_backend = false;
+static bool s_sd_mounted = false;
 static char s_storage_root[STORAGE_PATH_CAPACITY];
+static char s_legacy_sd_root[STORAGE_PATH_CAPACITY];
 
 static bool ensure_directory(const char *path)
 {
@@ -32,29 +37,156 @@ static bool build_path(char *output,
     return written > 0 && (size_t) written < output_size;
 }
 
-bool storage_init(void)
+static bool build_full_path(char *output,
+                            size_t output_size,
+                            const char *root,
+                            const char *relative_path)
 {
-    if (s_storage_ready) return true;
-    if (!WHBMountSdCard()) return false;
-
-    const char *mount_path = WHBGetSdCardMountPath();
-    if (mount_path == NULL || mount_path[0] == '\0') {
-        WHBUnmountSdCard();
+    if (output == NULL || output_size == 0u || root == NULL ||
+        root[0] == '\0' || relative_path == NULL || relative_path[0] == '\0') {
         return false;
     }
+
+    const int written = snprintf(output, output_size, "%s/%s",
+                                 root, relative_path);
+    return written > 0 && (size_t) written < output_size;
+}
+
+static bool full_file_exists(const char *path)
+{
+    if (path == NULL || path[0] == '\0') return false;
+    FILE *file = fopen(path, "rb");
+    if (file == NULL) return false;
+    fclose(file);
+    return true;
+}
+
+static bool copy_file_atomic_full(const char *source_path,
+                                  const char *destination_path)
+{
+    char temporary_path[STORAGE_PATH_CAPACITY];
+    const int written = snprintf(temporary_path, sizeof(temporary_path),
+                                 "%s.migrate.tmp", destination_path);
+    if (written <= 0 || (size_t) written >= sizeof(temporary_path)) return false;
+
+    FILE *source = fopen(source_path, "rb");
+    if (source == NULL) return false;
+
+    FILE *destination = fopen(temporary_path, "wb");
+    if (destination == NULL) {
+        fclose(source);
+        return false;
+    }
+
+    bool ok = true;
+    unsigned char buffer[COPY_BUFFER_SIZE];
+    for (;;) {
+        const size_t count = fread(buffer, 1u, sizeof(buffer), source);
+        if (count > 0u && fwrite(buffer, 1u, count, destination) != count) {
+            ok = false;
+            break;
+        }
+        if (count < sizeof(buffer)) {
+            if (ferror(source) != 0) ok = false;
+            break;
+        }
+    }
+
+    if (ok && fflush(destination) != 0) ok = false;
+    if (fclose(destination) != 0) ok = false;
+    fclose(source);
+
+    if (!ok) {
+        remove(temporary_path);
+        return false;
+    }
+
+    remove(destination_path);
+    if (rename(temporary_path, destination_path) != 0) {
+        remove(temporary_path);
+        return false;
+    }
+
+    return true;
+}
+
+static void migrate_legacy_sd_save(void)
+{
+    if (!s_native_backend || s_legacy_sd_root[0] == '\0') return;
+
+    char native_primary[STORAGE_PATH_CAPACITY];
+    char native_backup[STORAGE_PATH_CAPACITY];
+    if (!build_full_path(native_primary, sizeof(native_primary),
+                         s_storage_root, "progress.dat") ||
+        !build_full_path(native_backup, sizeof(native_backup),
+                         s_storage_root, "progress.dat.bak")) {
+        return;
+    }
+
+    /* Never overwrite an existing native save. Migration is first-launch only. */
+    if (full_file_exists(native_primary) || full_file_exists(native_backup)) return;
+
+    char legacy_primary[STORAGE_PATH_CAPACITY];
+    char legacy_backup[STORAGE_PATH_CAPACITY];
+    if (!build_full_path(legacy_primary, sizeof(legacy_primary),
+                         s_legacy_sd_root, "progress.dat") ||
+        !build_full_path(legacy_backup, sizeof(legacy_backup),
+                         s_legacy_sd_root, "progress.dat.bak")) {
+        return;
+    }
+
+    bool migrated = false;
+    if (full_file_exists(legacy_primary)) {
+        migrated = copy_file_atomic_full(legacy_primary, native_primary);
+    }
+
+    if (full_file_exists(legacy_backup)) {
+        if (copy_file_atomic_full(legacy_backup, native_backup)) migrated = true;
+    }
+
+    if (migrated) (void) native_save_commit();
+}
+
+static void mount_sd_for_legacy_migration(void)
+{
+    if (s_sd_mounted || !WHBMountSdCard()) return;
+    s_sd_mounted = true;
+
+    const char *mount_path = WHBGetSdCardMountPath();
+    if (mount_path == NULL || mount_path[0] == '\0') return;
+
+    const int written = snprintf(s_legacy_sd_root,
+                                 sizeof(s_legacy_sd_root),
+                                 "%s/wiiu/apps/fnaf3-wiiu",
+                                 mount_path);
+    if (written <= 0 || (size_t) written >= sizeof(s_legacy_sd_root)) {
+        s_legacy_sd_root[0] = '\0';
+        return;
+    }
+
+    migrate_legacy_sd_save();
+}
+
+static bool init_sd_backend(void)
+{
+    if (!s_sd_mounted) {
+        if (!WHBMountSdCard()) return false;
+        s_sd_mounted = true;
+    }
+
+    const char *mount_path = WHBGetSdCardMountPath();
+    if (mount_path == NULL || mount_path[0] == '\0') return false;
 
     char path[STORAGE_PATH_CAPACITY];
     int written = snprintf(path, sizeof(path), "%s/wiiu", mount_path);
     if (written <= 0 || (size_t) written >= sizeof(path) ||
         !ensure_directory(path)) {
-        WHBUnmountSdCard();
         return false;
     }
 
     written = snprintf(path, sizeof(path), "%s/wiiu/apps", mount_path);
     if (written <= 0 || (size_t) written >= sizeof(path) ||
         !ensure_directory(path)) {
-        WHBUnmountSdCard();
         return false;
     }
 
@@ -63,7 +195,40 @@ bool storage_init(void)
     if (written <= 0 || (size_t) written >= sizeof(s_storage_root) ||
         !ensure_directory(s_storage_root)) {
         s_storage_root[0] = '\0';
-        WHBUnmountSdCard();
+        return false;
+    }
+
+    s_native_backend = false;
+    return true;
+}
+
+bool storage_init(void)
+{
+    if (s_storage_ready) return true;
+
+    s_storage_root[0] = '\0';
+    s_legacy_sd_root[0] = '\0';
+
+    const int native_result = native_save_try_init(s_storage_root,
+                                                    sizeof(s_storage_root));
+    if (native_result == 1) {
+        s_native_backend = true;
+        s_storage_ready = true;
+        mount_sd_for_legacy_migration();
+        return true;
+    }
+
+    /*
+     * A WUHB uses the existing SD save location. If native initialisation ever
+     * fails on an installed Channel, falling back to SD keeps progress usable
+     * instead of disabling saves entirely.
+     */
+    if (!init_sd_backend()) {
+        if (s_sd_mounted) {
+            WHBUnmountSdCard();
+            s_sd_mounted = false;
+        }
+        s_storage_root[0] = '\0';
         return false;
     }
 
@@ -73,10 +238,19 @@ bool storage_init(void)
 
 void storage_shutdown(void)
 {
-    if (!s_storage_ready) return;
-    WHBUnmountSdCard();
+    if (!s_storage_ready && !s_sd_mounted && !native_save_is_active()) return;
+
+    if (s_sd_mounted) {
+        WHBUnmountSdCard();
+        s_sd_mounted = false;
+    }
+
+    if (native_save_is_active()) native_save_shutdown();
+
     s_storage_ready = false;
+    s_native_backend = false;
     s_storage_root[0] = '\0';
+    s_legacy_sd_root[0] = '\0';
 }
 
 bool storage_is_ready(void)
@@ -160,5 +334,6 @@ bool storage_write_atomic(const char *relative_path,
         return false;
     }
 
+    if (s_native_backend && !native_save_commit()) return false;
     return true;
 }
