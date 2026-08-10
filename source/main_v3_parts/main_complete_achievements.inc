@@ -105,7 +105,7 @@ static void achievement_draw_utine_popup(void)
 {
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      43, 144, 768, 192,
-                     gUtineFrameTexture);
+                     &gUtineFrameTexture);
 
     uint32_t frame = sAchievements.popup_frames /
         gUtineAnimationTicksPerFrame;
@@ -138,10 +138,10 @@ static void achievement_draw_menu(void)
     /* Utine stays pinned at the top of this category at all times. */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      43, 55, 768, 192,
-                     gUtineFrameTexture);
+                     &gUtineFrameTexture);
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      49, 58, 185, 185,
-                     gUtineTrophyStaticTexture);
+                     &gUtineTrophyStaticTexture);
 
     char progress[16];
     snprintf(progress, sizeof(progress), "%d/9",
