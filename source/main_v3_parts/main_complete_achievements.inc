@@ -1,4 +1,6 @@
 #define ACHIEVEMENT_POPUP_FRAMES 180u
+#define ACHIEVEMENT_POPUP_SLIDE_FRAMES 12u
+#define UTINE_FINAL_HOLD_FRAMES 60u
 
 static void achievement_begin_popup(AchievementId id)
 {
@@ -42,7 +44,8 @@ static uint32_t achievement_popup_duration(void)
 {
     if (!sAchievements.active) return 0u;
     if (sAchievements.active_id == ACH_UTINE) {
-        return gUtineAnimationFrameCount * gUtineAnimationTicksPerFrame;
+        return gUtineAnimationFrameCount * gUtineAnimationTicksPerFrame +
+               UTINE_FINAL_HOLD_FRAMES;
     }
     return ACHIEVEMENT_POPUP_FRAMES;
 }
@@ -72,12 +75,26 @@ static bool achievement_blocks_input(void)
     return sAchievements.active && sAchievements.active_id == ACH_UTINE;
 }
 
+static uint32_t achievement_normal_popup_slide(void)
+{
+    const uint32_t frame = sAchievements.popup_frames;
+    if (frame < ACHIEVEMENT_POPUP_SLIDE_FRAMES)
+        return ACHIEVEMENT_POPUP_SLIDE_FRAMES - frame;
+
+    const uint32_t outro_start =
+        ACHIEVEMENT_POPUP_FRAMES - ACHIEVEMENT_POPUP_SLIDE_FRAMES;
+    if (frame >= outro_start)
+        return frame - outro_start;
+
+    return 0u;
+}
+
 static void achievement_draw_normal_popup(AchievementId id)
 {
     if (id < ACH_NIGHT_1 || id > ACH_SPRINGTRAP_JUMPSCARE) return;
-    const uint32_t intro = sAchievements.popup_frames < 12u
-        ? 12u - sAchievements.popup_frames : 0u;
-    const int x = 470 + (int) intro * 22;
+
+    const uint32_t slide = achievement_normal_popup_slide();
+    const int x = 470 + (int) slide * 22;
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      x, 22, 360, 90,
                      gAchievementUnlockedTextures[(int) id]);
@@ -136,15 +153,21 @@ static void achievement_draw_menu(void)
                                   progress_save_utine_unlocked()
                                       ? COLOUR_GREEN : COLOUR_WHITE);
 
-    int first = sAchievements.menu_selection;
-    if (first < 0) first = 0;
-    if (first >= ACH_NORMAL_COUNT) first = ACH_NORMAL_COUNT - 1;
+    int selection = sAchievements.menu_selection;
+    if (selection < 0) selection = 0;
+    if (selection >= ACH_NORMAL_COUNT) selection = ACH_NORMAL_COUNT - 1;
+
+    /* Show achievements in stable pairs.  The final page becomes 8+9 rather
+       than leaving achievement 9 alone at the top of an otherwise empty area. */
+    int first = (selection / 2) * 2;
+    if (first >= ACH_NORMAL_COUNT - 1)
+        first = ACH_NORMAL_COUNT - 2;
 
     for (int slot = 0; slot < 2; ++slot) {
         const int index = first + slot;
         if (index >= ACH_NORMAL_COUNT) break;
         const int y = 267 + slot * 96;
-        const bool selected = slot == 0;
+        const bool selected = index == selection;
         const TextureRle *texture = progress_save_achievement_unlocked(
             (AchievementId) index)
             ? gAchievementUnlockedTextures[index]
@@ -159,14 +182,13 @@ static void achievement_draw_menu(void)
     }
 
     char position[16];
-    snprintf(position, sizeof(position), "%d/9",
-             sAchievements.menu_selection + 1);
+    snprintf(position, sizeof(position), "%d/9", selection + 1);
     graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
                                   64, 438, 1, position,
                                   GRAPHICS_RGB(121, 161, 117));
     graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
                                   256, 438, 1,
-                                  "UP/DOWN: SUCCES   B: BACK",
+                                  "UP/DOWN: SELECT   B: BACK",
                                   GRAPHICS_RGB(121, 161, 117));
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
