@@ -4,6 +4,7 @@
 #include "assets/monitor_v2_assets.h"
 #include "assets/camera_springtrap_assets.h"
 #include "assets/office_assets.h"
+#include "assets/achievement_assets.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -49,6 +50,7 @@
 #undef main
 
 #include "main_v3_parts/main_complete_title.inc"
+#include "main_v3_parts/main_complete_achievements.inc"
 #include "main_v3_parts/main_complete_cheats.inc"
 #define main fnaf3_complete_main
 #define update_game fnaf3_complete_update_game
