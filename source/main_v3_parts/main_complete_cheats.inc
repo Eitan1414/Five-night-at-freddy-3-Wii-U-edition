@@ -214,10 +214,17 @@ static void complete_draw_extras_main(void)
             ? COLOUR_WHITE : GRAPHICS_RGB(107, 145, 104);
         if (item == 3 && !complete_cheats_unlocked())
             colour = GRAPHICS_RGB(67, 76, 67);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                           190, y,
-                           (item == 2 || item == 4) ? 3 : 4,
-                           items[item], colour);
+
+        if (item == 4) {
+            graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                          190, y - 2, 2,
+                                          items[item], colour);
+        } else {
+            graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                               190, y,
+                               item == 2 ? 3 : 4,
+                               items[item], colour);
+        }
         if (item == 3 && !complete_cheats_unlocked())
             graphics_draw_text(GRAPHICS_TARGET_BOTH,
                                587, y + 6, 1, "LOCKED",
