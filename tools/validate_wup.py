@@ -33,6 +33,8 @@ TICKET_SIGNATURE_TYPE_OFFSET = 0x000
 TICKET_TITLE_ID_OFFSET = 0x1DC
 
 EXPECTED_SIGNATURE_TYPE = 0x00010004
+# NUSPacker Content.TYPE_HASHED. Only contents with this TMD type bit have .h3 trees.
+CONTENT_TYPE_HASHED = 0x0002
 
 
 def fail(message: str) -> None:
@@ -186,12 +188,15 @@ def main() -> int:
     declared_indexes: set[int] = set()
     expected_app_names: set[str] = set()
     expected_h3_names: set[str] = set()
+    hashed_content_count = 0
 
     for index in range(content_count):
         offset = CONTENT_TABLE_OFFSET + index * CONTENT_RECORD_SIZE
         content_id = read_be32(tmd, offset)
         content_index = read_be16(tmd, offset + 4)
+        content_type = read_be16(tmd, offset + 6)
         encrypted_size = read_be64(tmd, offset + 8)
+        is_hashed = (content_type & CONTENT_TYPE_HASHED) != 0
 
         if content_id in declared_ids:
             fail(f"duplicate content ID {content_id:08X} in title.tmd")
@@ -204,11 +209,8 @@ def main() -> int:
         declared_indexes.add(content_index)
 
         app_name = f"{content_id:08X}.app"
-        h3_name = f"{content_id:08X}.h3"
         app_path = output_dir / app_name
-        h3_path = output_dir / h3_name
         expected_app_names.add(app_name)
-        expected_h3_names.add(h3_name)
 
         if not app_path.is_file():
             fail(f"TMD references missing content file {app_name}")
@@ -217,22 +219,31 @@ def main() -> int:
                 f"{app_name} size ({app_path.stat().st_size}) does not match "
                 f"TMD ({encrypted_size})"
             )
-        if not h3_path.is_file() or h3_path.stat().st_size == 0:
-            fail(f"missing or empty hash tree {h3_name}")
+
+        # NUSPacker emits an H3 tree only when Content.TYPE_HASHED (0x0002)
+        # is set in the TMD content type. Non-hashed contents legitimately have
+        # no .h3 file and are protected by the SHA-1 stored in the TMD record.
+        if is_hashed:
+            hashed_content_count += 1
+            h3_name = f"{content_id:08X}.h3"
+            h3_path = output_dir / h3_name
+            expected_h3_names.add(h3_name)
+            if not h3_path.is_file() or h3_path.stat().st_size == 0:
+                fail(f"missing or empty hash tree {h3_name} for hashed content")
 
     actual_app_names = {path.name for path in output_dir.glob("*.app")}
     actual_h3_names = {path.name for path in output_dir.glob("*.h3")}
     if actual_app_names != expected_app_names:
         fail(".app files do not exactly match the contents declared by title.tmd")
     if actual_h3_names != expected_h3_names:
-        fail(".h3 files do not exactly match the contents declared by title.tmd")
+        fail(".h3 files do not exactly match the hashed contents declared by title.tmd")
 
     if cert_path.stat().st_size < 0x100:
         fail("title.cert is unexpectedly small")
 
     print("WUP validation OK")
     print(f"  Title ID : {expected_title_id:016X}")
-    print(f"  Contents : {content_count}")
+    print(f"  Contents : {content_count} ({hashed_content_count} hashed)")
     print(f"  TMD size : {len(tmd)} bytes")
     print(f"  Ticket   : {len(ticket)} bytes")
     print(f"  Cert     : {cert_path.stat().st_size} bytes")
