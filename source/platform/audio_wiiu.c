@@ -49,6 +49,8 @@ DECLARE_AUDIO_BIN(lever2);
 DECLARE_AUDIO_BIN(stare);
 DECLARE_AUDIO_BIN(titlemusic);
 DECLARE_AUDIO_BIN(startday);
+DECLARE_AUDIO_BIN(achievement);
+DECLARE_AUDIO_BIN(utine);
 
 typedef struct AudioClip {
     const uint8_t *data;
@@ -95,6 +97,8 @@ static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_GAME_OVER_AMBIENCE] = {stare_bin, stare_bin_end},
     [AUDIO_CUE_TITLE_MUSIC] = {titlemusic_bin, titlemusic_bin_end},
     [AUDIO_CUE_START_DAY] = {startday_bin, startday_bin_end},
+    [AUDIO_CUE_ACHIEVEMENT] = {achievement_bin, achievement_bin_end},
+    [AUDIO_CUE_UTINE] = {utine_bin, utine_bin_end},
     [AUDIO_CUE_OFFICE_FAN] = SILENT_CLIP,
     [AUDIO_CUE_RAIN_AMBIENCE] = SILENT_CLIP,
     [AUDIO_CUE_DANGER] = SILENT_CLIP,
@@ -147,6 +151,8 @@ static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_GAME_OVER_AMBIENCE] = "audio/stare.bin",
     [AUDIO_CUE_TITLE_MUSIC] = "audio/titlemusic.bin",
     [AUDIO_CUE_START_DAY] = "audio/startday.bin",
+    [AUDIO_CUE_ACHIEVEMENT] = "audio/achievement.bin",
+    [AUDIO_CUE_UTINE] = "audio/utine.bin",
     [AUDIO_CUE_OFFICE_FAN] = "audio/tablefan.bin",
     [AUDIO_CUE_RAIN_AMBIENCE] = "audio/rainstorm2.bin",
     [AUDIO_CUE_DANGER] = "audio/danger2b.bin",
