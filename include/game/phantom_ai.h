@@ -15,7 +15,7 @@ typedef enum PhantomId {
 } PhantomId;
 
 typedef enum PhantomEventFlag {
-    PHANTOM_EVENT_NONE                = 0,
+    PHANTOM_EVENT_NONE                 = 0,
     PHANTOM_EVENT_VENTILATION_FAILURE = 1u << 0,
     PHANTOM_EVENT_AUDIO_FAILURE       = 1u << 1,
     PHANTOM_EVENT_FORCE_CLOSE_PANEL   = 1u << 2,
@@ -37,20 +37,41 @@ typedef struct PhantomEvent {
 typedef struct PhantomSystem {
     int night;
     bool aggressive_mode;
+    int ai_level;
+    uint32_t time_limit_frames;
     uint32_t rng;
     uint32_t attacked_mask;
 
+    /* Clickteam "Every" conditions and shared scare cooldown. */
+    uint32_t one_second_frames;
+    uint32_t twenty_second_frames;
+    uint32_t sixty_second_frames;
+    uint32_t scare_cooldown_seconds;
+
+    bool forced_bb;
+    bool forced_chica;
+    bool forced_puppet;
+    bool forced_freddy;
+    bool forced_mangle;
+
     bool foxy_present;
 
+    /* BB counter remains 1 while BBpeek is merely armed. */
+    bool bb_armed;
     bool bb_camera_visible;
     int bb_camera;
     uint32_t bb_spawn_frames;
     uint32_t bb_seen_frames;
 
+    /* fwalk: arm -> 50%/s create -> path -> duck -> 50%/s scare. */
+    bool freddy_armed;
     bool freddy_walking;
     bool freddy_countered;
+    bool freddy_post_walk_pending;
     uint32_t freddy_walk_frames;
     uint32_t freddy_duck_frames;
+    uint32_t freddy_exposure_frames;
+    uint32_t freddy_path_eighths;
 
     bool chica_camera_visible;
     bool chica_office_waiting;
