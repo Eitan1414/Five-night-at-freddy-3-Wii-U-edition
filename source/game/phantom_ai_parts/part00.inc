@@ -505,7 +505,10 @@ static PhantomEvent update_mangle(PhantomSystem *system,
         }
         if (system->mangle_office_frames == 0u) {
             system->mangle_office_active = false;
+            /* The PC Audio Error is applied after Mangle's static/path sound
+             * finishes, not when the office effect begins. */
             event.flags = PHANTOM_EVENT_GARBLE_ENDED |
+                          PHANTOM_EVENT_AUDIO_FAILURE |
                           PHANTOM_EVENT_VISUAL_CHANGED;
             event.phantom = PHANTOM_MANGLE;
             return event;
@@ -536,7 +539,6 @@ static PhantomEvent update_mangle(PhantomSystem *system,
             system->mangle_office_frames = MANGLE_PATH_FRAMES;
             mark_attacked(system, PHANTOM_MANGLE);
             event.flags = PHANTOM_EVENT_FORCE_CLOSE_PANEL |
-                          PHANTOM_EVENT_AUDIO_FAILURE |
                           PHANTOM_EVENT_RELEASE_SPRINGTRAP |
                           PHANTOM_EVENT_GARBLE_STARTED |
                           PHANTOM_EVENT_VISUAL_CHANGED;
