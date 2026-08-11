@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 """Generate PC-only compatibility textures for the legacy Wii U renderer.
 
-The final renderer already uses high-resolution tiled PC assets.  A few older
+The final renderer already uses high-resolution tiled PC assets. A few older
 render paths still expect single TextureRle objects with the historical symbol
-names.  Generate those compatibility objects from the *same PC General
-Sprites* bank so the build no longer needs any PlayStation TIM fallback.
+names. Generate those compatibility objects from the PC General Sprites bank
+or, for the warning screen, from the exact text stored in the supplied PC MFA.
+No PlayStation TIM input is used by this converter.
 """
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 COLOURS = 48
 TRANSPARENT_INDEX = 255
 
 CAMERA_IDS = (106, 97, 104, 105, 109, 98, 100, 112, 115, 116)
 SPRINGTRAP_CAMERA_IDS = (295, 146, 121, 122, 119, 117, 126, 127, 130, 140)
+
+# The five images used by the PC title frame's MFA object "Active 2".
+TITLE_IDS = (862, 855, 864, 859, 861)
 
 # symbol, PC General Sprites id, maximum output dimension
 PHANTOMS = (
@@ -95,7 +99,7 @@ def fit(image: Image.Image, max_size: tuple[int, int] | None = None,
 
 
 def emit_texture(source: list[str], symbol: str, image: Image.Image,
-                 sprite_id: int) -> None:
+                 source_label: str) -> None:
     current = image
     while True:
         palette, pixels = indexed_rgba(current)
@@ -110,7 +114,7 @@ def emit_texture(source: list[str], symbol: str, image: Image.Image,
                                      Image.Resampling.LANCZOS)
 
     unique = "k" + symbol[1:]
-    source.append(f"/* PC General Sprites ID {sprite_id}. */\n")
+    source.append(f"/* {source_label}. */\n")
     source.append(f"static const uint32_t {unique}Palette[256] = {{\n")
     source.append(fmt(palette, "0x{:08X}u", 6) + "\n};\n")
     source.append(f"static const uint16_t {unique}RowOffsets[{len(offsets)}] = {{\n")
@@ -132,6 +136,24 @@ def load(root: Path, sprite_id: int) -> Image.Image:
     return Image.open(path)
 
 
+def make_pc_warning() -> Image.Image:
+    """Recreate the PC Clickteam warning text without using WARNING.TIM.
+
+    The supplied MFA stores this screen as text rather than an image object.
+    Therefore the important source-faithful data here is the MFA wording; the
+    Wii U rasterization uses Pillow's built-in bitmap font as a platform
+    adaptation and stays intentionally independent of any PSX texture.
+    """
+    image = Image.new("RGBA", (360, 69), (0, 0, 0, 255))
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.load_default()
+    fg = (220, 220, 220, 255)
+    draw.text((147, 8), "WARNING!", font=font, fill=fg)
+    draw.text((16, 31), "This game contains flashing lights, loud noises,", font=font, fill=fg)
+    draw.text((91, 45), "and lots of jumpscares!", font=font, fill=fg)
+    return image
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("sprite_root", type=Path)
@@ -140,7 +162,7 @@ def main() -> None:
     args = parser.parse_args()
     root = args.sprite_root
 
-    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS}
+    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS}
     required.update(sprite_id for _, sprite_id, _ in PHANTOMS)
     missing = sorted(sprite_id for sprite_id in required
                      if not (root / f"{sprite_id}.png").is_file())
@@ -159,14 +181,29 @@ def main() -> None:
     ]
 
     emit_texture(source, "gPcCompatOfficeTexture",
-                 fit(load(root, 203), max_size=(420, 161)), 203)
+                 fit(load(root, 203), max_size=(420, 161)),
+                 "PC General Sprites ID 203")
     header.append("extern const TextureRle gPcCompatOfficeTexture;\n")
+
+    emit_texture(source, "gPcCompatWarningTexture", make_pc_warning(),
+                 "PC MFA warning text rasterized for Wii U")
+    header.append("extern const TextureRle gPcCompatWarningTexture;\n")
+
+    title_symbols = []
+    for index, sprite_id in enumerate(TITLE_IDS, start=1):
+        symbol = f"gPcCompatTitleSpringtrap{index}Texture"
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_dimension=384),
+                     f"PC title Active 2 image ID {sprite_id} from fivenights3-94.mfa")
+        header.append(f"extern const TextureRle {symbol};\n")
+        title_symbols.append(symbol)
 
     camera_symbols = []
     for index, sprite_id in enumerate(CAMERA_IDS, start=1):
         symbol = f"gPcCompatCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)), sprite_id)
+                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         camera_symbols.append(symbol)
 
@@ -174,13 +211,15 @@ def main() -> None:
     for index, sprite_id in enumerate(SPRINGTRAP_CAMERA_IDS, start=1):
         symbol = f"gPcCompatSpringtrapCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)), sprite_id)
+                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         springtrap_symbols.append(symbol)
 
     for symbol, sprite_id, max_dimension in PHANTOMS:
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_dimension=max_dimension), sprite_id)
+                     fit(load(root, sprite_id), max_dimension=max_dimension),
+                     f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
 
     source.append("const TextureRle *const gPcCompatCameraTextures[10] = {\n")
@@ -203,6 +242,12 @@ def main() -> None:
         "extern const TextureRle *const gPcCompatSpringtrapCameraTextures[10];\n",
         "extern const JumpscareSequence gPcCompatPhantomPuppetAnimation;\n\n",
         "/* Historical renderer names now resolve to PC-derived objects. */\n",
+        "#define gWarningTexture gPcCompatWarningTexture\n",
+        "#define gMenuSpringtrapTexture gPcCompatTitleSpringtrap1Texture\n",
+        "#define gMenuSpringtrapTexture2 gPcCompatTitleSpringtrap2Texture\n",
+        "#define gMenuSpringtrapTexture3 gPcCompatTitleSpringtrap3Texture\n",
+        "#define gMenuSpringtrapTexture4 gPcCompatTitleSpringtrap4Texture\n",
+        "#define gMenuSpringtrapTexture5 gPcCompatTitleSpringtrap5Texture\n",
         "#define gCamera01Texture gPcCompatCamera01Texture\n",
         "#define gCamera02Texture gPcCompatCamera02Texture\n",
         "#define gCamera03Texture gPcCompatCamera03Texture\n",
