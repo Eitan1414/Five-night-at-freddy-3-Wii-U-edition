@@ -29,6 +29,11 @@
 #define REPAIR_ALL_FRAMES (12u * 60u)
 
 #include "main_v3_parts/main_01.inc"
+
+/* main_00/main_01 split process_phantom_event() across include boundaries.
+ * Keep the blackout helpers after main_01 so they are emitted at translation-
+ * unit scope, but before main_02 which consumes the fade helpers. */
+#include "main_v3_parts/main_pc_blackout_fidelity.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 
 /* The legacy layer used ten seconds without player input as a ventilation
@@ -199,9 +204,11 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 #define update_game pc_system_fidelity_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
+#define draw_ventilation_overlay pc_draw_ventilation_overlay
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef audio_shutdown
+#undef draw_ventilation_overlay
 #undef draw_office_tv
 #undef fnaf3_full_audio_render_game
 #undef update_game

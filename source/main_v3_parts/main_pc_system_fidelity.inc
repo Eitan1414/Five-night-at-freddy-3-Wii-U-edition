@@ -262,6 +262,9 @@ static void pc_system_fidelity_update_game(Game *game,
     const bool lure_was_active = game->audio_lure_active;
     const bool repair_was_active = game->repairing;
     const int repair_target = game->repair_target;
+    const bool ventilation_was_failed = game->ventilation_failed;
+    const PhantomId phantom_before =
+        phantoms_active_jumpscare(&game->phantoms);
 
     /* Disable the old deterministic frame-based system failures. The legacy
      * update still owns the normal gameplay ordering, but these three flags
@@ -274,6 +277,19 @@ static void pc_system_fidelity_update_game(Game *game,
 
     if (sPcSystems.night != game->night)
         pc_systems_reset_for_night(game->night);
+
+    /* PC Phantom jumpscares enter the ventilation fade immediately. Natural
+     * health depletion begins at B=0 and therefore keeps the short alarm/red
+     * light lead-in. The Phantom event ends its jumpscare and raises the vent
+     * error in the same legacy update, which gives us an unambiguous source. */
+    if (!ventilation_was_failed && game->ventilation_failed &&
+        phantom_before != PHANTOM_NONE &&
+        phantoms_active_jumpscare(&game->phantoms) == PHANTOM_NONE) {
+        game->ventilation_error_frames = PC_VENT_FADE_DELAY_FRAMES + 1u;
+        game->player_blinded =
+            pc_ventilation_is_blind(game->ventilation_error_frames);
+        game->dirty = true;
+    }
 
     if (game->screen != SCREEN_OFFICE) return;
 

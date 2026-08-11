@@ -3,7 +3,8 @@ static void open_maintenance(Game *game)
     game->maintenance_open = true;
     game->camera_open = false;
     game->vent_map_open = false;
-    game->maintenance_selection = 0;
+    /* The PC System Restart menu opens on AUDIO DEVICES. */
+    game->maintenance_selection = MAINT_AUDIO;
     game->idle_frames = 0u;
     audio_stop(AUDIO_CUE_STATIC);
     audio_play(AUDIO_CUE_WAIT, 0.45f, false);
@@ -30,14 +31,23 @@ static void update_ventilation(Game *game)
         game->player_blinded = false;
         return;
     }
+
+    /* MFA ventilation-text value B: one increment per failed frame. The PC
+     * blackout layer consumes this same counter instead of the old Wii U
+     * ten-second hard-black cycle. */
     ++game->ventilation_error_frames;
-    const uint32_t phase = game->ventilation_error_frames % VENT_BLACKOUT_CYCLE_FRAMES;
-    game->player_blinded = phase >= VENT_BLACK_START_FRAMES;
-    if (!game->breathing_started && game->ventilation_error_frames >= VENT_DIM_START_FRAMES) {
+    game->player_blinded =
+        pc_ventilation_is_blind(game->ventilation_error_frames);
+
+    if (!game->breathing_started &&
+        pc_ventilation_blackout_alpha(game->ventilation_error_frames) > 0u) {
         game->breathing_started = true;
         audio_restart(AUDIO_CUE_BREATHING, 0.58f, true);
     }
-    if ((game->ventilation_error_frames % 6u) == 0u) game->dirty = true;
+
+    /* Red strobe and alpha fade animate at 30 Hz while gameplay remains 60 Hz. */
+    if ((game->ventilation_error_frames & 1u) == 0u)
+        game->dirty = true;
 }
 
 static void advance_hour(Game *game)

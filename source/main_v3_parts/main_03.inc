@@ -5,6 +5,30 @@
     if (input_was_pressed(input, GAME_BUTTON_CONFIRM)) trigger_audio_lure(game);
 }
 
+static int maintenance_next_selection(int current)
+{
+    switch (current) {
+        case MAINT_AUDIO: return MAINT_CAMERA;
+        case MAINT_CAMERA: return MAINT_VENTILATION;
+        case MAINT_VENTILATION: return MAINT_REBOOT_ALL;
+        case MAINT_REBOOT_ALL: return MAINT_EXIT;
+        case MAINT_EXIT:
+        default: return MAINT_AUDIO;
+    }
+}
+
+static int maintenance_previous_selection(int current)
+{
+    switch (current) {
+        case MAINT_AUDIO: return MAINT_EXIT;
+        case MAINT_CAMERA: return MAINT_AUDIO;
+        case MAINT_VENTILATION: return MAINT_CAMERA;
+        case MAINT_REBOOT_ALL: return MAINT_VENTILATION;
+        case MAINT_EXIT:
+        default: return MAINT_REBOOT_ALL;
+    }
+}
+
 static void handle_maintenance_input(Game *game, const InputState *input)
 {
     if (game->repairing) return;
@@ -12,11 +36,13 @@ static void handle_maintenance_input(Game *game, const InputState *input)
         game->maintenance_open = false; game->dirty = true; return;
     }
     if (input_was_pressed(input, GAME_BUTTON_UP)) {
-        game->maintenance_selection = (game->maintenance_selection + MAINTENANCE_ITEM_COUNT - 1) % MAINTENANCE_ITEM_COUNT;
+        game->maintenance_selection =
+            maintenance_previous_selection(game->maintenance_selection);
         game->dirty = true;
     }
     if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
-        game->maintenance_selection = (game->maintenance_selection + 1) % MAINTENANCE_ITEM_COUNT;
+        game->maintenance_selection =
+            maintenance_next_selection(game->maintenance_selection);
         game->dirty = true;
     }
     if (input_was_pressed(input, GAME_BUTTON_CONFIRM) || input_was_pressed(input, GAME_BUTTON_START)) start_repair(game);
