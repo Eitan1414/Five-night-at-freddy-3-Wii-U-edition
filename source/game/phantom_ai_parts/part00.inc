@@ -143,7 +143,11 @@ static PhantomEvent start_jumpscare(PhantomSystem *system, PhantomId phantom)
     mark_attacked(system, phantom);
     system->jumpscare = phantom;
     system->jumpscare_frames = 0u;
-    system->scare_cooldown_seconds = SCARE_COOLDOWN_SECONDS;
+    /* BB sets the shared cooldown when its scare animation finishes (MFA
+     * group 565). Foxy/Chica/Freddy set it as their attack begins. */
+    if (phantom != PHANTOM_BALLOON_BOY) {
+        system->scare_cooldown_seconds = SCARE_COOLDOWN_SECONDS;
+    }
 
     event.flags = PHANTOM_EVENT_FORCE_CLOSE_PANEL |
                   PHANTOM_EVENT_RELEASE_SPRINGTRAP |
@@ -177,6 +181,9 @@ static PhantomEvent update_jumpscare(PhantomSystem *system)
         const PhantomId finished = system->jumpscare;
         system->jumpscare = PHANTOM_NONE;
         system->jumpscare_frames = 0u;
+        if (finished == PHANTOM_BALLOON_BOY) {
+            system->scare_cooldown_seconds = SCARE_COOLDOWN_SECONDS;
+        }
         event.flags = PHANTOM_EVENT_VENTILATION_FAILURE |
                       PHANTOM_EVENT_JUMPSCARE_ENDED |
                       PHANTOM_EVENT_VISUAL_CHANGED;
@@ -622,13 +629,27 @@ void phantoms_reset(PhantomSystem *system,
 PhantomEvent phantoms_on_panel_opened(PhantomSystem *system)
 {
     PhantomEvent event = empty_event();
-    if (system == NULL || system->night < 2 ||
-        attacked(system, PHANTOM_FOXY)) {
+    if (system != NULL && system->night >= 2 &&
+        !attacked(system, PHANTOM_FOXY)) {
+        /* The actual roll belongs to MFA groups 721-724, which fire when the
+         * eleven-frame monitor animation finishes. */
+        system->foxy_roll_pending = true;
+    }
+    return event;
+}
+
+PhantomEvent phantoms_on_monitor_animation_finished(PhantomSystem *system)
+{
+    PhantomEvent event = empty_event();
+    if (system == NULL || !system->foxy_roll_pending) {
+        return event;
+    }
+    system->foxy_roll_pending = false;
+
+    if (system->night < 2 || attacked(system, PHANTOM_FOXY)) {
         return event;
     }
 
-    /* MFA groups 721-724 run when the monitor animation finishes.
-     * The resulting Foxy A value is rerolled on each camera raise. */
     uint32_t denominator;
     if (system->night == 2) denominator = 1000u;
     else if (system->night == 3) denominator = 50u;
