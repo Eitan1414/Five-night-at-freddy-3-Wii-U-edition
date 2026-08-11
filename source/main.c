@@ -22,7 +22,10 @@
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
 
-/* Use the PC screamer sequences for both timing and rendering. */
+/* Use the PC screamer sequences for gameplay timing, rendering and Extras. */
+#ifdef gPhantomChicaRealJumpscare
+#undef gPhantomChicaRealJumpscare
+#endif
 #define gSpringtrapJumpscareLeft gPcSpringtrapJumpscare
 #define gSpringtrapJumpscareRight gPcSpringtrapJumpscare
 #define gPhantomFoxyRealJumpscare gPcPhantomFoxyJumpscare
@@ -30,38 +33,22 @@
 #define gPhantomFreddyRealJumpscare gPcPhantomFreddyJumpscare
 #define gPhantomChicaRealJumpscare gPcPhantomChicaJumpscare
 
+/* main_04/main_05/main_06 are slices of one translation unit and some slices
+ * intentionally end in the middle of a function. Keep them contiguous. */
 #include "main_v3_parts/main_03.inc"
-
-/* Keep the old implementations available as fallbacks, then install the PC
- * character renderer under the original function names for all later layers. */
-#define draw_springtrap_office psx_draw_springtrap_office
-#define draw_phantom_office psx_draw_phantom_office
-#define draw_springtrap_camera_sprite psx_draw_springtrap_camera_sprite
-#define draw_phantom_camera_overlay psx_draw_phantom_camera_overlay
 #include "main_v3_parts/main_04.inc"
-#undef draw_phantom_camera_overlay
-#undef draw_springtrap_camera_sprite
-#undef draw_phantom_office
-#undef draw_springtrap_office
-
-#include "main_v3_parts/main_pc_character_override.inc"
-
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
-
-#undef gPhantomChicaRealJumpscare
-#undef gPhantomFreddyRealJumpscare
-#undef gPhantomBBRealJumpscare
-#undef gPhantomFoxyRealJumpscare
-#undef gSpringtrapJumpscareRight
-#undef gSpringtrapJumpscareLeft
-
 #include "main_v3_parts/main_06.inc"
 
 #undef render_game
 #undef update_game
 #undef main
+
+/* The PC office replacements can only be declared after the legacy source
+ * fragments above have closed all of their split function bodies. */
+#include "main_v3_parts/main_pc_character_override.inc"
 
 #define main fnaf3_finishing_main
 #define update_game fnaf3_finishing_update_game
@@ -70,6 +57,13 @@
 #undef render_game
 #undef update_game
 #undef main
+
+#undef gPhantomChicaRealJumpscare
+#undef gPhantomFreddyRealJumpscare
+#undef gPhantomBBRealJumpscare
+#undef gPhantomFoxyRealJumpscare
+#undef gSpringtrapJumpscareRight
+#undef gSpringtrapJumpscareLeft
 
 #define main fnaf3_content_main
 #define update_game fnaf3_content_update_game
@@ -120,7 +114,11 @@
 #undef original_ui_draw_vent_map
 
 #include "main_v3_parts/main_monitor_v2.inc"
+#define draw_springtrap_office pc_draw_springtrap_office
+#define draw_phantom_office pc_draw_phantom_office
 #include "main_v3_parts/main_authentic_office.inc"
+#undef draw_phantom_office
+#undef draw_springtrap_office
 #define draw_office_tv draw_authentic_office_tv
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef draw_office_tv
