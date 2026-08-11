@@ -110,9 +110,6 @@ jobs:
           fi
           echo "Resolved General Sprites download: $DOWNLOAD_URL"
 
-          # This archive is ~102 MB and the host occasionally resets HTTP/2
-          # streams. Force HTTP/1.1 and retry transport errors so a transient
-          # CDN drop does not invalidate the whole Wii U build.
           curl --http1.1 -L --fail \
             --retry 10 --retry-all-errors --retry-delay 5 \
             --connect-timeout 30 --max-time 1800 \
@@ -128,6 +125,69 @@ jobs:
           test -f /tmp/fnaf3-pc-general/DataDump3/97.png
           test -f /tmp/fnaf3-pc-general/DataDump3/295.png
           test -f /tmp/fnaf3-pc-general/DataDump3/823.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/123.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/172.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/346.png
+
+      - name: Fetch original PC minigame sprite sheets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/fnaf3-pc-minigames
+          python3 - <<'PY'
+          import html
+          import re
+          import subprocess
+          from pathlib import Path
+          from urllib.parse import urljoin
+
+          assets = {
+              "follow_me": 143651,
+              "happiest_day": 143704,
+              "shadow_bonnie": 143705,
+              "stage_01": 143706,
+              "chicas_party": 143707,
+              "mangles_quest": 143708,
+              "bb_air_adventure": 143709,
+          }
+          out = Path("/tmp/fnaf3-pc-minigames")
+          for name, asset_id in assets.items():
+              page_url = f"https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/{asset_id}/"
+              page = out / f".{name}.html"
+              subprocess.run([
+                  "curl", "--http1.1", "-L", "--fail", "--retry", "5",
+                  "--retry-all-errors", "--retry-delay", "2", "-A", "Mozilla/5.0",
+                  page_url, "-o", str(page)
+              ], check=True)
+              text = html.unescape(page.read_text(encoding="utf-8", errors="ignore"))
+              matches = re.findall(r'''(?:https?:)?//[^"'<>\s]+/media/assets/[^"'<>\s]+?\.png(?:\?[^"'<>\s]*)?''', text, flags=re.I)
+              if not matches:
+                  matches = re.findall(r'''(?:src|href)=["']([^"']+\.png(?:\?[^"']*)?)["']''', text, flags=re.I)
+              urls = []
+              for value in matches:
+                  if value.startswith("//"):
+                      value = "https:" + value
+                  value = urljoin(page_url, value)
+                  if str(asset_id) in value and value not in urls:
+                      urls.append(value)
+              if not urls:
+                  raise SystemExit(f"Could not resolve PNG for {name} ({asset_id})")
+              target = out / f"{name}.png"
+              subprocess.run([
+                  "curl", "--http1.1", "-L", "--fail", "--retry", "5",
+                  "--retry-all-errors", "--retry-delay", "2", "-A", "Mozilla/5.0",
+                  "-H", f"Referer: {page_url}", urls[0], "-o", str(target)
+              ], check=True)
+              page.unlink(missing_ok=True)
+              print(f"{name}: {target}")
+          PY
+          test -f /tmp/fnaf3-pc-minigames/follow_me.png
+          test -f /tmp/fnaf3-pc-minigames/happiest_day.png
+          test -f /tmp/fnaf3-pc-minigames/shadow_bonnie.png
+          test -f /tmp/fnaf3-pc-minigames/stage_01.png
+          test -f /tmp/fnaf3-pc-minigames/chicas_party.png
+          test -f /tmp/fnaf3-pc-minigames/mangles_quest.png
+          test -f /tmp/fnaf3-pc-minigames/bb_air_adventure.png
 
       - name: Prepare generated assets
         env:
@@ -142,6 +202,11 @@ jobs:
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_character_visuals.c \
             include/assets/pc_character_visuals.h
+          python3 tools/convert_pc_finishing_visuals.py \
+            /tmp/fnaf3-pc-general/DataDump3 \
+            /tmp/fnaf3-pc-minigames \
+            source/pc_finishing_visuals.c \
+            include/assets/pc_finishing_visuals.h
 
       - name: Build WUHB and RPX
         run: make -j2
