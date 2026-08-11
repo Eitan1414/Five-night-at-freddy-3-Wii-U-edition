@@ -145,7 +145,11 @@
  * the hidden bb route persistent and gates balloon collision by that flag. */
 #include "main_v3_parts/main_pc_mfa_minigames_v7_state.inc"
 #include "main_v3_parts/main_pc_mfa_minigames_v7_update.inc"
+/* V7's non-minigame fallback must use the base MFA route; remap the legacy V2
+ * wrapper only while this include is parsed so its audio hook cannot run twice. */
+#define pc_mfa_v2_exact_update_game pc_mfa_exact_update_game
 #include "main_v3_parts/main_pc_mfa_minigames_v7_render.inc"
+#undef pc_mfa_v2_exact_update_game
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
