@@ -45,15 +45,6 @@ jobs:
           cmake --build . --parallel 2
           cmake --install .
 
-      - name: Fetch original PSX visual and audio sources
-        run: |
-          git clone --filter=blob:none --no-checkout \
-            https://github.com/Soeiz/Five-Night-at-Freddys-3-PSX.git \
-            /tmp/fnaf3-psx-original
-          cd /tmp/fnaf3-psx-original
-          git checkout f19e22762f48d4269e07730827d8eaab5995557b -- \
-            tim/screamer tim/office tim/camera vag/screamer.vag xa/inter8.zip
-
       - name: Fetch verified PC General Sprites source
         shell: bash
         run: |
@@ -189,15 +180,17 @@ jobs:
           test -f /tmp/fnaf3-pc-minigames/mangles_quest.png
           test -f /tmp/fnaf3-pc-minigames/bb_air_adventure.png
 
-      - name: Prepare generated assets
-        env:
-          FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
+      - name: Prepare PC-only generated assets
         run: |
           sh tools/prepare_generated_assets.sh
           python3 tools/convert_pc_general_sprites.py \
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_core_visuals.c \
             include/assets/pc_core_visuals.h
+          python3 tools/convert_pc_compat_visuals.py \
+            /tmp/fnaf3-pc-general/DataDump3 \
+            source/pc_compat_visuals.c \
+            include/assets/pc_compat_visuals.h
           python3 tools/convert_pc_character_visuals.py \
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_character_visuals.c \
@@ -207,6 +200,9 @@ jobs:
             /tmp/fnaf3-pc-minigames \
             source/pc_finishing_visuals.c \
             include/assets/pc_finishing_visuals.h
+          test ! -e source/phantom_assets.c
+          test ! -e source/camera_springtrap_assets.c
+          test ! -e source/jumpscare_assets.c
 
       - name: Build WUHB and RPX
         run: make -j2
