@@ -218,7 +218,8 @@ static void pc_mfa_v7_update_active(Game *game, const InputState *input)
     ++sSecret.frames;
     ++game->screen_frames;
 
-    if (input_was_pressed(input, GAME_BUTTON_BACK) && !sSecret.good_ending) {
+    if (input_was_pressed(input, GAME_BUTTON_BACK) && !sSecret.good_ending &&
+        !sPcMfaV7.cake_sequence && !sPcMfaV7.final_sequence) {
         secret_return_to_menu(game);
         sPcMfaV7.active = false;
         sPcMfaV3.active = false;
@@ -227,6 +228,16 @@ static void pc_mfa_v7_update_active(Game *game, const InputState *input)
             pc_minigame_sfx_stop(PC_MINIGAME_SFX_RUN);
             sPcMfaRunSound = false;
         }
+        return;
+    }
+
+    if (sPcMfaV7.cake_sequence || sPcMfaV7.final_sequence) {
+        /* The PC cake/final event chain freezes traversal while the visible
+         * cake counter advances to its 100/200/300/1300 thresholds. */
+        sPcMfaV5.moved_horizontal = false;
+        pc_mfa_v5_update_run_sound();
+        pc_mfa_v7_tick_secret_sequence(game);
+        game->dirty = true;
         return;
     }
 
