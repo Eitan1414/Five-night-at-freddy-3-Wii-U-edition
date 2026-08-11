@@ -19,9 +19,27 @@
 #define render_game fnaf3_legacy_render_game
 
 #include "main_v3_parts/main_00.inc"
+
+/* Retail PC restart timing is six seconds for one system and twelve seconds
+ * for Reboot All. Override the old fast Wii U scaffolding before the function
+ * that consumes these constants is compiled. */
+#undef REPAIR_SINGLE_FRAMES
+#undef REPAIR_ALL_FRAMES
+#define REPAIR_SINGLE_FRAMES (6u * 60u)
+#define REPAIR_ALL_FRAMES (12u * 60u)
+
 #include "main_v3_parts/main_01.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
+
+/* The legacy layer used ten seconds without player input as a ventilation
+ * failure. In the PC game ten seconds idle instead contributes to Springtrap's
+ * aggression. Let the idle counter continue and disable that old shortcut;
+ * the real ventilation-health failure is applied by main_pc_system_fidelity. */
+#undef IDLE_VENT_FAILURE_FRAMES
+#define IDLE_VENT_FAILURE_FRAMES UINT32_MAX
 #include "main_v3_parts/main_02.inc"
+#undef IDLE_VENT_FAILURE_FRAMES
+#define IDLE_VENT_FAILURE_FRAMES 600u
 
 /* Use the PC screamer sequences for gameplay timing, rendering and Extras. */
 #ifdef gPhantomChicaRealJumpscare
@@ -173,7 +191,12 @@ static void pc_audio_shutdown_with_extra_sfx(void)
     audio_shutdown();
 }
 
-#define update_game pc_mfa_v8_exact_update_game
+/* Final retail-PC maintenance/system counters. This wrapper deliberately sits
+ * after the minigame/cheat layers so it can preserve those features while
+ * replacing only the old deterministic night-system failures. */
+#include "main_v3_parts/main_pc_system_fidelity.inc"
+
+#define update_game pc_system_fidelity_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx

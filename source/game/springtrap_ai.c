@@ -18,18 +18,21 @@
  * 145: every 15000 ms -> aggressive? = 0, arm one aggression roll
  * 516: Random(5) < AI -> aggressive? = 1
  * 299: ventilation error state -> aggressive? = 1
- * 607: frozen == 1 -> aggressive? = 1
- * 608: office shake/after-effect active -> aggressive? = 1
+ * 607/608: frozen/office inactivity pressure -> aggressive? = 1
  * 744: time of night >= 4 -> aggressive? = 1
  * 749: advanced ventilation-error state -> aggressive? = 1
  * 758: time of night == 12 -> aggressive? = 0
  * 759 is the old demo-only Night-4 override and is intentionally irrelevant to
  * the full retail project.
  *
+ * The retail frame also makes Springtrap aggressive after the player spends
+ * ten seconds with neither monitor open. The previous final wrapper dropped
+ * that condition even though the base runtime already tracked office idle time.
+ *
  * The Wii U runtime has one boolean ventilation-failure state instead of the
  * two Clickteam visual counters used by groups 299/749, so both source events
- * collapse to the same exact gameplay condition here.  Phantom group 607 is
- * represented by springtrap_ai_release_observation(), which is fired by the
+ * collapse to the same exact gameplay condition here.  Phantom release events
+ * are represented by springtrap_ai_release_observation(), which is fired by the
  * Phantom state machine when the original event releases Springtrap.
  *
  * Random values use the Wii U port RNG; the probabilities/cadence/state order
@@ -51,6 +54,13 @@ static void mfa_exact_update_aggression(SpringtrapAI *ai, int current_hour)
     /* Groups 299 and 749 are two visual-counter representations of the same
      * ventilation failure in the original frame. */
     if (ai->ventilation_failed) {
+        ai->aggressive = true;
+    }
+
+    /* Retail PC inactivity condition: no camera or maintenance screen for ten
+     * seconds forces aggressive? back on. */
+    if (!ai->camera_screen_open && !ai->maintenance_screen_open &&
+        ai->office_idle_frames >= 10u * FRAMES_PER_SECOND) {
         ai->aggressive = true;
     }
 
