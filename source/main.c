@@ -10,6 +10,7 @@
 #include "assets/pc_core_visuals.h"
 #include "assets/pc_character_visuals.h"
 #include "assets/pc_finishing_visuals.h"
+#include "platform/pc_minigame_sfx.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -124,21 +125,31 @@
 /* PC endings/Follow Me remain in the finishing layer. */
 #include "main_v3_parts/main_pc_finishing_override.inc"
 
-/* Secret minigames now use original world/object coordinates extracted from
- * the PC Clickteam MFA instead of the old one-screen approximations. */
+/* Secret minigames use the original 3072x2304 Clickteam object layout. */
 #include "main_v3_parts/main_pc_mfa_minigames.inc"
+/* Second pass removes debug presentation and uses the remaining exact named
+ * object instances from fivenights3-94.mfa. */
+#include "main_v3_parts/main_pc_mfa_minigames_v2.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_secret_render_override(game)) return;
+    if (pc_mfa_v2_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
 
-#define update_game pc_mfa_exact_update_game
+static void pc_audio_shutdown_with_extra_sfx(void)
+{
+    pc_minigame_sfx_shutdown();
+    audio_shutdown();
+}
+
+#define update_game pc_mfa_v2_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
+#define audio_shutdown pc_audio_shutdown_with_extra_sfx
 #include "main_v3_parts/main_original_ui_03.inc"
+#undef audio_shutdown
 #undef draw_office_tv
 #undef fnaf3_full_audio_render_game
 #undef update_game
