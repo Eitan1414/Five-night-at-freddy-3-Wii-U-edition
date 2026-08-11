@@ -22,53 +22,93 @@ static OriginalUiTextureId original_ui_maintenance_texture(const Game *game,
     }
 }
 
+static void original_ui_draw_maintenance_sprite(OriginalUiTextureId id,
+                                                 int x,
+                                                 int y,
+                                                 int max_width,
+                                                 int height)
+{
+    const TextureRle *texture = original_ui_get(id);
+    if (texture == NULL || texture->width == 0u || texture->height == 0u ||
+        height <= 0 || max_width <= 0) {
+        return;
+    }
+
+    int width = (int)(((uint32_t)texture->width * (uint32_t)height) /
+                      (uint32_t)texture->height);
+    if (width > max_width) {
+        width = max_width;
+        height = (int)(((uint32_t)texture->height * (uint32_t)width) /
+                       (uint32_t)texture->width);
+    }
+    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                     x, y, width, height, texture);
+}
+
+static void original_ui_draw_maintenance_cursor(int y)
+{
+    const uint32_t colour = GRAPHICS_RGB(224, 238, 219);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 66, y + 13, 18, 3, colour);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 78, y + 8, 3, 13, colour);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 81, y + 11, 3, 7, colour);
+}
+
 static void original_ui_draw_maintenance(const Game *game)
 {
-    graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(1, 4, 2));
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD, 31, 28, 792, 424, 4,
-                        GRAPHICS_RGB(55, 113, 60));
-    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 62, 49, 4,
-                       "SYSTEM RESTART", COLOUR_GREEN);
+    static const int display_order[MAINTENANCE_ITEM_COUNT] = {
+        MAINT_AUDIO,
+        MAINT_CAMERA,
+        MAINT_VENTILATION,
+        MAINT_REBOOT_ALL,
+        MAINT_EXIT,
+    };
 
-    for (int item = 0; item < MAINTENANCE_ITEM_COUNT; ++item) {
-        const int y = 105 + item * 58;
+    graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(0, 2, 1));
+
+    /* ORIGINAL_UI_MAINT_MENU is the extracted PC "System Restart" heading;
+     * the previous Wii U pass incorrectly reused it as the EXIT row. */
+    original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_MENU,
+                                        119, 39, 640, 58);
+
+    for (int row = 0; row < MAINTENANCE_ITEM_COUNT; ++row) {
+        const int item = display_order[row];
+        const int y = 116 + row * 55;
         const bool selected = item == game->maintenance_selection;
-        if (selected) {
-            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 58, y - 10,
-                               730, 48, GRAPHICS_RGB(22, 58, 27));
-            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 58, y - 10,
-                               7, 48, GRAPHICS_RGB(194, 255, 77));
+
+        if (selected) original_ui_draw_maintenance_cursor(y);
+
+        if (item == MAINT_EXIT) {
+            graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                               104, y + 8, 3, "EXIT",
+                               selected ? COLOUR_WHITE
+                                        : GRAPHICS_RGB(153, 171, 151));
+            continue;
         }
-        const TextureRle *label = original_ui_get(
-            original_ui_maintenance_texture(game, item));
-        if (label != NULL) {
-            const int width = (int) label->width * 2;
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                             82, y, width, 40, label);
-        }
-        if (item < MAINT_REBOOT_ALL) {
-            const bool failed = maintenance_failed(game, item);
-            graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 657, y + 13, 2,
-                               failed ? "ERROR" : "ONLINE",
-                               failed ? COLOUR_RED : COLOUR_GREEN);
-        }
+
+        original_ui_draw_maintenance_sprite(
+            original_ui_maintenance_texture(game, item),
+            104, y, 620, 38);
     }
 
     if (game->repairing) {
-        const uint32_t duration = repair_duration(game);
-        const int progress = duration == 0u ? 0
-            : (int) ((game->repair_frames * 620u) / duration);
-        original_ui_draw_texture(ORIGINAL_UI_MAINT_RESTART,
-                                 GRAPHICS_TARGET_GAMEPAD,
-                                 272, 375, 300, 40);
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 112, 423, 620, 13,
-                           GRAPHICS_RGB(6, 16, 8));
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 112, 423, progress, 13,
-                           GRAPHICS_RGB(194, 255, 77));
+        original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_RESTART,
+                                            245, 399, 365, 34);
+
+        /* Clickteam's restart indicator advances as a small repeating dot
+         * animation; do not expose the artificial Wii U percentage bar. */
+        const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
+        for (int dot = 0; dot < dots; ++dot) {
+            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                               562 + dot * 13, 419, 6, 6,
+                               COLOUR_WHITE);
+        }
     } else {
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 222, 421, 1,
-                           "UP/DOWN: SELECT   A: REBOOT   B/MINUS: CLOSE",
-                           GRAPHICS_RGB(174, 199, 169));
+        /* Controller legend is the only Wii U-specific addition retained on
+         * this screen; all game-owned labels above come from the PC asset bank. */
+        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+                           250, 452, 1,
+                           "UP/DOWN SELECT   A REBOOT   B CLOSE",
+                           GRAPHICS_RGB(105, 125, 103));
     }
 }
 
