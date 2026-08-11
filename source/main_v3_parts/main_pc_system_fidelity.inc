@@ -238,6 +238,24 @@ static void pc_systems_update_hallucination(Game *game)
         pc_systems_begin_hallucination(game);
 }
 
+static void pc_systems_enforce_ventilation_error(Game *game)
+{
+    if (!game->ventilation_failed) return;
+
+    /* Retail PC ventilation errors release the current vent seal and prevent
+     * a new one from remaining active until ventilation has been rebooted. The
+     * legacy input path may momentarily write selected_vent into sealed_vent;
+     * clearing it in the same update frame preserves the PC gameplay result. */
+    if (game->sealed_vent != SPRINGTRAP_VENT_NONE) {
+        game->sealed_vent = SPRINGTRAP_VENT_NONE;
+        if (game->message == MESSAGE_VENT_SEALED) {
+            game->message = MESSAGE_NONE;
+            game->message_frames = 0u;
+        }
+        game->dirty = true;
+    }
+}
+
 static void pc_system_fidelity_update_game(Game *game,
                                            const InputState *input)
 {
@@ -282,4 +300,5 @@ static void pc_system_fidelity_update_game(Game *game,
     pc_systems_update_camera(game);
     pc_systems_update_ventilation_health(game);
     pc_systems_update_hallucination(game);
+    pc_systems_enforce_ventilation_error(game);
 }
