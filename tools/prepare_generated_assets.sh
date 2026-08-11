@@ -1,13 +1,6 @@
 #!/bin/sh
 set -eu
 
-restore_xz_base64() {
-    source_pattern="$1"
-    output="$2"
-    # shellcheck disable=SC2086
-    cat $source_pattern | base64 -d | xz -dc > "$output"
-}
-
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "ffmpeg is required to prepare audio assets" >&2
     exit 1
@@ -20,12 +13,6 @@ if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
     echo "curl and unzip are required to fetch the verified PC sound pack" >&2
     exit 1
 fi
-
-# This remaining generated visual is a user-supplied Wii U override, not a PSX
-# asset. All former PSX camera/Phantom/screamer restoration has been removed.
-restore_xz_base64 \
-    "source/generated/phantom_mangle_user_texture.h.xz.b64" \
-    "include/assets/phantom_mangle_user_texture.h"
 
 mkdir -p assets/user_visuals
 cat assets/user_visuals/phantom_chica_jumpscare.png.b64.part* \
