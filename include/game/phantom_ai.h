@@ -55,6 +55,7 @@ typedef struct PhantomSystem {
     bool forced_mangle;
 
     bool foxy_present;
+    bool foxy_roll_pending;
 
     /* BB counter remains 1 while BBpeek is merely armed. */
     bool bb_armed;
@@ -100,6 +101,7 @@ void phantoms_reset(PhantomSystem *system,
                     uint32_t seed);
 
 PhantomEvent phantoms_on_panel_opened(PhantomSystem *system);
+PhantomEvent phantoms_on_monitor_animation_finished(PhantomSystem *system);
 PhantomEvent phantoms_on_hour_changed(PhantomSystem *system, int hour);
 PhantomEvent phantoms_update(PhantomSystem *system,
                              int hour,
