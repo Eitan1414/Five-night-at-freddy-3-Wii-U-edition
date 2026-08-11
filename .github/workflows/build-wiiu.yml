@@ -55,13 +55,67 @@ jobs:
             tim/screamer tim/office tim/camera vag/screamer.vag xa/inter8.zip
 
       - name: Fetch verified PC General Sprites source
+        shell: bash
         run: |
+          set -euo pipefail
+          ASSET_PAGE="https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/65675/"
           mkdir -p /tmp/fnaf3-pc-general
+          curl -L --fail --retry 3 -A "Mozilla/5.0" "$ASSET_PAGE" -o /tmp/fnaf3-general-page.html
+
+          DOWNLOAD_URL="$(python3 - <<'PY'
+          import html
+          import re
+          from urllib.parse import urljoin
+
+          page_url = "https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/65675/"
+          text = open("/tmp/fnaf3-general-page.html", encoding="utf-8", errors="ignore").read()
+          text = html.unescape(text)
+
+          candidates = []
+          patterns = [
+              r'''href\s*=\s*["']([^"']+)["']''',
+              r'''(?:data-url|data-download|action)\s*=\s*["']([^"']+)["']''',
+              r'''https?://[^"'<>\\s]+''',
+          ]
+          for pattern in patterns:
+              for match in re.findall(pattern, text, flags=re.I):
+                  value = match if isinstance(match, str) else match[0]
+                  value = value.strip()
+                  low = value.lower()
+                  if ("download" in low or low.endswith(".zip") or "65675" in low) and value not in candidates:
+                      candidates.append(value)
+
+          ranked = sorted(
+              candidates,
+              key=lambda value: (
+                  not value.lower().endswith(".zip"),
+                  "download" not in value.lower(),
+                  "65675" not in value,
+                  len(value),
+              ),
+          )
+          for value in ranked:
+              absolute = urljoin(page_url, value)
+              if absolute.rstrip("/") == page_url.rstrip("/"):
+                  continue
+              print(absolute)
+              break
+          PY
+          )"
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "::error::Could not resolve the current General Sprites ZIP URL from asset 65675."
+            grep -Eoi 'href=["'"'][^"'"']+|data-[a-z-]+=["'"'][^"'"']+' /tmp/fnaf3-general-page.html | grep -Ei 'download|zip|65675' | head -40 || true
+            exit 1
+          fi
+          echo "Resolved General Sprites download: $DOWNLOAD_URL"
           curl -L --fail --retry 3 \
             -A "Mozilla/5.0" \
-            -H "Referer: https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/65675/" \
-            https://www.spriters-resource.com/download/65675/ \
+            -H "Referer: $ASSET_PAGE" \
+            "$DOWNLOAD_URL" \
             -o /tmp/fnaf3-general-sprites.zip
+
+          file /tmp/fnaf3-general-sprites.zip || true
           echo "b083700bfbcbe0254c59a3f4acf451f6c647c20719a6db2ea29c8f4a644c6a23  /tmp/fnaf3-general-sprites.zip" | sha256sum -c -
           unzip -q /tmp/fnaf3-general-sprites.zip -d /tmp/fnaf3-pc-general
           test -f /tmp/fnaf3-pc-general/DataDump3/203.png
