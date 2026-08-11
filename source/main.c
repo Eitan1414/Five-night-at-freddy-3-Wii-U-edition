@@ -115,7 +115,13 @@
 #include "main_v3_parts/main_original_ui_02.inc"
 #undef original_ui_draw_vent_map
 
+/* Keep the monitor V2 controls/transition, but expose its camera renderer as
+ * a fallback so the final PC fidelity layer can restore the exact viewport. */
+#define original_ui_draw_camera_feed original_ui_draw_camera_feed_v2
 #include "main_v3_parts/main_monitor_v2.inc"
+#undef original_ui_draw_camera_feed
+#include "main_v3_parts/main_pc_camera_fidelity.inc"
+
 #define draw_springtrap_office pc_draw_springtrap_office
 #define draw_phantom_office pc_draw_phantom_office
 #include "main_v3_parts/main_authentic_office.inc"
