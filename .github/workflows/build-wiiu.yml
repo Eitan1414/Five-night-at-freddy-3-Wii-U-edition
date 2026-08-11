@@ -25,7 +25,7 @@ jobs:
       - name: Install asset and WUP tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch python3-pil openjdk-17-jre-headless
+          apt-get install -y --no-install-recommends ffmpeg curl ca-certificates cmake patch python3-pil unzip openjdk-17-jre-headless
 
       - name: Build official Wii U SDL2 port
         run: |
@@ -54,10 +54,29 @@ jobs:
           git checkout f19e22762f48d4269e07730827d8eaab5995557b -- \
             tim/screamer tim/office tim/camera vag/screamer.vag xa/inter8.zip
 
+      - name: Fetch verified PC General Sprites source
+        run: |
+          mkdir -p /tmp/fnaf3-pc-general
+          curl -L --fail --retry 3 \
+            -A "Mozilla/5.0" \
+            -H "Referer: https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/65675/" \
+            https://www.spriters-resource.com/download/65675/ \
+            -o /tmp/fnaf3-general-sprites.zip
+          echo "b083700bfbcbe0254c59a3f4acf451f6c647c20719a6db2ea29c8f4a644c6a23  /tmp/fnaf3-general-sprites.zip" | sha256sum -c -
+          unzip -q /tmp/fnaf3-general-sprites.zip -d /tmp/fnaf3-pc-general
+          test -f /tmp/fnaf3-pc-general/DataDump3/203.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/106.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/97.png
+
       - name: Prepare generated assets
         env:
           FNAF3_PSX_SOURCE: /tmp/fnaf3-psx-original
-        run: sh tools/prepare_generated_assets.sh
+        run: |
+          sh tools/prepare_generated_assets.sh
+          python3 tools/convert_pc_general_sprites.py \
+            /tmp/fnaf3-pc-general/DataDump3 \
+            source/pc_core_visuals.c \
+            include/assets/pc_core_visuals.h
 
       - name: Build WUHB and RPX
         run: make -j2
