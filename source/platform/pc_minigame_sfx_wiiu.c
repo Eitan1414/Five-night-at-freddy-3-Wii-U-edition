@@ -1,44 +1,59 @@
 #include "platform/pc_minigame_sfx.h"
 
-#include <malloc.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <coreinit/cache.h>
 #include <sndcore2/core.h>
 #include <sndcore2/voice.h>
 
-#include "platform/storage.h"
+#define DECLARE_PC_SFX_BIN(name) \
+    extern const uint8_t name##_bin[]; \
+    extern const uint8_t name##_bin_end[]
 
-#define PC_SFX_ALIGNMENT 64u
-#define PC_SFX_MAX_BYTES (8u * 1024u * 1024u)
+DECLARE_PC_SFX_BIN(get);
+DECLARE_PC_SFX_BIN(get2);
+DECLARE_PC_SFX_BIN(jump);
+DECLARE_PC_SFX_BIN(jump2);
+DECLARE_PC_SFX_BIN(jump3);
+DECLARE_PC_SFX_BIN(jump4);
+DECLARE_PC_SFX_BIN(land);
+DECLARE_PC_SFX_BIN(run);
+DECLARE_PC_SFX_BIN(long_glitched2);
+DECLARE_PC_SFX_BIN(insuit);
+DECLARE_PC_SFX_BIN(laugh);
+DECLARE_PC_SFX_BIN(scare);
+DECLARE_PC_SFX_BIN(stop);
+DECLARE_PC_SFX_BIN(crazy_garble);
+
+typedef struct PcSfxClip {
+    const uint8_t *data;
+    const uint8_t *end;
+} PcSfxClip;
 
 typedef struct PcSfxSlot {
-    uint8_t *data;
-    size_t size;
     AXVoice *voice;
 } PcSfxSlot;
 
-static PcSfxSlot sPcSfx[PC_MINIGAME_SFX_COUNT];
-
-static const char *const kPcSfxPath[PC_MINIGAME_SFX_COUNT] = {
-    [PC_MINIGAME_SFX_GET] = "audio/get.bin",
-    [PC_MINIGAME_SFX_GET2] = "audio/get2.bin",
-    [PC_MINIGAME_SFX_JUMP1] = "audio/jump.bin",
-    [PC_MINIGAME_SFX_JUMP2] = "audio/jump2.bin",
-    [PC_MINIGAME_SFX_JUMP3] = "audio/jump3.bin",
-    [PC_MINIGAME_SFX_JUMP4] = "audio/jump4.bin",
-    [PC_MINIGAME_SFX_LAND] = "audio/land.bin",
-    [PC_MINIGAME_SFX_RUN] = "audio/run.bin",
-    [PC_MINIGAME_SFX_LONG_GLITCH] = "audio/long_glitched2.bin",
-    [PC_MINIGAME_SFX_INSUIT] = "audio/insuit.bin",
-    [PC_MINIGAME_SFX_LAUGH] = "audio/laugh.bin",
-    [PC_MINIGAME_SFX_SCARE] = "audio/scare.bin",
-    [PC_MINIGAME_SFX_STOP] = "audio/stop.bin",
-    [PC_MINIGAME_SFX_CRAZY_GARBLE] = "audio/crazy_garble.bin",
+static const PcSfxClip kPcSfxClips[PC_MINIGAME_SFX_COUNT] = {
+    [PC_MINIGAME_SFX_GET] = {get_bin, get_bin_end},
+    [PC_MINIGAME_SFX_GET2] = {get2_bin, get2_bin_end},
+    [PC_MINIGAME_SFX_JUMP1] = {jump_bin, jump_bin_end},
+    [PC_MINIGAME_SFX_JUMP2] = {jump2_bin, jump2_bin_end},
+    [PC_MINIGAME_SFX_JUMP3] = {jump3_bin, jump3_bin_end},
+    [PC_MINIGAME_SFX_JUMP4] = {jump4_bin, jump4_bin_end},
+    [PC_MINIGAME_SFX_LAND] = {land_bin, land_bin_end},
+    [PC_MINIGAME_SFX_RUN] = {run_bin, run_bin_end},
+    [PC_MINIGAME_SFX_LONG_GLITCH] = {long_glitched2_bin, long_glitched2_bin_end},
+    [PC_MINIGAME_SFX_INSUIT] = {insuit_bin, insuit_bin_end},
+    [PC_MINIGAME_SFX_LAUGH] = {laugh_bin, laugh_bin_end},
+    [PC_MINIGAME_SFX_SCARE] = {scare_bin, scare_bin_end},
+    [PC_MINIGAME_SFX_STOP] = {stop_bin, stop_bin_end},
+    [PC_MINIGAME_SFX_CRAZY_GARBLE] = {crazy_garble_bin, crazy_garble_bin_end},
 };
+
+static PcSfxSlot sPcSfx[PC_MINIGAME_SFX_COUNT];
 
 static uint16_t pc_sfx_volume(float volume)
 {
@@ -47,49 +62,20 @@ static uint16_t pc_sfx_volume(float volume)
     return (uint16_t)(volume * 49152.0f);
 }
 
-static bool pc_sfx_load(PcMinigameSfx cue)
+static bool pc_sfx_ensure_voice(PcMinigameSfx cue)
 {
-    if (cue < 0 || cue >= PC_MINIGAME_SFX_COUNT) return false;
-    PcSfxSlot *slot = &sPcSfx[cue];
-    if (slot->data != NULL && slot->voice != NULL) return true;
-    if (!AXIsInit()) return false;
-
-    const char *path = kPcSfxPath[cue];
-    if (path == NULL || !storage_init()) return false;
-
-    size_t byte_size = 0u;
-    if (!storage_file_size(path, &byte_size) || byte_size < 2u ||
-        byte_size > PC_SFX_MAX_BYTES) return false;
-    byte_size &= ~(size_t)1u;
-
-    const size_t allocation =
-        (byte_size + PC_SFX_ALIGNMENT - 1u) & ~(PC_SFX_ALIGNMENT - 1u);
-    uint8_t *data = (uint8_t *)memalign(PC_SFX_ALIGNMENT, allocation);
-    if (data == NULL) return false;
-
-    size_t read_size = 0u;
-    if (!storage_read(path, data, byte_size, &read_size) ||
-        read_size != byte_size) {
-        free(data);
-        return false;
-    }
-
-    AXVoice *voice = AXAcquireVoice(30u, NULL, NULL);
-    if (voice == NULL) {
-        free(data);
-        return false;
-    }
-
-    slot->data = data;
-    slot->size = byte_size;
-    slot->voice = voice;
-    return true;
+    if (cue < 0 || cue >= PC_MINIGAME_SFX_COUNT || !AXIsInit()) return false;
+    if (sPcSfx[cue].voice != NULL) return true;
+    sPcSfx[cue].voice = AXAcquireVoice(30u, NULL, NULL);
+    return sPcSfx[cue].voice != NULL;
 }
 
 static void pc_sfx_configure(PcMinigameSfx cue, float volume, bool loop)
 {
-    PcSfxSlot *slot = &sPcSfx[cue];
-    const uint32_t sample_count = (uint32_t)(slot->size / 2u);
+    AXVoice *voice = sPcSfx[cue].voice;
+    const PcSfxClip *clip = &kPcSfxClips[cue];
+    const uint32_t byte_size = (uint32_t)(clip->end - clip->data);
+    const uint32_t sample_count = byte_size / 2u;
 
     AXVoiceDeviceMixData mix[6];
     memset(mix, 0, sizeof(mix));
@@ -103,37 +89,36 @@ static void pc_sfx_configure(PcMinigameSfx cue, float volume, bool loop)
         .loopOffset = 0u,
         .endOffset = sample_count,
         .currentOffset = 0u,
-        .data = slot->data,
+        .data = clip->data,
     };
 
-    DCFlushRange(slot->data, slot->size);
-    AXVoiceBegin(slot->voice);
-    AXSetVoiceType(slot->voice, AX_VOICE_TYPE_UNKNOWN);
-    AXSetVoiceVe(slot->voice, &ve);
-    AXSetVoiceDeviceMix(slot->voice, AX_DEVICE_TYPE_TV, 0, mix);
-    AXSetVoiceDeviceMix(slot->voice, AX_DEVICE_TYPE_DRC, 0, mix);
-    AXSetVoiceSrcType(slot->voice, AX_VOICE_SRC_TYPE_LINEAR);
-    (void)AXSetVoiceSrcRatio(slot->voice, 0.5f);
-    AXSetVoiceOffsets(slot->voice, &offsets);
-    AXVoiceEnd(slot->voice);
+    DCFlushRange((void *)clip->data, byte_size);
+    AXVoiceBegin(voice);
+    AXSetVoiceType(voice, AX_VOICE_TYPE_UNKNOWN);
+    AXSetVoiceVe(voice, &ve);
+    AXSetVoiceDeviceMix(voice, AX_DEVICE_TYPE_TV, 0, mix);
+    AXSetVoiceDeviceMix(voice, AX_DEVICE_TYPE_DRC, 0, mix);
+    AXSetVoiceSrcType(voice, AX_VOICE_SRC_TYPE_LINEAR);
+    (void)AXSetVoiceSrcRatio(voice, 0.5f);
+    AXSetVoiceOffsets(voice, &offsets);
+    AXVoiceEnd(voice);
 }
 
 void pc_minigame_sfx_play(PcMinigameSfx cue, float volume, bool loop)
 {
-    if (!pc_sfx_load(cue)) return;
-    PcSfxSlot *slot = &sPcSfx[cue];
+    if (!pc_sfx_ensure_voice(cue)) return;
     pc_sfx_configure(cue, volume, loop);
-    AXSetVoiceCurrentOffset(slot->voice, 0u);
-    AXSetVoiceState(slot->voice, AX_VOICE_STATE_PLAYING);
+    AXSetVoiceCurrentOffset(sPcSfx[cue].voice, 0u);
+    AXSetVoiceState(sPcSfx[cue].voice, AX_VOICE_STATE_PLAYING);
 }
 
 void pc_minigame_sfx_stop(PcMinigameSfx cue)
 {
     if (cue < 0 || cue >= PC_MINIGAME_SFX_COUNT) return;
-    PcSfxSlot *slot = &sPcSfx[cue];
-    if (slot->voice == NULL) return;
-    AXSetVoiceState(slot->voice, AX_VOICE_STATE_STOPPED);
-    AXSetVoiceCurrentOffset(slot->voice, 0u);
+    AXVoice *voice = sPcSfx[cue].voice;
+    if (voice == NULL) return;
+    AXSetVoiceState(voice, AX_VOICE_STATE_STOPPED);
+    AXSetVoiceCurrentOffset(voice, 0u);
 }
 
 void pc_minigame_sfx_stop_all(void)
@@ -145,14 +130,11 @@ void pc_minigame_sfx_stop_all(void)
 void pc_minigame_sfx_shutdown(void)
 {
     for (int cue = 0; cue < PC_MINIGAME_SFX_COUNT; ++cue) {
-        PcSfxSlot *slot = &sPcSfx[cue];
-        if (slot->voice != NULL) {
-            AXSetVoiceState(slot->voice, AX_VOICE_STATE_STOPPED);
-            AXFreeVoice(slot->voice);
-            slot->voice = NULL;
+        AXVoice *voice = sPcSfx[cue].voice;
+        if (voice != NULL) {
+            AXSetVoiceState(voice, AX_VOICE_STATE_STOPPED);
+            AXFreeVoice(voice);
+            sPcSfx[cue].voice = NULL;
         }
-        free(slot->data);
-        slot->data = NULL;
-        slot->size = 0u;
     }
 }
