@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Generate verified high-resolution PC visuals from FNaF 3 General Sprites.
 
-This first migration intentionally covers only assets whose numbered source has
-been visually verified: the normal office panorama plus CAM 01 and CAM 02.
-The other cameras keep their current fallback until their PC IDs are verified.
+Only numbered sprites whose camera identity has been verified are migrated.
+Non-migrated cameras keep their existing Wii U/PSX fallback.
 """
 from __future__ import annotations
 
@@ -14,11 +13,17 @@ from PIL import Image
 COLOURS = 80
 TRANSPARENT_INDEX = 255
 
-# name, General Sprites PNG id, Wii U render size, tile width.
+# name, General Sprites PNG id, Wii U render size, tile width, camera index.
+# camera index is zero-based (CAM01=0); None marks non-camera assets.
 ASSETS = (
-    ("Office", 203, (1120, 430), 128),
-    ("Camera01", 106, (532, 295), 256),
-    ("Camera02", 97, (532, 295), 192),
+    ("Office", 203, (1120, 430), 128, None),
+    ("Camera01", 106, (532, 295), 192, 0),
+    ("Camera02", 97, (532, 295), 192, 1),
+    ("Camera03", 104, (532, 295), 192, 2),
+    ("Camera04", 105, (532, 295), 192, 3),
+    ("Camera05", 109, (532, 295), 192, 4),
+    ("Camera08", 112, (532, 295), 192, 7),
+    ("Camera09", 115, (532, 295), 192, 8),
 )
 
 
@@ -136,8 +141,8 @@ def main() -> None:
         "#include <stddef.h>\n",
         "#include <stdint.h>\n\n",
     ]
-    for asset in ASSETS:
-        emit_asset(source, args.sprite_root, *asset)
+    for name, sprite_id, size, tile_width, _camera_index in ASSETS:
+        emit_asset(source, args.sprite_root, name, sprite_id, size, tile_width)
 
     source.append(r'''void pc_tiled_texture_draw(uint32_t targets,
                            int x,
@@ -170,45 +175,46 @@ def main() -> None:
 const PcTiledTexture *pc_core_camera_texture(int camera_index)
 {
     switch (camera_index) {
-        case 0: return &gPcCamera01Texture;
-        case 1: return &gPcCamera02Texture;
-        default: return NULL;
+''')
+    for name, _sprite_id, _size, _tile_width, camera_index in ASSETS:
+        if camera_index is not None:
+            source.append(f"        case {camera_index}: return &gPc{name}Texture;\n")
+    source.append(r'''        default: return NULL;
     }
 }
 ''')
 
-    header = r'''#pragma once
-
-#include <stdint.h>
-#include "renderer/texture.h"
-
-typedef struct PcTiledTexture {
-    uint16_t width;
-    uint16_t height;
-    uint16_t tile_count;
-    const TextureRle *const *tiles;
-} PcTiledTexture;
-
-extern const PcTiledTexture gPcOfficeTexture;
-extern const PcTiledTexture gPcCamera01Texture;
-extern const PcTiledTexture gPcCamera02Texture;
-
-void pc_tiled_texture_draw(uint32_t targets,
-                           int x,
-                           int y,
-                           int width,
-                           int height,
-                           const PcTiledTexture *texture);
-
-/* Returns NULL until a camera has a verified PC replacement. */
-const PcTiledTexture *pc_core_camera_texture(int camera_index);
-'''
+    header_lines = [
+        "#pragma once\n\n",
+        "#include <stdint.h>\n",
+        '#include "renderer/texture.h"\n\n',
+        "typedef struct PcTiledTexture {\n",
+        "    uint16_t width;\n",
+        "    uint16_t height;\n",
+        "    uint16_t tile_count;\n",
+        "    const TextureRle *const *tiles;\n",
+        "} PcTiledTexture;\n\n",
+    ]
+    for name, _sprite_id, _size, _tile_width, _camera_index in ASSETS:
+        header_lines.append(f"extern const PcTiledTexture gPc{name}Texture;\n")
+    header_lines.extend([
+        "\nvoid pc_tiled_texture_draw(uint32_t targets,\n",
+        "                           int x,\n",
+        "                           int y,\n",
+        "                           int width,\n",
+        "                           int height,\n",
+        "                           const PcTiledTexture *texture);\n\n",
+        "/* Returns NULL until a camera has a verified PC replacement. */\n",
+        "const PcTiledTexture *pc_core_camera_texture(int camera_index);\n",
+    ])
 
     args.output_c.parent.mkdir(parents=True, exist_ok=True)
     args.output_h.parent.mkdir(parents=True, exist_ok=True)
     args.output_c.write_text("".join(source), encoding="utf-8")
-    args.output_h.write_text(header, encoding="utf-8")
-    print("PC visual core: Office=203 CAM01=106 CAM02=97")
+    args.output_h.write_text("".join(header_lines), encoding="utf-8")
+
+    mapping = [f"{name}={sprite_id}" for name, sprite_id, *_rest in ASSETS]
+    print("PC visual core: " + " ".join(mapping))
 
 
 if __name__ == "__main__":
