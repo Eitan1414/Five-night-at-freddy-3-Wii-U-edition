@@ -8,6 +8,7 @@
 #include "assets/phantom_mangle_override.h"
 #include "assets/phantom_chica_user_jumpscare.h"
 #include "assets/pc_core_visuals.h"
+#include "assets/pc_character_visuals.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -20,12 +21,41 @@
 #include "main_v3_parts/main_01.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 #include "main_v3_parts/main_02.inc"
+
+/* Use the PC screamer sequences for both timing and rendering. */
+#define gSpringtrapJumpscareLeft gPcSpringtrapJumpscare
+#define gSpringtrapJumpscareRight gPcSpringtrapJumpscare
+#define gPhantomFoxyRealJumpscare gPcPhantomFoxyJumpscare
+#define gPhantomBBRealJumpscare gPcPhantomBBJumpscare
+#define gPhantomFreddyRealJumpscare gPcPhantomFreddyJumpscare
+#define gPhantomChicaRealJumpscare gPcPhantomChicaJumpscare
+
 #include "main_v3_parts/main_03.inc"
+
+/* Keep the old implementations available as fallbacks, then install the PC
+ * character renderer under the original function names for all later layers. */
+#define draw_springtrap_office psx_draw_springtrap_office
+#define draw_phantom_office psx_draw_phantom_office
+#define draw_springtrap_camera_sprite psx_draw_springtrap_camera_sprite
+#define draw_phantom_camera_overlay psx_draw_phantom_camera_overlay
 #include "main_v3_parts/main_04.inc"
+#undef draw_phantom_camera_overlay
+#undef draw_springtrap_camera_sprite
+#undef draw_phantom_office
+#undef draw_springtrap_office
+
+#include "main_v3_parts/main_pc_character_override.inc"
 
 #define graphics_present complete_graphics_present
 #include "main_v3_parts/main_05.inc"
 #undef graphics_present
+
+#undef gPhantomChicaRealJumpscare
+#undef gPhantomFreddyRealJumpscare
+#undef gPhantomBBRealJumpscare
+#undef gPhantomFoxyRealJumpscare
+#undef gSpringtrapJumpscareRight
+#undef gSpringtrapJumpscareLeft
 
 #include "main_v3_parts/main_06.inc"
 
