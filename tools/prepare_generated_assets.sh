@@ -90,12 +90,11 @@ test -s assets/user_audio/utine.ogg
 PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
 TIM_ROOT="$PSX_SOURCE/tim"
 SCREAMER_ROOT="$TIM_ROOT/screamer"
-SCREAMER_AUDIO="$PSX_SOURCE/vag/screamer.vag"
 PHONE_ARCHIVE="$PSX_SOURCE/xa/inter8.zip"
 USER_AUDIO_ROOT="${FNAF3_USER_AUDIO_ROOT:-assets/user_audio}"
 
-if [ ! -d "$SCREAMER_ROOT" ] || [ ! -f "$SCREAMER_AUDIO" ]; then
-    echo "Original PSX jumpscare sources not found at: $PSX_SOURCE" >&2
+if [ ! -d "$SCREAMER_ROOT" ]; then
+    echo "Original PSX fallback visual sources not found at: $PSX_SOURCE" >&2
     echo "Set FNAF3_PSX_SOURCE to the extracted Five-Night-at-Freddys-3-PSX source." >&2
     exit 1
 fi
@@ -163,6 +162,87 @@ convert_user_audio_or_tone() {
         -ar 16000 -ac 1 -f s16be "$output"
 }
 
+# Resolve the verified PC Sound Effects archive.  This is the same 63-file ZIP
+# supplied for the fidelity pass; pin its SHA-256 so a changed upstream upload
+# cannot silently alter the Wii U build.
+PC_SOUND_ROOT="${FNAF3_PC_SOUND_ROOT:-}"
+PC_SOUND_TEMP=""
+if [ -z "$PC_SOUND_ROOT" ] || [ ! -f "$PC_SOUND_ROOT/scream3.wav" ]; then
+    if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
+        echo "curl and unzip are required to fetch the verified PC sound pack" >&2
+        exit 1
+    fi
+
+    PC_SOUND_PAGE="https://sounds.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/398090/"
+    PC_SOUND_TEMP="${TMPDIR:-/tmp}/fnaf3-pc-sounds-$$"
+    PC_SOUND_HTML="$PC_SOUND_TEMP/page.html"
+    PC_SOUND_ZIP="$PC_SOUND_TEMP/fnaf3-sounds.zip"
+    mkdir -p "$PC_SOUND_TEMP/extracted"
+
+    curl --http1.1 -L --fail --retry 5 --retry-all-errors --retry-delay 3 \
+        -A "Mozilla/5.0" "$PC_SOUND_PAGE" -o "$PC_SOUND_HTML"
+
+    PC_SOUND_URL="$(python3 - "$PC_SOUND_HTML" "$PC_SOUND_PAGE" <<'PY'
+import html
+import re
+import sys
+from urllib.parse import urljoin
+
+html_path, page_url = sys.argv[1:3]
+text = html.unescape(open(html_path, encoding="utf-8", errors="ignore").read())
+candidates = []
+for pattern in (
+    r'''href\s*=\s*["']([^"']+)["']''',
+    r'''(?:data-url|data-download|action)\s*=\s*["']([^"']+)["']''',
+    r'''https?://[^"'<>\\s]+''',
+):
+    for match in re.findall(pattern, text, flags=re.I):
+        value = match if isinstance(match, str) else match[0]
+        value = value.strip()
+        low = value.lower()
+        if ("download" in low or low.endswith(".zip") or "398090" in low) and value not in candidates:
+            candidates.append(value)
+
+for value in sorted(candidates, key=lambda v: (
+        not v.lower().endswith(".zip"),
+        "download" not in v.lower(),
+        "398090" not in v,
+        len(v))):
+    absolute = urljoin(page_url, value)
+    if absolute.rstrip("/") != page_url.rstrip("/"):
+        print(absolute)
+        break
+PY
+)"
+
+    if [ -z "$PC_SOUND_URL" ]; then
+        echo "Could not resolve the verified PC Sound Effects ZIP URL" >&2
+        exit 1
+    fi
+
+    curl --http1.1 -L --fail --retry 10 --retry-all-errors --retry-delay 5 \
+        --connect-timeout 30 --max-time 1800 \
+        -A "Mozilla/5.0" -H "Referer: $PC_SOUND_PAGE" \
+        "$PC_SOUND_URL" -o "$PC_SOUND_ZIP"
+
+    echo "128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e  $PC_SOUND_ZIP" \
+        | sha256sum -c -
+    unzip -q "$PC_SOUND_ZIP" -d "$PC_SOUND_TEMP/extracted"
+    PC_SCREAM="$(find "$PC_SOUND_TEMP/extracted" -type f -name scream3.wav -print -quit)"
+    if [ -z "$PC_SCREAM" ]; then
+        echo "scream3.wav missing from verified PC sound pack" >&2
+        exit 1
+    fi
+    PC_SOUND_ROOT="$(dirname "$PC_SCREAM")"
+fi
+
+for required_sound in scream3.wav garble1.wav mask.wav echo1.wav echo3b.wav echo4b.wav; do
+    if [ ! -f "$PC_SOUND_ROOT/$required_sound" ]; then
+        echo "verified PC sound is missing: $required_sound" >&2
+        exit 1
+    fi
+done
+
 convert_audio assets/audio_low12/vent_quiet1.mp3 data/audio/vent_quiet1.bin
 convert_audio assets/audio_low12/vent_quiet2.mp3 data/audio/vent_quiet2.bin
 convert_audio assets/audio_low12/vent_closer1.mp3 data/audio/vent_closer1.bin
@@ -171,16 +251,17 @@ convert_audio assets/audio_low12/alarm.mp3 data/audio/alarm.bin
 convert_audio assets/audio_low12/breathing.mp3 data/audio/breathing.bin
 convert_audio assets/audio_low12/wait.mp3 data/audio/wait.bin
 convert_audio assets/audio_low12/static_sound.mp3 data/audio/static_sound.bin
-convert_audio "$SCREAMER_AUDIO" data/audio/scream3.bin
 
-convert_audio assets/audio_phantoms_low/garble1.mp3 data/audio/garble1.bin
-convert_audio assets/audio_phantoms_low/mask.mp3 data/audio/mask.bin
-convert_audio assets/audio_phantoms_low/echo1.mp3 data/audio/echo1.bin
-convert_audio assets/audio_phantoms_low/echo3b.mp3 data/audio/echo3b.bin
-convert_audio assets/audio_phantoms_low/echo4b.mp3 data/audio/echo4b.bin
+# Phantom / Springtrap attack audio now comes from the PC sound dump.
+convert_audio "$PC_SOUND_ROOT/scream3.wav" data/audio/scream3.bin
+convert_audio "$PC_SOUND_ROOT/garble1.wav" data/audio/garble1.bin
+convert_audio "$PC_SOUND_ROOT/mask.wav" data/audio/mask.bin
+convert_audio "$PC_SOUND_ROOT/echo1.wav" data/audio/echo1.bin
+convert_audio "$PC_SOUND_ROOT/echo3b.wav" data/audio/echo3b.bin
+convert_audio "$PC_SOUND_ROOT/echo4b.wav" data/audio/echo4b.bin
 
-# Keep the PSX extraction/fallback as a safety net, then override it with the
-# clean PC call recordings supplied for this Wii U edition.
+# Keep the PSX extraction/fallback as a safety net for phone calls, then
+# override it with the clean PC call recordings supplied for this Wii U edition.
 python3 tools/extract_phone_xa.py "$PHONE_ARCHIVE" data/audio
 for night in 1 2 3 4 5 6; do
     if phone_input="$(user_audio_path "phone_night${night}")"; then
@@ -219,3 +300,6 @@ else
 fi
 
 rm -rf assets/audio_low12 assets/audio_phantoms_low
+if [ -n "$PC_SOUND_TEMP" ]; then
+    rm -rf "$PC_SOUND_TEMP"
+fi
