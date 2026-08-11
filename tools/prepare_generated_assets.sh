@@ -8,51 +8,24 @@ restore_xz_base64() {
     cat $source_pattern | base64 -d | xz -dc > "$output"
 }
 
-restore_extended_cameras() {
-    source_pattern="$1"
-    output="$2"
-    temporary="${output}.xz"
-    trimmed="${output}.trimmed"
-
-    # The historical upload contains all seven camera textures, followed by
-    # a duplicated Springtrap sprite section whose final XZ fragment was never
-    # committed. Recover the emitted C source, then discard that incomplete
-    # duplicate tail. The complete Springtrap sprites are restored separately.
-    # shellcheck disable=SC2086
-    cat $source_pattern | base64 -d > "$temporary"
-    if ! xz -dc "$temporary" > "$output"; then
-        echo "warning: recovered camera textures from truncated XZ stream" >&2
-    fi
-    rm -f "$temporary"
-
-    sed '/^static const uint32_t kSpringtrap01SpritePalette/,$d' \
-        "$output" > "$trimmed"
-    mv "$trimmed" "$output"
-
-    test -s "$output"
-    grep -q "const TextureRle gCamera04Texture" "$output"
-    grep -q "const TextureRle gCamera10Texture" "$output"
-}
-
-restore_extended_cameras \
-    "source/generated/camera_extended_assets.c.xz.b64.*" \
-    "source/camera_extended_assets.c"
-restore_xz_base64 \
-    "source/generated/camera_springtrap_textures.c.xz.b64" \
-    "source/camera_springtrap_textures.c"
-restore_xz_base64 \
-    "source/generated/phantom_mangle_user_texture.h.xz.b64" \
-    "include/assets/phantom_mangle_user_texture.h"
-
 if ! command -v ffmpeg >/dev/null 2>&1; then
     echo "ffmpeg is required to prepare audio assets" >&2
     exit 1
 fi
-
 if ! command -v python3 >/dev/null 2>&1; then
     echo "python3 is required to prepare generated assets" >&2
     exit 1
 fi
+if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
+    echo "curl and unzip are required to fetch the verified PC sound pack" >&2
+    exit 1
+fi
+
+# This remaining generated visual is a user-supplied Wii U override, not a PSX
+# asset. All former PSX camera/Phantom/screamer restoration has been removed.
+restore_xz_base64 \
+    "source/generated/phantom_mangle_user_texture.h.xz.b64" \
+    "include/assets/phantom_mangle_user_texture.h"
 
 mkdir -p assets/user_visuals
 cat assets/user_visuals/phantom_chica_jumpscare.png.b64.part* \
@@ -66,10 +39,8 @@ if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
     rm -f "$temporary_user_content"
 fi
 
-# Supplied achievement package: 9 locked/unlocked badges, transparent Utine
-# trophy animation/static frame, normal unlock sound and Utine trophy sound.
-# The compact version is sized for the Wii U's 854x480 output and keeps the
-# generated executable/data footprint under control.
+# Supplied Wii U achievement package. This is project-specific content and has
+# no PlayStation source dependency.
 if ls source/generated/achievement_assets_micro.tar.xz.b64.* >/dev/null 2>&1; then
     temporary_achievements="${TMPDIR:-/tmp}/fnaf3-achievements-micro.tar.xz"
     # shellcheck disable=SC2086
@@ -87,46 +58,14 @@ test -s include/assets/achievement_assets.h
 test -s assets/user_audio/achievement.ogg
 test -s assets/user_audio/utine.ogg
 
-PSX_SOURCE="${FNAF3_PSX_SOURCE:-assets/Five-Night-at-Freddys-3-PSX-main}"
-TIM_ROOT="$PSX_SOURCE/tim"
-SCREAMER_ROOT="$TIM_ROOT/screamer"
-PHONE_ARCHIVE="$PSX_SOURCE/xa/inter8.zip"
-USER_AUDIO_ROOT="${FNAF3_USER_AUDIO_ROOT:-assets/user_audio}"
-
-if [ ! -d "$SCREAMER_ROOT" ]; then
-    echo "Original PSX fallback visual sources not found at: $PSX_SOURCE" >&2
-    echo "Set FNAF3_PSX_SOURCE to the extracted Five-Night-at-Freddys-3-PSX source." >&2
-    exit 1
-fi
-
-python3 tools/convert_phantom_visuals.py \
-    "$TIM_ROOT" \
-    source/phantom_assets.c \
-    include/assets/phantom_assets.h
-
-python3 tools/convert_camera_springtrap.py \
-    "$TIM_ROOT/camera/cams/map" \
-    source/camera_springtrap_assets.c \
-    include/assets/camera_springtrap_assets.h
-
-python3 tools/convert_jumpscare_tim.py \
-    "$SCREAMER_ROOT" \
-    source/jumpscare_assets.c \
-    include/assets/jumpscare_assets.h
-
 python3 tools/convert_user_chica_png.py \
     assets/user_visuals/phantom_chica_jumpscare.png \
     source/phantom_chica_user_jumpscare.c \
     include/assets/phantom_chica_user_jumpscare.h
 
-mkdir -p assets data/audio
-rm -rf assets/audio_low12 assets/audio_phantoms_low data/audio
+USER_AUDIO_ROOT="${FNAF3_USER_AUDIO_ROOT:-assets/user_audio}"
 mkdir -p data/audio
-
-cat source/generated/audio_low12.tar.xz.b64.* \
-    | base64 -d | tar -xJf - -C assets
-cat source/generated/audio_phantoms.tar.xz.b64.part* \
-    | base64 -d | tar -xJf - -C assets
+rm -rf data/audio/*
 
 convert_audio() {
     input="$1"
@@ -147,42 +86,19 @@ user_audio_path() {
     return 1
 }
 
-convert_user_audio_or_tone() {
-    name="$1"
-    output="$2"
-    frequency="$3"
-    duration="$4"
-    if input="$(user_audio_path "$name")"; then
-        convert_audio "$input" "$output"
-        return
-    fi
-    echo "warning: $name user audio missing; using temporary build tone" >&2
-    ffmpeg -hide_banner -loglevel error -y \
-        -f lavfi -i "sine=frequency=${frequency}:duration=${duration}:sample_rate=16000" \
-        -ar 16000 -ac 1 -f s16be "$output"
-}
+# Fetch the verified original PC Sound Effects archive. The SHA-256 pin makes
+# this reproducible and prevents an upstream replacement from silently changing
+# the Wii U build.
+PC_SOUND_PAGE="https://sounds.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/398090/"
+PC_SOUND_TEMP="${TMPDIR:-/tmp}/fnaf3-pc-sounds-$$"
+PC_SOUND_HTML="$PC_SOUND_TEMP/page.html"
+PC_SOUND_ZIP="$PC_SOUND_TEMP/fnaf3-sounds.zip"
+mkdir -p "$PC_SOUND_TEMP"
 
-# Resolve the verified PC Sound Effects archive.  This is the same 63-file ZIP
-# supplied for the fidelity pass; pin its SHA-256 so a changed upstream upload
-# cannot silently alter the Wii U build.
-PC_SOUND_ROOT="${FNAF3_PC_SOUND_ROOT:-}"
-PC_SOUND_TEMP=""
-if [ -z "$PC_SOUND_ROOT" ] || [ ! -f "$PC_SOUND_ROOT/scream3.wav" ]; then
-    if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
-        echo "curl and unzip are required to fetch the verified PC sound pack" >&2
-        exit 1
-    fi
+curl --http1.1 -L --fail --retry 5 --retry-all-errors --retry-delay 3 \
+    -A "Mozilla/5.0" "$PC_SOUND_PAGE" -o "$PC_SOUND_HTML"
 
-    PC_SOUND_PAGE="https://sounds.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/398090/"
-    PC_SOUND_TEMP="${TMPDIR:-/tmp}/fnaf3-pc-sounds-$$"
-    PC_SOUND_HTML="$PC_SOUND_TEMP/page.html"
-    PC_SOUND_ZIP="$PC_SOUND_TEMP/fnaf3-sounds.zip"
-    mkdir -p "$PC_SOUND_TEMP/extracted"
-
-    curl --http1.1 -L --fail --retry 5 --retry-all-errors --retry-delay 3 \
-        -A "Mozilla/5.0" "$PC_SOUND_PAGE" -o "$PC_SOUND_HTML"
-
-    PC_SOUND_URL="$(python3 - "$PC_SOUND_HTML" "$PC_SOUND_PAGE" <<'PY'
+PC_SOUND_URL="$(python3 - "$PC_SOUND_HTML" "$PC_SOUND_PAGE" <<'PY'
 import html
 import re
 import sys
@@ -202,7 +118,6 @@ for pattern in (
         low = value.lower()
         if ("download" in low or low.endswith(".zip") or "398090" in low) and value not in candidates:
             candidates.append(value)
-
 for value in sorted(candidates, key=lambda v: (
         not v.lower().endswith(".zip"),
         "download" not in v.lower(),
@@ -215,83 +130,41 @@ for value in sorted(candidates, key=lambda v: (
 PY
 )"
 
-    if [ -z "$PC_SOUND_URL" ]; then
-        echo "Could not resolve the verified PC Sound Effects ZIP URL" >&2
-        exit 1
-    fi
-
-    curl --http1.1 -L --fail --retry 10 --retry-all-errors --retry-delay 5 \
-        --connect-timeout 30 --max-time 1800 \
-        -A "Mozilla/5.0" -H "Referer: $PC_SOUND_PAGE" \
-        "$PC_SOUND_URL" -o "$PC_SOUND_ZIP"
-
-    echo "128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e  $PC_SOUND_ZIP" \
-        | sha256sum -c -
-    unzip -q "$PC_SOUND_ZIP" -d "$PC_SOUND_TEMP/extracted"
-    PC_SCREAM="$(find "$PC_SOUND_TEMP/extracted" -type f -name scream3.wav -print -quit)"
-    if [ -z "$PC_SCREAM" ]; then
-        echo "scream3.wav missing from verified PC sound pack" >&2
-        exit 1
-    fi
-    PC_SOUND_ROOT="$(dirname "$PC_SCREAM")"
+if [ -z "$PC_SOUND_URL" ]; then
+    echo "Could not resolve the verified PC Sound Effects ZIP URL" >&2
+    exit 1
 fi
 
-for required_sound in scream3.wav garble1.wav mask.wav echo1.wav echo3b.wav echo4b.wav; do
-    if [ ! -f "$PC_SOUND_ROOT/$required_sound" ]; then
-        echo "verified PC sound is missing: $required_sound" >&2
-        exit 1
-    fi
-done
+curl --http1.1 -L --fail --retry 10 --retry-all-errors --retry-delay 5 \
+    --connect-timeout 30 --max-time 1800 \
+    -A "Mozilla/5.0" -H "Referer: $PC_SOUND_PAGE" \
+    "$PC_SOUND_URL" -o "$PC_SOUND_ZIP"
 
-convert_audio assets/audio_low12/vent_quiet1.mp3 data/audio/vent_quiet1.bin
-convert_audio assets/audio_low12/vent_quiet2.mp3 data/audio/vent_quiet2.bin
-convert_audio assets/audio_low12/vent_closer1.mp3 data/audio/vent_closer1.bin
-convert_audio assets/audio_low12/vent_louder2.mp3 data/audio/vent_louder2.bin
-convert_audio assets/audio_low12/alarm.mp3 data/audio/alarm.bin
-convert_audio assets/audio_low12/breathing.mp3 data/audio/breathing.bin
-convert_audio assets/audio_low12/wait.mp3 data/audio/wait.bin
-convert_audio assets/audio_low12/static_sound.mp3 data/audio/static_sound.bin
+echo "128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e  $PC_SOUND_ZIP" \
+    | sha256sum -c -
 
-# Phantom / Springtrap attack audio now comes from the PC sound dump.
-convert_audio "$PC_SOUND_ROOT/scream3.wav" data/audio/scream3.bin
-convert_audio "$PC_SOUND_ROOT/garble1.wav" data/audio/garble1.bin
-convert_audio "$PC_SOUND_ROOT/mask.wav" data/audio/mask.bin
-convert_audio "$PC_SOUND_ROOT/echo1.wav" data/audio/echo1.bin
-convert_audio "$PC_SOUND_ROOT/echo3b.wav" data/audio/echo3b.bin
-convert_audio "$PC_SOUND_ROOT/echo4b.wav" data/audio/echo4b.bin
+# Convert every WAV in the PC pack, not just the six Phantom sounds used by the
+# previous pass. This supplies phone calls, UI, camera/maintenance, ambience,
+# minigame music and the movement/glitch effects that were previously missing.
+python3 tools/convert_pc_sound_pack.py "$PC_SOUND_ZIP" data/audio
+rm -f data/audio/pc_sound_pack_manifest.txt
 
-# Keep the PSX extraction/fallback as a safety net for phone calls, then
-# override it with the clean PC call recordings supplied for this Wii U edition.
-python3 tools/extract_phone_xa.py "$PHONE_ARCHIVE" data/audio
-for night in 1 2 3 4 5 6; do
-    if phone_input="$(user_audio_path "phone_night${night}")"; then
-        convert_audio "$phone_input" "data/audio/phone_night${night}.bin"
-    fi
-done
-
-# six_am remains the generated fallback until assets/user_audio/six_am.mp3 is
-# provided. If it is present, it transparently replaces the fallback.
+# 6 AM is a separately supplied original PC track rather than part of the sound
+# effects ZIP. Never synthesize a tone and never fall back to the PSX port.
 if six_am_input="$(user_audio_path six_am)"; then
     convert_audio "$six_am_input" data/audio/six_am.bin
+else
+    echo "Original PC six_am audio is missing from $USER_AUDIO_ROOT" >&2
+    exit 1
 fi
 
-convert_user_audio_or_tone select data/audio/select.bin 880 0.06
-convert_user_audio_or_tone end data/audio/end.bin 330 1.36
-convert_user_audio_or_tone crank1 data/audio/crank1.bin 180 0.76
-convert_user_audio_or_tone crank2 data/audio/crank2.bin 150 0.50
-convert_user_audio_or_tone lever1 data/audio/lever1.bin 260 0.39
-convert_user_audio_or_tone lever2 data/audio/lever2.bin 300 0.50
-convert_user_audio_or_tone stare data/audio/stare.bin 55 73.88
-convert_user_audio_or_tone titlemusic data/audio/titlemusic.bin 110 40.39
-convert_user_audio_or_tone startday data/audio/startday.bin 440 4.65
-
+# Wii U-exclusive achievement sounds remain project-specific user assets.
 if achievement_input="$(user_audio_path achievement)"; then
     convert_audio "$achievement_input" data/audio/achievement.bin
 else
     echo "achievement notification audio is missing" >&2
     exit 1
 fi
-
 if utine_input="$(user_audio_path utine)"; then
     convert_audio "$utine_input" data/audio/utine.bin
 else
@@ -299,7 +172,26 @@ else
     exit 1
 fi
 
-rm -rf assets/audio_low12 assets/audio_phantoms_low
-if [ -n "$PC_SOUND_TEMP" ]; then
-    rm -rf "$PC_SOUND_TEMP"
-fi
+# Every runtime cue below must now have a real source. Failing here is
+# intentional: a missing PC asset must be fixed instead of silently reintroducing
+# a PlayStation clip, a synthetic tone or silence.
+required_bins="
+vent_quiet1 vent_quiet2 vent_closer1 vent_louder2 alarm breathing wait static_sound
+scream3 garble1 mask echo1 echo3b echo4b
+phone_night1 phone_night2 phone_night3 phone_night4 phone_night5 phone_night6
+six_am select end crank1 crank2 lever1 lever2 stare titlemusic startday achievement utine
+tablefan rainstorm2 danger2b scanner4 done collect feed glitch2 crowd_children clock_chimes party_favor desolate_underworld crush
+mb1 mb2 mb4b mb5 mb8 mb9
+get get2 jump jump2 jump3 jump4 land run long_glitched2 insuit laugh scare stop crazy_garble
+"
+for name in $required_bins; do
+    if [ ! -s "data/audio/$name.bin" ]; then
+        echo "Missing original PC audio after conversion: $name.bin" >&2
+        echo "Available converted files:" >&2
+        find data/audio -maxdepth 1 -type f -printf '%f\n' | sort >&2
+        exit 1
+    fi
+done
+
+rm -rf "$PC_SOUND_TEMP"
+echo "PC-only generated assets prepared; no PSX source was used"
