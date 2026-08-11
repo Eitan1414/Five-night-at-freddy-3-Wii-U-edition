@@ -41,10 +41,18 @@ static void monitor_v2_update_transition(Game *game)
     ++sMonitorV2.transition_ticks;
     if (sMonitorV2.transition_ticks >= 2u) {
         sMonitorV2.transition_ticks = 0u;
+        const bool finished_opening = sMonitorV2.transition_step < 0;
         sMonitorV2.transition_frame += sMonitorV2.transition_step;
         if (sMonitorV2.transition_frame < 0 ||
             sMonitorV2.transition_frame > 10) {
             sMonitorV2.transition_active = false;
+            /* PC MFA groups 721-724 reroll Phantom Foxy when the monitor's
+             * opening animation actually finishes, not on the button press. */
+            if (finished_opening && game->camera_open) {
+                process_phantom_event(
+                    game,
+                    phantoms_on_monitor_animation_finished(&game->phantoms));
+            }
         }
     }
     game->dirty = true;
