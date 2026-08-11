@@ -133,10 +133,13 @@
 /* Third pass switches to the original hidden hitbox starts, page-snapped
  * Clickteam camera and directly decoded Stage 01 / RWQ event deltas. */
 #include "main_v3_parts/main_pc_mfa_minigames_v3.inc"
+/* Fourth pass reproduces RWQ's five S-key view positions and the final
+ * Active-11 glitch strips decoded from the MFA event sheet. */
+#include "main_v3_parts/main_pc_mfa_minigames_v4.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_v3_secret_render_override(game)) return;
+    if (pc_mfa_v4_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
@@ -147,7 +150,7 @@ static void pc_audio_shutdown_with_extra_sfx(void)
     audio_shutdown();
 }
 
-#define update_game pc_mfa_v3_exact_update_game
+#define update_game pc_mfa_v4_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
