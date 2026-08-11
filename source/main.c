@@ -150,10 +150,13 @@
 #define pc_mfa_v2_exact_update_game pc_mfa_exact_update_game
 #include "main_v3_parts/main_pc_mfa_minigames_v7_render.inc"
 #undef pc_mfa_v2_exact_update_game
+/* V8 is render-only: exact PC sheets for threshold animations, props and the
+ * backdrop planes while V7 remains authoritative for the event logic. */
+#include "main_v3_parts/main_pc_mfa_minigames_v8_render.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_v7_secret_render_override(game)) return;
+    if (pc_mfa_v8_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
