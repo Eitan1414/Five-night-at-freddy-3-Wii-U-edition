@@ -19,6 +19,7 @@
 #define render_game fnaf3_legacy_render_game
 
 #include "main_v3_parts/main_00.inc"
+#include "main_v3_parts/main_pc_blackout_fidelity.inc"
 
 /* Retail PC restart timing is six seconds for one system and twelve seconds
  * for Reboot All. Override the old fast Wii U scaffolding before the function
@@ -199,9 +200,11 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 #define update_game pc_system_fidelity_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
+#define draw_ventilation_overlay pc_draw_ventilation_overlay
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef audio_shutdown
+#undef draw_ventilation_overlay
 #undef draw_office_tv
 #undef fnaf3_full_audio_render_game
 #undef update_game
