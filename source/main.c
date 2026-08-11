@@ -136,6 +136,9 @@
 /* Fourth pass reproduces RWQ's five S-key view positions and the final
  * Active-11 glitch strips decoded from the MFA event sheet. */
 #include "main_v3_parts/main_pc_mfa_minigames_v4.inc"
+/* Fifth pass replaces free vertical traversal with the original obstacle
+ * backdrop collision map, feeler offsets, seven-step jump and gravity. */
+#include "main_v3_parts/main_pc_mfa_minigames_v5.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
@@ -150,7 +153,7 @@ static void pc_audio_shutdown_with_extra_sfx(void)
     audio_shutdown();
 }
 
-#define update_game pc_mfa_v4_exact_update_game
+#define update_game pc_mfa_v5_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
