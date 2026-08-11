@@ -18,8 +18,13 @@ typedef enum SpringtrapVent {
 typedef enum SpringtrapLocationKind {
     SPRINGTRAP_LOCATION_CAMERA = 0,
     SPRINGTRAP_LOCATION_VENT,
-    SPRINGTRAP_LOCATION_HALL_HIDDEN,
+    /* PC/MFA attack stage 1: visible at the office window. */
     SPRINGTRAP_LOCATION_OFFICE_WINDOW,
+    /* PC/MFA attack stage 2: the run from the window to the blind spot. */
+    SPRINGTRAP_LOCATION_HALL_RUN,
+    /* PC/MFA attack stage 3: hidden around the office corner. */
+    SPRINGTRAP_LOCATION_HALL_HIDDEN,
+    /* PC/MFA attack stage 4: head visible at the office doorway. */
     SPRINGTRAP_LOCATION_OFFICE_LEFT,
     SPRINGTRAP_LOCATION_OFFICE_INSIDE
 } SpringtrapLocationKind;
@@ -55,13 +60,43 @@ typedef struct SpringtrapAI {
     int camera;
     int vent_source_camera;
     SpringtrapVent vent;
-    uint32_t move_frames;
-    uint32_t vent_frames;
+
+    int night;
+    int ai_level;
     uint32_t rng;
+
+    /* Clickteam movement state: move_counter / total_turns / aggressive?. */
+    uint32_t one_second_frames;
+    uint32_t move_counter;
+    uint32_t total_turns;
+    bool aggressive;
+    uint32_t aggressive_refresh_frames;
+
+    /* CAM05/CAM02 action 4 uses a separately refreshed two-way random branch. */
+    uint32_t random_action_frames;
+    uint8_t random_action_choice;
+
+    /* Phantom-triggered force_move / force_to state from the MFA. */
+    bool force_move_pending;
+    uint8_t force_to;
+
+    /* Runtime conditions needed by the original attack/aggression events. */
+    bool camera_screen_open;
+    bool maintenance_screen_open;
+    int selected_camera;
+    bool ventilation_failed;
+    uint32_t office_idle_frames;
+
     bool attack_reported;
 } SpringtrapAI;
 
 void springtrap_ai_reset(SpringtrapAI *ai, int night_number, uint32_t seed);
+void springtrap_ai_set_runtime_state(SpringtrapAI *ai,
+                                     bool camera_open,
+                                     bool maintenance_open,
+                                     int selected_camera,
+                                     bool ventilation_failed,
+                                     uint32_t office_idle_frames);
 SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
                                      int night_number,
                                      int current_hour,

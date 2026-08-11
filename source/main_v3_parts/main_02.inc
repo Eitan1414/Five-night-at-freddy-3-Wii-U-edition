@@ -107,6 +107,13 @@ static void update_active_game(Game *game, const InputState *input)
     process_phantom_event(game, phantom_event);
 
     if (config->springtrap_enabled) {
+        springtrap_ai_set_runtime_state(
+            &game->springtrap,
+            game->camera_open,
+            game->maintenance_open,
+            game->selected_camera,
+            game->ventilation_failed,
+            game->idle_frames);
         const SpringtrapOfficeSide attack_side =
             springtrap_ai_office_side(&game->springtrap);
         SpringtrapEvent event = springtrap_ai_update(
