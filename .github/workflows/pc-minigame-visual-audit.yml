@@ -34,9 +34,11 @@ jobs:
           for name, asset_id in assets.items():
               page_url = f"https://www.spriters-resource.com/pc_computer/fivenightsatfreddys3/asset/{asset_id}/"
               page = out / f".{name}.html"
-              subprocess.run(["curl","--http1.1","-L","--fail","--retry","5","--retry-all-errors","-A","Mozilla/5.0",page_url,"-o",str(page)],check=True)
+              subprocess.run(["curl","--http1.1","-L","--fail","--retry","5","--retry-all-errors","--retry-delay","2","-A","Mozilla/5.0",page_url,"-o",str(page)],check=True)
               text = html.unescape(page.read_text(encoding="utf-8", errors="ignore"))
               matches = re.findall(r'''(?:https?:)?//[^"'<>\s]+/media/assets/[^"'<>\s]+?\.png(?:\?[^"'<>\s]*)?''', text, flags=re.I)
+              if not matches:
+                  matches = re.findall(r'''(?:src|href)=["']([^"']+\.png(?:\?[^"']*)?)["']''', text, flags=re.I)
               urls=[]
               for value in matches:
                   if value.startswith("//"): value = "https:" + value
@@ -44,8 +46,9 @@ jobs:
                   if str(asset_id) in value and value not in urls: urls.append(value)
               if not urls: raise SystemExit(f"No PNG for {name}")
               target = out / f"{name}.png"
-              subprocess.run(["curl","--http1.1","-L","--fail","--retry","5","--retry-all-errors","-A","Mozilla/5.0","-H",f"Referer: {page_url}",urls[0],"-o",str(target)],check=True)
+              subprocess.run(["curl","--http1.1","-L","--fail","--retry","5","--retry-all-errors","--retry-delay","2","-A","Mozilla/5.0","-H",f"Referer: {page_url}",urls[0],"-o",str(target)],check=True)
               page.unlink(missing_ok=True)
+              print(name, target)
           PY
       - uses: actions/upload-artifact@v4
         with:
