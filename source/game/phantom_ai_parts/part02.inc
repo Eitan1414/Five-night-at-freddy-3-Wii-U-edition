@@ -37,13 +37,27 @@
 PhantomId phantoms_camera_overlay(const PhantomSystem *system,
                                   int selected_camera)
 {
+    if (system == NULL) {
+        return PHANTOM_NONE;
+    }
+
     /*
-     * Phantom camera visuals are already baked into the user's camera pack.
-     * Keep the AI/timers above fully active, but never draw a second Phantom
-     * sprite on top of those camera images.
+     * The final monitor renderer owns the verified PC General Sprites.
+     * Return the actual Clickteam camera actor here instead of suppressing it:
+     * the previous PHANTOM_NONE stub made the PC fidelity layer unreachable.
      */
-    (void) system;
-    (void) selected_camera;
+    if (system->bb_camera_visible && selected_camera == system->bb_camera) {
+        return PHANTOM_BALLOON_BOY;
+    }
+    if (system->chica_camera_visible && selected_camera == 6) {
+        return PHANTOM_CHICA;
+    }
+    if (system->mangle_camera_visible && selected_camera == 3) {
+        return PHANTOM_MANGLE;
+    }
+    if (system->puppet_camera_visible && selected_camera == 7) {
+        return PHANTOM_PUPPET;
+    }
     return PHANTOM_NONE;
 }
 

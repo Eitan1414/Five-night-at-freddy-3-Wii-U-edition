@@ -11,21 +11,16 @@
 static void pc_camera_fidelity_draw_overlay_phantom(const Game *game,
                                                     PhantomId phantom)
 {
+    (void) game;
     if (phantom != PHANTOM_BALLOON_BOY)
         return;
 
-    const int bob = phantom_bob(game->night_frames, 24u, 7);
-    if (game->phantoms.bb_seen_frames >= 22u) {
-        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                         138 - bob, 52 - bob,
-                         334 + bob * 2, 314 + bob * 2,
-                         &gPcPhantomBBTexture);
-    } else {
-        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                         174 + bob / 2, 82 - bob,
-                         262, 262,
-                         &gPcPhantomBBTexture);
-    }
+    /* General Sprites image 338 is the verified PC BB camera actor. Keep its
+     * presentation stable; the previous bob + artificial zoom were Wii U
+     * reconstruction effects that do not exist in the supplied PC object art. */
+    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                     174, 82, 262, 262,
+                     &gPcPhantomBBTexture);
 }
 
 static void pc_camera_fidelity_redraw_viewport(const Game *game)
