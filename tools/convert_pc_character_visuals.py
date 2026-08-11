@@ -101,6 +101,7 @@ SPRINGTRAP_CAMERAS = (
 FULL_CAMERA_ASSETS = (
     ("PhantomMangleCamera", 38),
     ("PhantomChicaCamera", 387),
+    ("PhantomPuppetCamera", 298),
 )
 
 # Transparent PC sprites used in the office / monitor overlays.
@@ -120,7 +121,7 @@ SEQUENCES = (
     ("PhantomBBJumpscare", (341, 342, 343, 344, 345, 347, 349), 4),
     ("PhantomChicaJumpscare", (461, 462, 463, 464, 465, 466, 467, 468), 4),
     ("PhantomFreddyJumpscare", (475, 476, 477, 478, 479, 480, 482, 484, 488, 492, 499), 4),
-    ("SpringtrapJumpscare", (778, 782, 786, 790, 794, 798, 802, 806, 810, 814, 819, 823), 4),
+    ("SpringtrapJumpscare", tuple(range(778, 818)) + tuple(range(819, 824)), 1),
 )
 
 
@@ -304,6 +305,7 @@ def main() -> None:
     header.extend([
         "\nextern const PcTiledTexture gPcPhantomMangleCameraTexture;\n",
         "extern const PcTiledTexture gPcPhantomChicaCameraTexture;\n",
+        "extern const PcTiledTexture gPcPhantomPuppetCameraTexture;\n",
         "const PcTiledTexture *pc_springtrap_camera_texture(int camera_index);\n",
     ])
 
