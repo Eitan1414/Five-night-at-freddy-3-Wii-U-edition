@@ -43,11 +43,13 @@ static void maybe_spawn_puppet(PhantomSystem *system, int hour)
 
 static uint32_t jumpscare_duration_frames(PhantomId phantom)
 {
+    /* Match the generated PC General Sprites sequences, not the old PSX TIM
+     * frame counts.  The renderer and AI must finish on the same frame. */
     switch (phantom) {
-        case PHANTOM_FOXY: return 11u * 4u;
-        case PHANTOM_BALLOON_BOY: return 9u * 4u;
-        case PHANTOM_FREDDY: return 7u * 4u;
-        case PHANTOM_CHICA: return 6u * 4u;
+        case PHANTOM_FOXY: return 8u * 4u;
+        case PHANTOM_BALLOON_BOY: return 7u * 4u;
+        case PHANTOM_FREDDY: return 11u * 4u;
+        case PHANTOM_CHICA: return 8u * 4u;
         default: return JUMPSCARE_DURATION_FRAMES;
     }
 }
@@ -226,14 +228,8 @@ PhantomEvent phantoms_update(PhantomSystem *system,
             system->mangle_camera_visible = false;
             system->mangle_seen_frames = 0u;
             system->mangle_office_active = true;
+            /* Use the Wii U PC encounter curve.  The previous 850-frame floor
+             * came from the PSX port and made the PC garble encounter last
+             * more than twice as long as intended. */
             system->mangle_office_frames = mangle_duration(system);
-            /*
-             * The PSX source keeps Phantom Mangle in the office for 780
-             * frames, then spends roughly another 70 frames retreating.
-             * Keep the existing helper in use, but never shorten that
-             * original encounter window on later nights.
-             */
-            if (system->mangle_office_frames < 850u) {
-                system->mangle_office_frames = 850u;
-            }
             event.flags |= PHANTOM_EVENT_FORCE_CLOSE_PANEL |
