@@ -9,6 +9,7 @@
 #include "assets/phantom_chica_user_jumpscare.h"
 #include "assets/pc_core_visuals.h"
 #include "assets/pc_character_visuals.h"
+#include "assets/pc_finishing_visuals.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -119,6 +120,19 @@
 #include "main_v3_parts/main_authentic_office.inc"
 #undef draw_phantom_office
 #undef draw_springtrap_office
+
+/* This final wrapper sits immediately in front of the current top-level
+ * original-UI renderer. Office rendering remains untouched; non-office
+ * Follow Me/endings/secret-minigames can now use the authentic PC assets. */
+#include "main_v3_parts/main_pc_finishing_override.inc"
+static void pc_finishing_fallback_render_game(Game *game)
+{
+    if (pc_finishing_render_override(game)) return;
+    fnaf3_full_audio_render_game(game);
+}
+
+#define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef draw_office_tv
+#undef fnaf3_full_audio_render_game
