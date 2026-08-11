@@ -15,19 +15,21 @@ COLOURS = 80
 TRANSPARENT_INDEX = 255
 
 # name, General Sprites PNG id, Wii U render size, tile width, camera index.
+# Camera tiles stay at 96 px so their encoded run stream fits the renderer's
+# uint16 row-offset format even for the most detailed PC camera backgrounds.
 # camera index is zero-based (CAM01=0); None marks non-camera assets.
 ASSETS = (
     ("Office", 203, (1120, 430), 128, None),
-    ("Camera01", 106, (532, 295), 192, 0),
-    ("Camera02", 97, (532, 295), 192, 1),
-    ("Camera03", 104, (532, 295), 192, 2),
-    ("Camera04", 105, (532, 295), 192, 3),
-    ("Camera05", 109, (532, 295), 192, 4),
-    ("Camera06", 98, (532, 295), 192, 5),
-    ("Camera07", 100, (532, 295), 192, 6),
-    ("Camera08", 112, (532, 295), 192, 7),
-    ("Camera09", 115, (532, 295), 192, 8),
-    ("Camera10", 116, (532, 295), 192, 9),
+    ("Camera01", 106, (532, 295), 96, 0),
+    ("Camera02", 97, (532, 295), 96, 1),
+    ("Camera03", 104, (532, 295), 96, 2),
+    ("Camera04", 105, (532, 295), 96, 3),
+    ("Camera05", 109, (532, 295), 96, 4),
+    ("Camera06", 98, (532, 295), 96, 5),
+    ("Camera07", 100, (532, 295), 96, 6),
+    ("Camera08", 112, (532, 295), 96, 7),
+    ("Camera09", 115, (532, 295), 96, 8),
+    ("Camera10", 116, (532, 295), 96, 9),
 )
 
 
