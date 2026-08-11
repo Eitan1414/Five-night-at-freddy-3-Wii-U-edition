@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Generate verified PC Springtrap/Phantom gameplay visuals."""
+"""Generate verified PC Springtrap/Phantom gameplay visuals.
+
+The Phantom animation image lists below are taken directly from the object
+animation records in fivenights3-94.mfa.  Do not replace them with sampled
+frames: the non-contiguous IDs are intentional because Clickteam's global
+image bank interleaves unrelated objects.
+"""
 from __future__ import annotations
 
 import argparse
@@ -29,16 +35,35 @@ SPRITES = (
     ("PhantomChicaOffice", 399, 300),
 )
 
-# Verified General Sprites animation families. IDs that belong to unrelated
-# Clickteam objects in the middle of an animation are intentionally skipped.
-SEQUENCES = (
-    ("PhantomFreddyWalk", (190, 191, 192, 193, 194, 196, 197, 198), 4),
-    ("PhantomFoxyJumpscare", (174, 175, 176, 177, 178, 179, 180, 181), 4),
-    ("PhantomBBJumpscare", (341, 342, 343, 344, 345, 347, 349), 4),
-    ("PhantomChicaJumpscare", (459, 461, 462, 463, 464, 465, 466, 467, 468), 4),
+# fivenights3-94.mfa object "fwalk": the first animation is the walk cycle,
+# the second is the complete duck/crouch cycle used when Freddy passes the
+# office window.  Both are kept separate so gameplay can select the correct
+# Clickteam animation rather than ping-ponging a hand-picked subset.
+ANIMATION_SEQUENCES = (
+    ("PhantomFreddyWalk",
+     (653, 655, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 652), 4),
+    ("PhantomFreddyDuck",
+     (662, 635, 664, 639, 640, 654, 656, 657, 658, 659, 660), 4),
+)
+
+# Exact image lists recovered from the PC MFA object animation records:
+#   fscare   -> Phantom Freddy attack
+#   chica 2  -> Phantom Chica attack
+#   BB scare -> Phantom Balloon Boy attack
+#   foxy     -> Phantom Foxy stand-to-lunge attack
+# The initial blank/thin frame in fscare (362) is present in the original MFA
+# and therefore remains part of the sequence.
+JUMPSCARE_SEQUENCES = (
+    ("PhantomFoxyJumpscare",
+     (184, 183, 185, 170, 186, 174, 175, 176, 177, 178, 179, 180, 181), 4),
+    ("PhantomBBJumpscare",
+     (226, 317, 328, 338, 341, 344, 349, 342, 343, 345, 347), 4),
+    ("PhantomChicaJumpscare",
+     (428, 432, 434, 435, 439, 441, 459, 461, 462, 463, 464, 465, 466, 467, 468), 4),
     ("PhantomFreddyJumpscare",
-     (475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485,
-      488, 491, 492, 499, 500, 504), 4),
+     (362, 474, 475, 476, 477, 478, 479, 480, 481, 482, 483, 484,
+      485, 488, 491, 492, 499, 500, 504, 514, 515), 4),
+    # Springtrap's PC animation is a continuous numbered General Sprites run.
     ("SpringtrapJumpscare", tuple(range(778, 818)) + tuple(range(819, 824)), 1),
 )
 
@@ -252,7 +277,7 @@ def main() -> None:
     required = {sprite_id for _, sprite_id in SPRINGTRAP_CAMERAS}
     required |= {sprite_id for _, sprite_id in FULL_CAMERA_ASSETS}
     required |= {sprite_id for _, sprite_id, _ in SPRITES}
-    for _, ids, _ in SEQUENCES:
+    for _, ids, _ in ANIMATION_SEQUENCES + JUMPSCARE_SEQUENCES:
         required.update(ids)
     missing = sorted(sprite_id for sprite_id in required if not (root / f"{sprite_id}.png").is_file())
     if missing:
@@ -293,7 +318,7 @@ def main() -> None:
                                      Image.Resampling.LANCZOS)
         header.append(f"extern const TextureRle {symbol};\n")
 
-    for name, ids, ticks in SEQUENCES:
+    for name, ids, ticks in ANIMATION_SEQUENCES + JUMPSCARE_SEQUENCES:
         emit_sequence(source, header, root, name, ids, ticks)
 
     source.append("const PcTiledTexture *pc_springtrap_camera_texture(int camera_index)\n{\n")
@@ -313,7 +338,7 @@ def main() -> None:
     args.output_h.parent.mkdir(parents=True, exist_ok=True)
     args.output_c.write_text("".join(source), encoding="utf-8")
     args.output_h.write_text("".join(header), encoding="utf-8")
-    print("PC character visuals generated: exact Springtrap/Phantom camera and attack families")
+    print("PC character visuals generated from MFA-exact Phantom image lists")
 
 
 if __name__ == "__main__":
