@@ -119,6 +119,8 @@ jobs:
           test -f /tmp/fnaf3-pc-general/DataDump3/203.png
           test -f /tmp/fnaf3-pc-general/DataDump3/106.png
           test -f /tmp/fnaf3-pc-general/DataDump3/97.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/295.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/823.png
 
       - name: Prepare generated assets
         env:
@@ -129,6 +131,10 @@ jobs:
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_core_visuals.c \
             include/assets/pc_core_visuals.h
+          python3 tools/convert_pc_character_visuals.py \
+            /tmp/fnaf3-pc-general/DataDump3 \
+            source/pc_character_visuals.c \
+            include/assets/pc_character_visuals.h
 
       - name: Build WUHB and RPX
         run: make -j2
