@@ -41,7 +41,7 @@ static const TextureRle *pc_sequence_clamped_frame(const JumpscareSequence *sequ
 static void pc_draw_phantom_office(const Game *game)
 {
     if (phantoms_foxy_present(&game->phantoms) && game->office_pan < -15) {
-        /* PC image-bank frame 170, referenced by the MFA's Foxy animation. */
+        /* PC image-bank frame 170, referenced by the current converter. */
         texture_draw_rle(GRAPHICS_TARGET_TV,
                          25, 122, 215, 315,
                          &gPcPhantomFoxyOfficeTexture);
@@ -59,11 +59,10 @@ static void pc_draw_phantom_office(const Game *game)
             ? pc_sequence_clamped_frame(sequence, timer)
             : pc_sequence_loop_frame(sequence, timer);
         if (frame != NULL) {
-            /* Horizontal travel remains driven by the gameplay timer; the
-             * body pose itself now comes from the two exact fwalk animations
-             * stored in fivenights3-94.mfa. */
+            /* fwalk's horizontal travel now follows the decoded MFA path
+             * accumulator instead of the old hand-authored 5 px/frame slide. */
             const int x = 760 -
-                (int) (game->phantoms.freddy_walk_frames * 5u);
+                (int) (game->phantoms.freddy_path_eighths / 8u);
             texture_draw_rle(GRAPHICS_TARGET_TV,
                              x, 126,
                              190, 255,
@@ -80,9 +79,8 @@ static void pc_draw_phantom_office(const Game *game)
 
     /*
      * Phantom Mangle's verified PC camera appearance is a complete CAM04
-     * composite. The General Sprites bank does not expose a clean office
-     * cut-out for the post-trigger garble state, so deliberately keep that
-     * state effect-only rather than reintroducing the old PSX Mangle sprite.
+     * composite. The current office pass keeps the special garble/system
+     * failure effect separate from the camera composite.
      */
     if (phantoms_mangle_active(&game->phantoms)) {
         const uint32_t timer = game->phantoms.mangle_office_frames;
