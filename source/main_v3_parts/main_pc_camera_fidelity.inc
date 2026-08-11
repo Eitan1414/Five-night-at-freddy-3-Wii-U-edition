@@ -15,11 +15,13 @@ static void pc_camera_fidelity_draw_overlay_phantom(const Game *game,
     if (phantom != PHANTOM_BALLOON_BOY)
         return;
 
-    /* General Sprites image 338 is the verified PC BB camera actor. Keep its
-     * presentation stable; the previous bob + artificial zoom were Wii U
-     * reconstruction effects that do not exist in the supplied PC object art. */
+    /* MFA object "BBpeek" uses General Sprites image 70 (825x650), not a
+     * jumpscare frame. Preserve its source aspect ratio instead of the old
+     * square Wii U reconstruction. Its exact Clickteam position is relative
+     * to the monitor/camera-screen anchor, so keep the established viewport
+     * anchor while using the correct PC image and ratio. */
     texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                     174, 82, 262, 262,
+                     174, 82, 300, 236,
                      &gPcPhantomBBTexture);
 }
 

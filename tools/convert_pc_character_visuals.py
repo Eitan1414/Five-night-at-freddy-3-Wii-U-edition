@@ -26,11 +26,18 @@ FULL_CAMERA_ASSETS = (
     ("PhantomPuppetCamera", 298),
 )
 
+# Static/dynamic PC object images decoded from the MFA object animations:
+#   foxy       idle/office image 302
+#   BBpeek     camera image 70
+#   mangle 2   office-path image 202
+#   phantom head image 320
+#   chica 2    office image 399
 SPRITES = (
     ("SpringtrapOfficeWindow", 207, 280),
     ("SpringtrapOfficeLeft", 214, 280),
-    ("PhantomFoxyOffice", 170, 300),
-    ("PhantomBB", 338, 300),
+    ("PhantomFoxyOffice", 302, 300),
+    ("PhantomBB", 70, 300),
+    ("PhantomMangleOffice", 202, 206),
     ("PhantomPuppet", 320, 300),
     ("PhantomChicaOffice", 399, 300),
 )

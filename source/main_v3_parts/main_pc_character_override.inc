@@ -40,10 +40,16 @@ static const TextureRle *pc_sequence_clamped_frame(const JumpscareSequence *sequ
 
 static void pc_draw_phantom_office(const Game *game)
 {
+    const int texture_x = -133 + game->office_pan;
+
     if (phantoms_foxy_present(&game->phantoms) && game->office_pan < -15) {
-        /* PC image-bank frame 170, referenced by the MFA's Foxy animation. */
+        /* MFA object "foxy": image 302. The object is created at hotspot
+         * (698,768) relative to the original 2000x768 office panorama. Image
+         * 302 has hotspot (156,708), giving top-left (542,60). The PC office
+         * panorama is rendered at 1120x430, i.e. a uniform 0.56 scale. */
         texture_draw_rle(GRAPHICS_TARGET_TV,
-                         25, 122, 215, 315,
+                         texture_x + 304, 58,
+                         175, 397,
                          &gPcPhantomFoxyOfficeTexture);
     }
 
@@ -59,11 +65,10 @@ static void pc_draw_phantom_office(const Game *game)
             ? pc_sequence_clamped_frame(sequence, timer)
             : pc_sequence_loop_frame(sequence, timer);
         if (frame != NULL) {
-            /* Horizontal travel remains driven by the gameplay timer; the
-             * body pose itself now comes from the two exact fwalk animations
-             * stored in fivenights3-94.mfa. */
+            /* fwalk's horizontal travel follows the decoded MFA path
+             * accumulator instead of the old hand-authored 5 px/frame slide. */
             const int x = 760 -
-                (int) (game->phantoms.freddy_walk_frames * 5u);
+                (int) (game->phantoms.freddy_path_eighths / 8u);
             texture_draw_rle(GRAPHICS_TARGET_TV,
                              x, 126,
                              190, 255,
@@ -72,28 +77,24 @@ static void pc_draw_phantom_office(const Game *game)
     }
 
     if (game->phantoms.chica_office_waiting && game->office_pan < -10) {
-        /* PC image-bank frame 399, the static Chica 2 office state. */
+        /* MFA object "chica 2": image 399. Creation hotspot (4,2) with image
+         * hotspot (-202,-114) resolves to office top-left (206,116), scaled
+         * with the same 0.56 PC-panorama transform. */
         texture_draw_rle(GRAPHICS_TARGET_TV,
-                         -18, 82, 245, 340,
+                         texture_x + 115, 89,
+                         362, 366,
                          &gPcPhantomChicaOfficeTexture);
     }
 
-    /*
-     * Phantom Mangle's verified PC camera appearance is a complete CAM04
-     * composite. The General Sprites bank does not expose a clean office
-     * cut-out for the post-trigger garble state, so deliberately keep that
-     * state effect-only rather than reintroducing the old PSX Mangle sprite.
-     */
     if (phantoms_mangle_active(&game->phantoms)) {
-        const uint32_t timer = game->phantoms.mangle_office_frames;
-        if ((timer % 17u) < 4u) {
-            graphics_draw_rect(GRAPHICS_TARGET_TV,
-                               500, 74, 330, 3,
-                               GRAPHICS_RGB(124, 142, 124));
-            graphics_draw_rect(GRAPHICS_TARGET_TV,
-                               535, 122, 280, 2,
-                               GRAPHICS_RGB(55, 78, 57));
-        }
+        /* MFA frame instance "mangle 2" starts at hotspot (1118,512); image
+         * 202 hotspot is (83,103). This yields top-left (1035,409) in the
+         * original 2000x768 office panorama. Draw the actual PC sprite and
+         * let the AI/path timer own its lifetime; no synthetic glitch bars. */
+        texture_draw_rle(GRAPHICS_TARGET_TV,
+                         texture_x + 580, 253,
+                         94, 115,
+                         &gPcPhantomMangleOfficeTexture);
     }
 
     if (phantoms_puppet_active(&game->phantoms)) {
