@@ -1,0 +1,42 @@
+name: Apply Springtrap Camera Generator Patch
+
+on:
+  push:
+    branches:
+      - springtrap-camera-v9
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message != 'Apply Springtrap camera generator patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch existing PC character generator
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('tools/convert_pc_character_visuals.py')
+          s=p.read_text()
+          s=s.replace(
+              '    ("PhantomChicaCamera", 387),\n)',
+              '    ("PhantomChicaCamera", 387),\n    ("PhantomPuppetCamera", 298),\n)')
+          s=s.replace(
+              '    ("SpringtrapJumpscare", (778, 782, 786, 790, 794, 798, 802, 806, 810, 814, 819, 823), 4),',
+              '    ("SpringtrapJumpscare", tuple(range(778, 818)) + tuple(range(819, 824)), 1),')
+          s=s.replace(
+              '        "extern const PcTiledTexture gPcPhantomChicaCameraTexture;\\n",\n',
+              '        "extern const PcTiledTexture gPcPhantomChicaCameraTexture;\\n",\n        "extern const PcTiledTexture gPcPhantomPuppetCameraTexture;\\n",\n')
+          p.write_text(s)
+          # Remove the superseded experimental standalone converter.
+          extra=Path('tools/convert_pc_springtrap_full_sequence.py')
+          if extra.exists(): extra.unlink()
+          PY
+          git config user.name "Pixel Electronics Studio"
+          git config user.email "affairegamer@gmail.com"
+          git add tools/convert_pc_character_visuals.py tools/convert_pc_springtrap_full_sequence.py || true
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Apply Springtrap camera generator patch'
+          git push origin HEAD:springtrap-camera-v9
