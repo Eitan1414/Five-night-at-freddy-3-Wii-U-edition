@@ -47,7 +47,7 @@ static int mfa_ai_level(int night)
     return 7;
 }
 
-/* The old Wii U caller still passes its former fixed movement interval.  It is
+/* The old Wii U caller still passes its former fixed movement interval. It is
  * no longer used as the movement clock, but a reduced value is kept as a
  * compatibility signal for environmental aggression while the rest of the
  * port transitions to the MFA counters. */
@@ -80,18 +80,6 @@ static uint32_t danger_for_camera(int camera)
         return SPRINGTRAP_EVENT_DANGER_LOUD;
     }
     return SPRINGTRAP_EVENT_NONE;
-}
-
-static SpringtrapVent vent_for_camera(int camera)
-{
-    switch (camera) {
-        case CAM09: return SPRINGTRAP_VENT_11;
-        case CAM07: return SPRINGTRAP_VENT_12;
-        case CAM05: return SPRINGTRAP_VENT_13;
-        case CAM10: return SPRINGTRAP_VENT_14;
-        case CAM02: return SPRINGTRAP_VENT_15;
-        default: return SPRINGTRAP_VENT_NONE;
-    }
 }
 
 static void reset_after_real_move(SpringtrapAI *ai)
@@ -446,6 +434,7 @@ static SpringtrapEvent apply_forced_move(SpringtrapAI *ai)
     }
 
     const int from = ai->camera;
+    const uint32_t previous_counter = ai->move_counter;
     int target = -1;
     bool target_is_stage1 = false;
 
@@ -469,11 +458,11 @@ static SpringtrapEvent apply_forced_move(SpringtrapAI *ai)
     if (target_is_stage1) {
         event = move_to_attack_stage(ai, SPRINGTRAP_LOCATION_OFFICE_WINDOW);
         /* The source only explicitly zeroes move_counter when force_move lands
-         * on CAM04 or CAM10. Restore the previous counter for this route. */
+         * on CAM04 or CAM10. CAM02 -> stage 1 therefore keeps its counter. */
+        ai->move_counter = previous_counter;
         return event;
     }
 
-    const uint32_t previous_counter = ai->move_counter;
     event = move_to_camera(ai, target);
     if (target != CAM04 && target != CAM10) {
         ai->move_counter = previous_counter;
@@ -631,7 +620,7 @@ void springtrap_ai_release_observation(SpringtrapAI *ai)
         return;
     }
 
-    /* PC force_move is armed by Phantom encounters from Night 3 onward.  The
+    /* PC force_move is armed by Phantom encounters from Night 3 onward. The
      * existing game integration already calls this hook for those encounters,
      * so preserve the API while restoring the source behavior. */
     if (ai->night >= 3) {
