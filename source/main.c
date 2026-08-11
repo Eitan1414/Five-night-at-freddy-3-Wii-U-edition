@@ -141,10 +141,15 @@
 #include "main_v3_parts/main_pc_mfa_minigames_v5.inc"
 /* Sixth pass avoids replaying V2 audio hooks on non-minigame screens. */
 #include "main_v3_parts/main_pc_mfa_minigames_v6.inc"
+/* Seventh pass reproduces the original cake/k1-k4/goodend event chain, keeps
+ * the hidden bb route persistent and gates balloon collision by that flag. */
+#include "main_v3_parts/main_pc_mfa_minigames_v7_state.inc"
+#include "main_v3_parts/main_pc_mfa_minigames_v7_update.inc"
+#include "main_v3_parts/main_pc_mfa_minigames_v7_render.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_v4_secret_render_override(game)) return;
+    if (pc_mfa_v7_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
@@ -155,7 +160,7 @@ static void pc_audio_shutdown_with_extra_sfx(void)
     audio_shutdown();
 }
 
-#define update_game pc_mfa_v6_exact_update_game
+#define update_game pc_mfa_v7_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
