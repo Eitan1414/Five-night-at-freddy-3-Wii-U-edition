@@ -149,13 +149,25 @@ echo "128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e  $PC_SOUN
 python3 tools/convert_pc_sound_pack.py "$PC_SOUND_ZIP" data/audio
 rm -f data/audio/pc_sound_pack_manifest.txt
 
-# 6 AM is a separately supplied original PC track rather than part of the sound
-# effects ZIP. Never synthesize a tone and never fall back to the PSX port.
-if six_am_input="$(user_audio_path six_am)"; then
-    convert_audio "$six_am_input" data/audio/six_am.bin
-else
-    echo "Original PC six_am audio is missing from $USER_AUDIO_ROOT" >&2
-    exit 1
+# The archive names the 6 AM sting "6AM"; the runtime has historically called
+# that cue six_am. Resolve it from the converted PC pack instead of requiring a
+# user file or falling back to PlayStation audio.
+if [ ! -s data/audio/six_am.bin ]; then
+    if [ -s data/audio/6am.bin ]; then
+        mv data/audio/6am.bin data/audio/six_am.bin
+    else
+        six_am_candidate="$(find data/audio -maxdepth 1 -type f \
+            \( -iname '*6*am*.bin' -o -iname '*six*am*.bin' \) \
+            | sort | head -n 1)"
+        if [ -n "$six_am_candidate" ] && [ -s "$six_am_candidate" ]; then
+            mv "$six_am_candidate" data/audio/six_am.bin
+        else
+            echo "Could not resolve the original PC 6 AM cue from the verified sound pack" >&2
+            echo "Available converted files:" >&2
+            find data/audio -maxdepth 1 -type f -printf '%f\n' | sort >&2
+            exit 1
+        fi
+    fi
 fi
 
 # Wii U-exclusive achievement sounds remain project-specific user assets.
