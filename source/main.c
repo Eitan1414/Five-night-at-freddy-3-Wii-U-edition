@@ -76,11 +76,14 @@
 #undef update_game
 #undef main
 
+#include "main_v3_parts/main_pc_visual_override.inc"
+#define texture_draw_rle pc_original_ui_texture_draw_rle
 #define update_game original_ui_update_game_v1
 #define original_ui_draw_camera_feed original_ui_draw_camera_feed_v1
 #include "main_v3_parts/main_original_ui_01.inc"
 #undef original_ui_draw_camera_feed
 #undef update_game
+#undef texture_draw_rle
 
 #define original_ui_draw_vent_map original_ui_draw_vent_map_v1
 #include "main_v3_parts/main_original_ui_02.inc"
