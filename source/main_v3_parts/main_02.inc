@@ -5,7 +5,6 @@ static void open_maintenance(Game *game)
     game->vent_map_open = false;
     game->maintenance_selection = 0;
     game->idle_frames = 0u;
-    process_phantom_event(game, phantoms_on_panel_opened(&game->phantoms));
     audio_stop(AUDIO_CUE_STATIC);
     audio_play(AUDIO_CUE_WAIT, 0.45f, false);
     game->dirty = true;
