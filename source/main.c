@@ -121,18 +121,24 @@
 #undef draw_phantom_office
 #undef draw_springtrap_office
 
-/* This final wrapper sits immediately in front of the current top-level
- * original-UI renderer. Office rendering remains untouched; non-office
- * Follow Me/endings/secret-minigames can now use the authentic PC assets. */
+/* PC endings/Follow Me remain in the finishing layer. */
 #include "main_v3_parts/main_pc_finishing_override.inc"
+
+/* Secret minigames now use original world/object coordinates extracted from
+ * the PC Clickteam MFA instead of the old one-screen approximations. */
+#include "main_v3_parts/main_pc_mfa_minigames.inc"
+
 static void pc_finishing_fallback_render_game(Game *game)
 {
+    if (pc_mfa_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
 
+#define update_game pc_mfa_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef draw_office_tv
 #undef fnaf3_full_audio_render_game
+#undef update_game
