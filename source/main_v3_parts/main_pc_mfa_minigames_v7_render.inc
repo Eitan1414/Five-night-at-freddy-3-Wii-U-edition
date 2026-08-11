@@ -172,7 +172,7 @@ static void pc_mfa_v7_draw_happiest(void)
     const bool celebration = sPcMfaV7.final_sequence &&
                              sPcMfaV7.sequence_frames >= 300u;
     for (int i = 0; i < 4; ++i) {
-        if (!flags[i] || celebration) continue;
+        if (!flags[i]) continue;
         pc_mfa_draw_sprite(pc_secret_happiest_child_texture(i),
                            kPcMfaHappiestChildren[i],cx,cy,100,126);
     }
