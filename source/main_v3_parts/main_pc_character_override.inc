@@ -1,6 +1,6 @@
-/* PC character bridge: replace PSX/placeholder Springtrap and Phantom art. */
+/* PC character bridge: replace PSX/placeholder office art in the final renderer. */
 
-static void draw_springtrap_office(const Game *game)
+static void pc_draw_springtrap_office(const Game *game)
 {
     const SpringtrapOfficeSide side = springtrap_ai_office_side(&game->springtrap);
     if (side == SPRINGTRAP_OFFICE_WINDOW && game->office_pan > 25) {
@@ -14,7 +14,7 @@ static void draw_springtrap_office(const Game *game)
     }
 }
 
-static void draw_phantom_office(const Game *game)
+static void pc_draw_phantom_office(const Game *game)
 {
     if (phantoms_foxy_present(&game->phantoms) && game->office_pan < -15) {
         const int bob = phantom_bob(game->night_frames, 26u, 6);
@@ -49,9 +49,10 @@ static void draw_phantom_office(const Game *game)
     }
 
     /*
-     * PC Phantom Mangle is a camera composite rather than a clean office
-     * sprite in General Sprites. Do not re-introduce the PSX office texture:
-     * keep the original PC-style garble/failure effect after CAM 04 instead.
+     * PC Phantom Mangle is represented by a complete CAM 04 composite rather
+     * than a clean office cut-out in General Sprites. Once it reaches the
+     * office, preserve its PC-style garble/system-failure effect instead of
+     * putting the old PSX sprite back on top of the PC office panorama.
      */
     if (phantoms_mangle_active(&game->phantoms)) {
         const uint32_t timer = game->phantoms.mangle_office_frames;
@@ -75,48 +76,5 @@ static void draw_phantom_office(const Game *game)
                          102 + drift / 2, 5 - drift / 2,
                          650 - drift, 465 + drift,
                          &gPcPhantomPuppetTexture);
-    }
-}
-
-static void draw_springtrap_camera_sprite(int camera)
-{
-    const PcTiledTexture *texture = pc_springtrap_camera_texture(camera);
-    if (texture != NULL) {
-        pc_tiled_texture_draw(GRAPHICS_TARGET_GAMEPAD,
-                              28, 65, 532, 295,
-                              texture);
-    }
-}
-
-static void draw_phantom_camera_overlay(const Game *game)
-{
-    const PhantomId phantom = phantoms_camera_overlay(
-        &game->phantoms, game->selected_camera);
-    const int bob = phantom_bob(game->night_frames, 24u, 7);
-
-    switch (phantom) {
-        case PHANTOM_BALLOON_BOY:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                             145 - bob, 55 - bob,
-                             325 + bob * 2, 305 + bob * 2,
-                             &gPcPhantomBBTexture);
-            break;
-        case PHANTOM_CHICA:
-            pc_tiled_texture_draw(GRAPHICS_TARGET_GAMEPAD,
-                                  28, 65, 532, 295,
-                                  &gPcPhantomChicaCameraTexture);
-            break;
-        case PHANTOM_MANGLE:
-            pc_tiled_texture_draw(GRAPHICS_TARGET_GAMEPAD,
-                                  28, 65, 532, 295,
-                                  &gPcPhantomMangleCameraTexture);
-            break;
-        case PHANTOM_PUPPET:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                             194, 38, 228, 328,
-                             &gPcPhantomPuppetTexture);
-            break;
-        default:
-            break;
     }
 }
