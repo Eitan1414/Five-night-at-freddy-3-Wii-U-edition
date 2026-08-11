@@ -2,43 +2,29 @@
  *
  * The legacy monitor renderer still adds Wii U reconstruction effects after
  * drawing a camera: per-Springtrap scan bars, generic 1px scanlines and old
- * cut-out placement.  The character bridge already owns exact full-frame PC
- * composites for every Springtrap camera state, so redraw only the 532x295
- * viewport after the legacy/UI pass.  This keeps the monitor controls/map
- * intact while making the actual feed the original PC composite again.
+ * cut-out placement. The character bridge owns exact full-frame PC composites
+ * for every Springtrap camera state and the verified full-frame Phantom camera
+ * events, so redraw only the 532x295 viewport after the legacy/UI pass. This
+ * keeps the monitor controls/map intact while making the actual feed PC art.
  */
 
 static void pc_camera_fidelity_draw_overlay_phantom(const Game *game,
                                                     PhantomId phantom)
 {
-    switch (phantom) {
-        case PHANTOM_BALLOON_BOY: {
-            const int bob = phantom_bob(game->night_frames, 24u, 7);
-            if (game->phantoms.bb_seen_frames >= 22u) {
-                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                                 138 - bob, 52 - bob,
-                                 334 + bob * 2, 314 + bob * 2,
-                                 &gPcPhantomBBTexture);
-            } else {
-                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                                 174 + bob / 2, 82 - bob,
-                                 262, 262,
-                                 &gPcPhantomBBTexture);
-            }
-            break;
-        }
-        case PHANTOM_PUPPET: {
-            const int flicker =
-                (int)((game->night_frames / 2u +
-                       (uint32_t)phantom) % 5u) - 2;
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                             205 + flicker, 45 - flicker,
-                             205, 320,
-                             &gPcPhantomPuppetTexture);
-            break;
-        }
-        default:
-            break;
+    if (phantom != PHANTOM_BALLOON_BOY)
+        return;
+
+    const int bob = phantom_bob(game->night_frames, 24u, 7);
+    if (game->phantoms.bb_seen_frames >= 22u) {
+        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                         138 - bob, 52 - bob,
+                         334 + bob * 2, 314 + bob * 2,
+                         &gPcPhantomBBTexture);
+    } else {
+        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                         174 + bob / 2, 82 - bob,
+                         262, 262,
+                         &gPcPhantomBBTexture);
     }
 }
 
@@ -68,6 +54,12 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
                               &gPcPhantomMangleCameraTexture);
         return;
     }
+    if (phantom == PHANTOM_PUPPET) {
+        pc_tiled_texture_draw(GRAPHICS_TARGET_GAMEPAD,
+                              28, 65, 532, 295,
+                              &gPcPhantomPuppetCameraTexture);
+        return;
+    }
 
     const PcTiledTexture *feed = NULL;
     if (springtrap_ai_is_on_camera(&game->springtrap, camera))
@@ -80,9 +72,7 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
                               28, 65, 532, 295, feed);
     }
 
-    /* BB/Puppet are transparent PC actors rather than verified full-frame
-     * composites in the current asset set. Reapply only those after restoring
-     * the exact base/Springtrap feed. */
+    /* BB is the remaining transparent camera actor in the verified PC set. */
     pc_camera_fidelity_draw_overlay_phantom(game, phantom);
 }
 
