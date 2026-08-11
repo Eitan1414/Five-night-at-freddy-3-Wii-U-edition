@@ -1,26 +1,21 @@
-# Original PSX jumpscare sequences
+# PC Phantom and Springtrap attack sequences
 
-The Wii U port generates its jumpscare textures from the original FNaF 3 PSX source at pinned commit `f19e22762f48d4269e07730827d8eaab5995557b`.
+The final Wii U gameplay renderer uses the original PC FNaF 3 General Sprites image bank for Springtrap and the Phantoms. The Phantom image ordering is taken from the object animation records in the supplied `fivenights3-94.mfa`, not from the older PSX port.
 
-Included frame sequences:
+PC attack sequences used by gameplay:
 
-- Springtrap left attack: 13 frames;
-- Springtrap right attack: 12 frames;
-- Phantom Balloon Boy: 9 frames;
-- Phantom Chica: 6 frames;
-- Phantom Freddy: 7 frames;
-- Phantom Foxy: 11 frames.
+- Phantom Foxy (`foxy`): 13 MFA images;
+- Phantom Balloon Boy (`BB scare`): 11 MFA images;
+- Phantom Chica (`chica 2`): 15 MFA images;
+- Phantom Freddy (`fscare`): 21 MFA images;
+- Springtrap: 45 continuous PC General Sprites frames.
 
-Every sequence advances at the original PSX cadence of four game ticks per image. The original `vag/screamer.vag` is also converted to the Wii U PCM format during asset preparation.
+Phantom Freddy's office pass also uses the two animations stored by the PC `fwalk` object: a 14-image walk cycle and an 11-image duck/crouch cycle.
 
-Phantom Mangle and Phantom Puppet intentionally keep their source-accurate special attacks instead of receiving invented frame sequences. Mangle appears at the office window, plays the garble loop and disables Audio Devices. Puppet covers the view, blocks input and later causes a ventilation failure.
+The non-contiguous General Sprites IDs are intentional. Clickteam stores the images in one global bank, so unrelated UI/minigame images can sit numerically between consecutive frames of a Phantom animation. `tools/convert_pc_character_visuals.py` therefore keeps the MFA image lists verbatim and validates that every required PNG exists before generating Wii U RLE textures.
 
-For local builds, extract the PSX source and set `FNAF3_PSX_SOURCE` before preparing assets:
+The PC Sound Effects archive supplies `scream3.wav`, `garble1.wav`, `mask.wav`, `echo1.wav`, `echo3b.wav` and `echo4b.wav`; these are converted directly to the Wii U PCM data used at runtime. The downloaded archive is SHA-256 pinned by `tools/prepare_generated_assets.sh`.
 
-```sh
-FNAF3_PSX_SOURCE=/path/to/Five-Night-at-Freddys-3-PSX-main \
-  sh tools/prepare_generated_assets.sh
-make
-```
+Phantom Mangle and Phantom Puppet keep their non-standard attacks rather than receiving invented jumpscare sequences. Mangle uses its exact PC CAM04 composite, then enters the garble/audio-failure state. Puppet uses its exact PC CAM08 composite and PC `phantom head` office art, blocks input and ultimately causes a ventilation failure.
 
-GitHub Actions fetches only `tim/screamer` and `vag/screamer.vag` from the pinned upstream revision.
+The PSX source is still fetched by the build as a legacy/fallback asset source for older renderer code paths, but the final Springtrap/Phantom gameplay presentation is routed through the PC character and camera-fidelity layers.
