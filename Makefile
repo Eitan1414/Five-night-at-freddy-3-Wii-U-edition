@@ -7,6 +7,7 @@ $(error "Please set DEVKITPRO in your environment. export DEVKITPRO=<path to>/de
 endif
 
 TOPDIR ?= $(CURDIR)
+PC_MINIGAME_SHEETS ?= /tmp/fnaf3-pc-minigames
 
 APP_NAME      := Five Nights at Freddy's 3 - Wii U Edition
 APP_SHORTNAME := FNaF3 Wii U
@@ -109,6 +110,16 @@ endif
 all: $(BUILD)
 
 $(BUILD):
+	@if [ -d "$(PC_MINIGAME_SHEETS)" ] && \
+	    [ -f source/pc_finishing_visuals.c ] && \
+	    [ -f include/assets/pc_finishing_visuals.h ] && \
+	    ! grep -q "gPcSecretBBBackdropTexture" include/assets/pc_finishing_visuals.h; then \
+		echo "Appending authentic PC minigame V8 visuals..."; \
+		python3 tools/append_pc_minigame_visuals_v8.py \
+			"$(PC_MINIGAME_SHEETS)" \
+			source/pc_finishing_visuals.c \
+			include/assets/pc_finishing_visuals.h; \
+	fi
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
