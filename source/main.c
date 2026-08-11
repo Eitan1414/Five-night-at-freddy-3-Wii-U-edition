@@ -19,7 +19,6 @@
 #define render_game fnaf3_legacy_render_game
 
 #include "main_v3_parts/main_00.inc"
-#include "main_v3_parts/main_pc_blackout_fidelity.inc"
 
 /* Retail PC restart timing is six seconds for one system and twelve seconds
  * for Reboot All. Override the old fast Wii U scaffolding before the function
@@ -30,6 +29,11 @@
 #define REPAIR_ALL_FRAMES (12u * 60u)
 
 #include "main_v3_parts/main_01.inc"
+
+/* main_00/main_01 split process_phantom_event() across include boundaries.
+ * Keep the blackout helpers after main_01 so they are emitted at translation-
+ * unit scope, but before main_02 which consumes the fade helpers. */
+#include "main_v3_parts/main_pc_blackout_fidelity.inc"
 #include "main_v3_parts/main_phantom_visuals.inc"
 
 /* The legacy layer used ten seconds without player input as a ventilation
