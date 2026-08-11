@@ -150,9 +150,10 @@
 #define pc_mfa_v2_exact_update_game pc_mfa_exact_update_game
 #include "main_v3_parts/main_pc_mfa_minigames_v7_render.inc"
 #undef pc_mfa_v2_exact_update_game
-/* V8 is render-only: exact PC sheets for threshold animations, props and the
- * backdrop planes while V7 remains authoritative for the event logic. */
+/* V8 uses the exact PC sheet art for threshold animations and releases the
+ * non-final 200-count cake sequence after V7 sets its completion flag. */
 #include "main_v3_parts/main_pc_mfa_minigames_v8_render.inc"
+#include "main_v3_parts/main_pc_mfa_minigames_v8_update.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
@@ -167,7 +168,7 @@ static void pc_audio_shutdown_with_extra_sfx(void)
     audio_shutdown();
 }
 
-#define update_game pc_mfa_v7_exact_update_game
+#define update_game pc_mfa_v8_exact_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
