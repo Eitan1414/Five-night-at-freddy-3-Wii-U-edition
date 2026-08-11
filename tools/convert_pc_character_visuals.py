@@ -1,19 +1,46 @@
 #!/usr/bin/env python3
-"""Generate PC Springtrap/Phantom gameplay visuals from General Sprites.
-
-This complements convert_pc_general_sprites.py: backgrounds stay in the core
-converter while this file migrates dynamic character states that previously
-came from the PSX reference or from hand-drawn Wii U placeholders.
-"""
+"""Generate verified PC Springtrap/Phantom gameplay visuals."""
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 from PIL import Image
 
-
 COLOURS = 64
 TRANSPARENT_INDEX = 255
+
+SPRINGTRAP_CAMERAS = (
+    (0, 295), (1, 146), (2, 121), (3, 122), (4, 119),
+    (5, 117), (6, 126), (7, 127), (8, 130), (9, 140),
+)
+
+FULL_CAMERA_ASSETS = (
+    ("PhantomMangleCamera", 38),
+    ("PhantomChicaCamera", 387),
+    ("PhantomPuppetCamera", 298),
+)
+
+SPRITES = (
+    ("SpringtrapOfficeWindow", 207, 280),
+    ("SpringtrapOfficeLeft", 214, 280),
+    ("PhantomFoxyOffice", 170, 300),
+    ("PhantomBB", 338, 300),
+    ("PhantomPuppet", 320, 300),
+    ("PhantomChicaOffice", 399, 300),
+)
+
+# Verified General Sprites animation families. IDs that belong to unrelated
+# Clickteam objects in the middle of an animation are intentionally skipped.
+SEQUENCES = (
+    ("PhantomFreddyWalk", (190, 191, 192, 193, 194, 196, 197, 198), 4),
+    ("PhantomFoxyJumpscare", (174, 175, 176, 177, 178, 179, 180, 181), 4),
+    ("PhantomBBJumpscare", (341, 342, 343, 344, 345, 347, 349), 4),
+    ("PhantomChicaJumpscare", (459, 461, 462, 463, 464, 465, 466, 467, 468), 4),
+    ("PhantomFreddyJumpscare",
+     (475, 476, 477, 478, 479, 480, 481, 482, 483, 484, 485,
+      488, 491, 492, 499, 500, 504), 4),
+    ("SpringtrapJumpscare", tuple(range(778, 818)) + tuple(range(819, 824)), 1),
+)
 
 
 def fmt(values, pattern: str, per_line: int) -> str:
@@ -26,7 +53,8 @@ def fmt(values, pattern: str, per_line: int) -> str:
 
 def quantize_opaque(path: Path, size: tuple[int, int]) -> Image.Image:
     image = Image.open(path).convert("RGB").resize(size, Image.Resampling.LANCZOS)
-    return image.quantize(colors=80, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE)
+    return image.quantize(colors=80, method=Image.Quantize.MEDIANCUT,
+                          dither=Image.Dither.NONE)
 
 
 def opaque_palette(image: Image.Image) -> list[int]:
@@ -72,57 +100,29 @@ def emit_asset(source: list[str], root: Path, name: str, sprite_id: int,
     source.append(f"static const uint32_t {prefix}Palette[{len(palette)}] = {{\n")
     source.append(fmt(palette, "0x{:08X}u", 6) + "\n};\n")
     tile_symbols = []
-    x = 0
-    tile_index = 0
-    while x < size[0]:
-        x1 = min(x + tile_width, size[0])
-        offsets, runs = encode_tile(image, x, x1)
+    for tile_index, x0 in enumerate(range(0, size[0], tile_width)):
+        x1 = min(x0 + tile_width, size[0])
+        offsets, runs = encode_tile(image, x0, x1)
         symbol = f"{prefix}Tile{tile_index:02d}"
         source.append(f"static const uint16_t {symbol}RowOffsets[{len(offsets)}] = {{\n")
         source.append(fmt(offsets, "{}u", 12) + "\n};\n")
         source.append(f"static const uint8_t {symbol}Runs[{len(runs)}] = {{\n")
         source.append(fmt(list(runs), "{}u", 24) + "\n};\n")
-        source.append(f"static const TextureRle {symbol} = {{\n    {x1-x}u, {size[1]}u, 255u,\n    {symbol}RowOffsets, {symbol}Runs, {prefix}Palette,\n}};\n")
+        source.append(
+            f"static const TextureRle {symbol} = {{\n"
+            f"    {x1 - x0}u, {size[1]}u, 255u,\n"
+            f"    {symbol}RowOffsets, {symbol}Runs, {prefix}Palette,\n"
+            f"}};\n"
+        )
         tile_symbols.append(symbol)
-        x = x1
-        tile_index += 1
     source.append(f"static const TextureRle *const {prefix}Tiles[{len(tile_symbols)}] = {{\n")
     source.extend(f"    &{symbol},\n" for symbol in tile_symbols)
     source.append("};\n")
-    source.append(f"const PcTiledTexture gPc{name}Texture = {{\n    {size[0]}u, {size[1]}u, {len(tile_symbols)}u, {prefix}Tiles,\n}};\n\n")
-
-
-# Exact full-frame PC camera composites (camera index is zero-based).
-SPRINGTRAP_CAMERAS = (
-    (0, 295), (1, 146), (2, 121), (3, 122), (4, 119),
-    (5, 117), (6, 126), (7, 127), (8, 130), (9, 140),
-)
-
-FULL_CAMERA_ASSETS = (
-    ("PhantomMangleCamera", 38),
-    ("PhantomChicaCamera", 387),
-    ("PhantomPuppetCamera", 298),
-)
-
-# Transparent PC sprites used in the office / monitor overlays.
-SPRITES = (
-    ("SpringtrapOfficeWindow", 207, 280),
-    ("SpringtrapOfficeLeft", 214, 280),
-    ("PhantomFoxyOffice", 170, 300),
-    ("PhantomBB", 338, 300),
-    ("PhantomPuppet", 320, 300),
-    ("PhantomChicaOffice", 399, 300),
-)
-
-# The numbered General Sprites frames preserve the original PC zoom/order.
-SEQUENCES = (
-    ("PhantomFreddyWalk", (190, 191, 192, 193, 194, 196, 197, 198), 4),
-    ("PhantomFoxyJumpscare", (174, 175, 176, 177, 178, 179, 180, 181), 4),
-    ("PhantomBBJumpscare", (341, 342, 343, 344, 345, 347, 349), 4),
-    ("PhantomChicaJumpscare", (461, 462, 463, 464, 465, 466, 467, 468), 4),
-    ("PhantomFreddyJumpscare", (475, 476, 477, 478, 479, 480, 482, 484, 488, 492, 499), 4),
-    ("SpringtrapJumpscare", tuple(range(778, 818)) + tuple(range(819, 824)), 1),
-)
+    source.append(
+        f"const PcTiledTexture gPc{name}Texture = {{\n"
+        f"    {size[0]}u, {size[1]}u, {len(tile_symbols)}u, {prefix}Tiles,\n"
+        f"}};\n\n"
+    )
 
 
 def rgba_indexed(image: Image.Image, colours: int = COLOURS) -> tuple[list[int], bytes]:
@@ -130,25 +130,22 @@ def rgba_indexed(image: Image.Image, colours: int = COLOURS) -> tuple[list[int],
     alpha = rgba.getchannel("A")
     rgb = Image.new("RGB", rgba.size, (0, 0, 0))
     rgb.paste(rgba.convert("RGB"), mask=alpha)
-    quantized = rgb.quantize(colors=colours,
-                             method=Image.Quantize.MEDIANCUT,
+    quantized = rgb.quantize(colors=colours, method=Image.Quantize.MEDIANCUT,
                              dither=Image.Dither.NONE)
-    raw_palette = quantized.getpalette() or []
+    raw = quantized.getpalette() or []
     palette = []
     for index in range(colours):
         base = index * 3
-        red = raw_palette[base] if base < len(raw_palette) else 0
-        green = raw_palette[base + 1] if base + 1 < len(raw_palette) else 0
-        blue = raw_palette[base + 2] if base + 2 < len(raw_palette) else 0
+        red = raw[base] if base < len(raw) else 0
+        green = raw[base + 1] if base + 1 < len(raw) else 0
+        blue = raw[base + 2] if base + 2 < len(raw) else 0
         palette.append((red << 24) | (green << 16) | (blue << 8) | 0xFF)
     palette.extend([0x000000FF] * (256 - len(palette)))
-
-    q = bytearray(quantized.tobytes())
-    a = alpha.tobytes()
-    for index, value in enumerate(a):
+    pixels = bytearray(quantized.tobytes())
+    for index, value in enumerate(alpha.tobytes()):
         if value < 32:
-            q[index] = TRANSPARENT_INDEX
-    return palette, bytes(q)
+            pixels[index] = TRANSPARENT_INDEX
+    return palette, bytes(pixels)
 
 
 def encode_rows(width: int, height: int, pixels: bytes) -> tuple[list[int], bytes]:
@@ -209,38 +206,36 @@ def build_sequence_frames(root: Path, ids: tuple[int, ...],
     master_h = max(image.height for image in originals)
     out_w, out_h = output_size
     scale = min(out_w / master_w, out_h / master_h)
-    scaled_master_w = max(1, round(master_w * scale))
-    scaled_master_h = max(1, round(master_h * scale))
-
+    scaled_w = max(1, round(master_w * scale))
+    scaled_h = max(1, round(master_h * scale))
     frames = []
     for image in originals:
         master = Image.new("RGBA", (master_w, master_h), (0, 0, 0, 0))
         master.alpha_composite(image, ((master_w - image.width) // 2,
                                        (master_h - image.height) // 2))
-        master = master.resize((scaled_master_w, scaled_master_h),
-                               Image.Resampling.LANCZOS)
+        master = master.resize((scaled_w, scaled_h), Image.Resampling.LANCZOS)
         canvas = Image.new("RGBA", output_size, (0, 0, 0, 0))
-        canvas.alpha_composite(master, ((out_w - scaled_master_w) // 2,
-                                        (out_h - scaled_master_h) // 2))
+        canvas.alpha_composite(master, ((out_w - scaled_w) // 2,
+                                        (out_h - scaled_h) // 2))
         frames.append(canvas)
     return frames
 
 
 def emit_sequence(source: list[str], header: list[str], root: Path,
-                  name: str, ids: tuple[int, ...], ticks_per_frame: int) -> None:
+                  name: str, ids: tuple[int, ...], ticks: int) -> None:
     frames = build_sequence_frames(root, ids)
-    frame_symbols = []
+    symbols = []
     for index, (sprite_id, frame) in enumerate(zip(ids, frames), start=1):
         symbol = f"kPc{name}Frame{index:02d}"
         emit_texture(source, symbol, frame, sprite_id)
-        frame_symbols.append(symbol)
+        symbols.append(symbol)
     array = f"kPc{name}Frames"
-    source.append(f"static const TextureRle *const {array}[{len(frame_symbols)}] = {{\n")
-    source.extend(f"    &{symbol},\n" for symbol in frame_symbols)
+    source.append(f"static const TextureRle *const {array}[{len(symbols)}] = {{\n")
+    source.extend(f"    &{symbol},\n" for symbol in symbols)
     source.append("};\n")
     source.append(
         f"const JumpscareSequence gPc{name} = {{\n"
-        f"    {array}, {len(frame_symbols)}u, {ticks_per_frame}u,\n"
+        f"    {array}, {len(symbols)}u, {ticks}u,\n"
         f"}};\n\n"
     )
     header.append(f"extern const JumpscareSequence gPc{name};\n")
@@ -253,6 +248,15 @@ def main() -> None:
     parser.add_argument("output_h", type=Path)
     args = parser.parse_args()
     root = args.sprite_root
+
+    required = {sprite_id for _, sprite_id in SPRINGTRAP_CAMERAS}
+    required |= {sprite_id for _, sprite_id in FULL_CAMERA_ASSETS}
+    required |= {sprite_id for _, sprite_id, _ in SPRITES}
+    for _, ids, _ in SEQUENCES:
+        required.update(ids)
+    missing = sorted(sprite_id for sprite_id in required if not (root / f"{sprite_id}.png").is_file())
+    if missing:
+        raise SystemExit(f"Missing PC General Sprites IDs: {missing}")
 
     source = [
         "/* Generated PC Springtrap/Phantom visuals. Do not edit by hand. */\n",
@@ -277,8 +281,6 @@ def main() -> None:
     for name, sprite_id, max_dimension in SPRITES:
         symbol = f"gPc{name}Texture"
         image = load_scaled_sprite(root, sprite_id, max_dimension)
-        # Detailed transparent sprites can exceed uint16 row offsets at the
-        # first size. Reduce conservatively until the row-RLE stream fits.
         while True:
             try:
                 emit_texture(source, symbol, image, sprite_id, exported=True)
@@ -296,10 +298,8 @@ def main() -> None:
 
     source.append("const PcTiledTexture *pc_springtrap_camera_texture(int camera_index)\n{\n")
     source.append("    switch (camera_index) {\n")
-    for camera_index, _sprite_id in SPRINGTRAP_CAMERAS:
-        source.append(
-            f"        case {camera_index}: return &gPcSpringtrapCamera{camera_index + 1:02d}Texture;\n"
-        )
+    for camera_index, _ in SPRINGTRAP_CAMERAS:
+        source.append(f"        case {camera_index}: return &gPcSpringtrapCamera{camera_index + 1:02d}Texture;\n")
     source.append("        default: return NULL;\n    }\n}\n")
 
     header.extend([
@@ -313,8 +313,7 @@ def main() -> None:
     args.output_h.parent.mkdir(parents=True, exist_ok=True)
     args.output_c.write_text("".join(source), encoding="utf-8")
     args.output_h.write_text("".join(header), encoding="utf-8")
-
-    print("PC character visuals generated: Springtrap cams, office states, Phantoms and jumpscares")
+    print("PC character visuals generated: exact Springtrap/Phantom camera and attack families")
 
 
 if __name__ == "__main__":
