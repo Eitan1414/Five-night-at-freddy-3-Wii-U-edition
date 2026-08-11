@@ -149,26 +149,28 @@ echo "128b50e7717a4d0fc9ba3dd9fab3835542c0f9777f7c699f8caaa9c1c054b32e  $PC_SOUN
 python3 tools/convert_pc_sound_pack.py "$PC_SOUND_ZIP" data/audio
 rm -f data/audio/pc_sound_pack_manifest.txt
 
-# The archive names the 6 AM sting "6AM"; the runtime has historically called
-# that cue six_am. Resolve it from the converted PC pack instead of requiring a
-# user file or falling back to PlayStation audio.
-if [ ! -s data/audio/six_am.bin ]; then
-    if [ -s data/audio/6am.bin ]; then
-        mv data/audio/6am.bin data/audio/six_am.bin
-    else
-        six_am_candidate="$(find data/audio -maxdepth 1 -type f \
-            \( -iname '*6*am*.bin' -o -iname '*six*am*.bin' \) \
-            | sort | head -n 1)"
-        if [ -n "$six_am_candidate" ] && [ -s "$six_am_candidate" ]; then
-            mv "$six_am_candidate" data/audio/six_am.bin
-        else
-            echo "Could not resolve the original PC 6 AM cue from the verified sound pack" >&2
-            echo "Available converted files:" >&2
-            find data/audio -maxdepth 1 -type f -printf '%f\n' | sort >&2
-            exit 1
-        fi
-    fi
-fi
+# In the original PC game, reaching 6 AM uses the melodic clock chimes together
+# with the small-children cheer. There is no separate six_am.wav in the PC bank.
+# The legacy Wii U runtime exposes one AUDIO_CUE_SIX_AM slot, so build that slot
+# deterministically by mixing the two exact PC PCM streams sample-for-sample.
+python3 - <<'PY'
+from pathlib import Path
+import struct
+
+root = Path("data/audio")
+a = (root / "clock_chimes.bin").read_bytes()
+b = (root / "crowd_children.bin").read_bytes()
+if len(a) % 2 or len(b) % 2:
+    raise SystemExit("6 AM PC source PCM is not aligned to 16-bit samples")
+count = max(len(a), len(b)) // 2
+out = bytearray(count * 2)
+for i in range(count):
+    av = struct.unpack_from(">h", a, i * 2)[0] if i * 2 < len(a) else 0
+    bv = struct.unpack_from(">h", b, i * 2)[0] if i * 2 < len(b) else 0
+    mixed = max(-32768, min(32767, av + bv))
+    struct.pack_into(">h", out, i * 2, mixed)
+(root / "six_am.bin").write_bytes(out)
+PY
 
 # Wii U-exclusive achievement sounds remain project-specific user assets.
 if achievement_input="$(user_audio_path achievement)"; then
