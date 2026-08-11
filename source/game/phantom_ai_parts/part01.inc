@@ -43,13 +43,13 @@ static void maybe_spawn_puppet(PhantomSystem *system, int hour)
 
 static uint32_t jumpscare_duration_frames(PhantomId phantom)
 {
-    /* Match the generated PC General Sprites sequences, not the old PSX TIM
-     * frame counts. The renderer and AI must finish on the same frame. */
+    /* These counts are the exact PC MFA animation-list lengths emitted by
+     * convert_pc_character_visuals.py. Keep AI and rendering in lockstep. */
     switch (phantom) {
-        case PHANTOM_FOXY: return 8u * 4u;
-        case PHANTOM_BALLOON_BOY: return 7u * 4u;
-        case PHANTOM_FREDDY: return 17u * 4u;
-        case PHANTOM_CHICA: return 9u * 4u;
+        case PHANTOM_FOXY: return 13u * 4u;
+        case PHANTOM_BALLOON_BOY: return 11u * 4u;
+        case PHANTOM_FREDDY: return 21u * 4u;
+        case PHANTOM_CHICA: return 15u * 4u;
         default: return JUMPSCARE_DURATION_FRAMES;
     }
 }
