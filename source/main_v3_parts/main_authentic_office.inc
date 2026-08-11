@@ -13,23 +13,19 @@ static void draw_authentic_office_fan(const Game *game, int texture_x)
 
 static void draw_authentic_office_tv(const Game *game)
 {
-    const TextureRle *normal = office_assets_texture(OFFICE_ASSET_NORMAL);
-    if (normal == NULL) {
-        draw_office_tv(game);
-        return;
-    }
-
-    const bool alert_frame = game->ventilation_failed &&
-        ((game->night_frames / 18u) % 2u) != 0u;
-    const TextureRle *office = alert_frame
-        ? office_assets_texture(OFFICE_ASSET_ALERT)
-        : normal;
-    if (office == NULL) office = normal;
-
     const int texture_x = -133 + game->office_pan;
     graphics_clear(GRAPHICS_TARGET_TV, COLOUR_BLACK);
-    texture_draw_rle(GRAPHICS_TARGET_TV, texture_x, 24, 1120, 430,
-                     office);
+
+    /*
+     * The supplied PC General Sprites panorama (203.png) is now the source of
+     * truth for the office background. It is generated at the exact 1120x430
+     * render size and split into row-RLE tiles so every tile stays within the
+     * renderer's 16-bit row-offset format.
+     */
+    pc_tiled_texture_draw(GRAPHICS_TARGET_TV,
+                          texture_x, 24, 1120, 430,
+                          &gPcOfficeTexture);
+
     draw_springtrap_office(game);
     draw_authentic_office_fan(game, texture_x);
     draw_phantom_office(game);
