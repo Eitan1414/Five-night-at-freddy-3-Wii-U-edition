@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Generate verified high-resolution PC visuals from FNaF 3 General Sprites.
 
-Only numbered sprites whose camera identity has been verified are migrated.
-Non-migrated cameras keep their existing Wii U/PSX fallback.
+The office and all ten main-camera base backgrounds are sourced from the
+numbered PC General Sprites dump. Dynamic character/rare-state overlays remain
+separate so they can be migrated without destabilising camera navigation.
 """
 from __future__ import annotations
 
@@ -22,8 +23,11 @@ ASSETS = (
     ("Camera03", 104, (532, 295), 192, 2),
     ("Camera04", 105, (532, 295), 192, 3),
     ("Camera05", 109, (532, 295), 192, 4),
+    ("Camera06", 98, (532, 295), 192, 5),
+    ("Camera07", 100, (532, 295), 192, 6),
     ("Camera08", 112, (532, 295), 192, 7),
     ("Camera09", 115, (532, 295), 192, 8),
+    ("Camera10", 116, (532, 295), 192, 9),
 )
 
 
@@ -204,7 +208,6 @@ const PcTiledTexture *pc_core_camera_texture(int camera_index)
         "                           int width,\n",
         "                           int height,\n",
         "                           const PcTiledTexture *texture);\n\n",
-        "/* Returns NULL until a camera has a verified PC replacement. */\n",
         "const PcTiledTexture *pc_core_camera_texture(int camera_index);\n",
     ])
 
