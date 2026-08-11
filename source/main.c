@@ -7,6 +7,7 @@
 #include "assets/achievement_assets.h"
 #include "assets/phantom_mangle_override.h"
 #include "assets/phantom_chica_user_jumpscare.h"
+#include "assets/pc_core_visuals.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
