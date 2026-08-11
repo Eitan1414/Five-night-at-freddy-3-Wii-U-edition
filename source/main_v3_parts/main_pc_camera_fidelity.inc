@@ -6,7 +6,15 @@
  * for every Springtrap camera state and the verified full-frame Phantom camera
  * events, so redraw only the 532x295 viewport after the legacy/UI pass. This
  * keeps the monitor controls/map intact while making the actual feed PC art.
+ *
+ * fivenights3-94.mfa also uses Springtrap's normal camera composites for the
+ * ventilation hallucinations: several cameras may show a fake Springtrap at
+ * once, except the camera containing the real one. The maintenance fidelity
+ * layer below this include owns the timer/random mask; these declarations live
+ * here because the camera renderer is compiled earlier in the unified main TU.
  */
+static uint16_t sPcHallucinationCameraMask = 0u;
+static uint32_t sPcHallucinationFrames = 0u;
 
 static void pc_camera_fidelity_draw_overlay_phantom(const Game *game,
                                                     PhantomId phantom)
@@ -23,6 +31,16 @@ static void pc_camera_fidelity_draw_overlay_phantom(const Game *game,
     texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
                      174, 82, 300, 236,
                      &gPcPhantomBBTexture);
+}
+
+static bool pc_camera_fidelity_has_hallucination(int camera)
+{
+    if (camera < 0 || camera >= CAMERA_COUNT ||
+        sPcHallucinationFrames == 0u) {
+        return false;
+    }
+    return (sPcHallucinationCameraMask &
+            (uint16_t)(1u << (uint32_t)camera)) != 0u;
 }
 
 static void pc_camera_fidelity_redraw_viewport(const Game *game)
@@ -59,7 +77,13 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
     }
 
     const PcTiledTexture *feed = NULL;
-    if (springtrap_ai_is_on_camera(&game->springtrap, camera))
+    const bool real_springtrap =
+        springtrap_ai_is_on_camera(&game->springtrap, camera);
+
+    /* Real Springtrap always wins over Hallucinationtrap. The generated mask
+     * already excludes his true camera, but keep this ordering as an explicit
+     * guard against stale state during a move on the same frame. */
+    if (real_springtrap || pc_camera_fidelity_has_hallucination(camera))
         feed = pc_springtrap_camera_texture(camera);
     if (feed == NULL)
         feed = pc_core_camera_texture(camera);
