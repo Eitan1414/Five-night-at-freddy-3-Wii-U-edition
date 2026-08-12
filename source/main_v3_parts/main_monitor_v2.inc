@@ -80,30 +80,47 @@ static void update_game(Game *game, const InputState *input)
     monitor_v2_update_transition(game);
 }
 
-static void monitor_v2_draw_controls(void)
+static void monitor_v2_draw_camera_controls(void)
 {
-    if (!sMonitorV2.assets_ready || sOriginalUi.static_flash_frames > 0u)
-        return;
+    if (!sMonitorV2.assets_ready) return;
 
-    /* Exact PC sprites over the established, fully functional toolbar. */
+    /* PC layout: Play Audio and Map Toggle are stacked low on the monitor,
+     * immediately to the left of the map.  They remain visible while the
+     * camera feed itself flashes static. */
     monitor_v2_draw_texture(MONITOR_V2_PLAY_AUDIO,
                             GRAPHICS_TARGET_GAMEPAD,
-                            555, 9, 118, 64);
+                            452, 316, 118, 64);
     monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
                             GRAPHICS_TARGET_GAMEPAD,
-                            699, 7, 140, 70);
+                            441, 386, 140, 70);
+}
+
+static void monitor_v2_draw_vent_controls(void)
+{
+    if (!sMonitorV2.assets_ready) return;
+
+    /* The ventilation map uses the map-toggle control, not Play Audio. */
+    monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
+                            GRAPHICS_TARGET_GAMEPAD,
+                            441, 386, 140, 70);
+}
+
+/* Keep the historical helper name for the final camera fidelity layer. */
+static void monitor_v2_draw_controls(void)
+{
+    monitor_v2_draw_camera_controls();
 }
 
 static void original_ui_draw_camera_feed(const Game *game)
 {
     original_ui_draw_camera_feed_v1(game);
-    monitor_v2_draw_controls();
+    monitor_v2_draw_camera_controls();
 }
 
 static void original_ui_draw_vent_map(const Game *game)
 {
     original_ui_draw_vent_map_v1(game);
-    monitor_v2_draw_controls();
+    monitor_v2_draw_vent_controls();
 }
 
 static void monitor_v2_draw_transition(void)
@@ -116,6 +133,9 @@ static void monitor_v2_draw_transition(void)
 
     const MonitorV2TextureId id = (MonitorV2TextureId)
         (MONITOR_V2_TRANSITION_0 + sMonitorV2.transition_frame);
+
+    /* Never stretch the transition across the whole GamePad.  The office must
+     * remain visible around the physical monitor/panel just like on PC. */
     monitor_v2_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
-                            0, 0, 854, 480);
+                            174, 76, 674, 379);
 }
