@@ -11,6 +11,7 @@
 #include "assets/pc_character_visuals.h"
 #include "assets/pc_finishing_visuals.h"
 #include "platform/pc_minigame_sfx.h"
+#include "platform/runtime_seed.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
