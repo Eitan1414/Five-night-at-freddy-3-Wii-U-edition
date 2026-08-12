@@ -8,7 +8,21 @@
  */
 #define springtrap_ai_update springtrap_ai_update_pre_mfa_aggression
 #define springtrap_ai_release_observation springtrap_ai_release_observation_pre_mfa_aggression
+#define springtrap_ai_lure springtrap_ai_lure_pre_night_gate
+#define springtrap_ai_is_on_camera springtrap_ai_is_on_camera_pre_night_gate
+#define springtrap_ai_is_in_vent springtrap_ai_is_in_vent_pre_night_gate
+#define springtrap_ai_camera springtrap_ai_camera_pre_night_gate
+#define springtrap_ai_current_vent springtrap_ai_current_vent_pre_night_gate
+#define springtrap_ai_office_side springtrap_ai_office_side_pre_night_gate
+#define springtrap_ai_is_danger_near springtrap_ai_is_danger_near_pre_night_gate
 #include "springtrap_ai_base.inc"
+#undef springtrap_ai_is_danger_near
+#undef springtrap_ai_office_side
+#undef springtrap_ai_current_vent
+#undef springtrap_ai_camera
+#undef springtrap_ai_is_in_vent
+#undef springtrap_ai_is_on_camera
+#undef springtrap_ai_lure
 #undef springtrap_ai_release_observation
 #undef springtrap_ai_update
 
@@ -89,6 +103,15 @@ SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
         return event;
     }
 
+    /* Springtrap does not exist in the playable Night 1 frame.  The base reset
+     * still seeds a camera for Nights 2+, but no Night-1 caller may advance,
+     * expose or otherwise observe that latent state. */
+    if (night_number <= 1) {
+        ai->night = night_number;
+        ai->ai_level = 0;
+        return event;
+    }
+
     /* These two parameters are retained for ABI/source compatibility with the
      * older Wii U caller. Movement is now wholly driven by the MFA one-second
      * counter, and direct office observation is encoded by the attack events. */
@@ -146,9 +169,22 @@ SpringtrapEvent springtrap_ai_update(SpringtrapAI *ai,
     return apply_attack_action(ai, action, player_blinded);
 }
 
+SpringtrapEvent springtrap_ai_lure(SpringtrapAI *ai,
+                                   int target_camera,
+                                   int night_number)
+{
+    if (ai == NULL || night_number <= 1 || ai->night <= 1) {
+        SpringtrapEvent event = empty_event();
+        event.flags = SPRINGTRAP_EVENT_LURE_INVALID;
+        event.to_camera = target_camera;
+        return event;
+    }
+    return springtrap_ai_lure_pre_night_gate(ai, target_camera, night_number);
+}
+
 void springtrap_ai_release_observation(SpringtrapAI *ai)
 {
-    if (ai == NULL) {
+    if (ai == NULL || ai->night <= 1) {
         return;
     }
 
@@ -161,4 +197,42 @@ void springtrap_ai_release_observation(SpringtrapAI *ai)
         ai->force_to = (uint8_t) (1u + (next_random(ai) % 3u));
     }
     ai->aggressive = true;
+}
+
+bool springtrap_ai_is_on_camera(const SpringtrapAI *ai, int camera)
+{
+    return ai != NULL && ai->night >= 2 &&
+           springtrap_ai_is_on_camera_pre_night_gate(ai, camera);
+}
+
+bool springtrap_ai_is_in_vent(const SpringtrapAI *ai)
+{
+    return ai != NULL && ai->night >= 2 &&
+           springtrap_ai_is_in_vent_pre_night_gate(ai);
+}
+
+int springtrap_ai_camera(const SpringtrapAI *ai)
+{
+    return ai != NULL && ai->night >= 2
+        ? springtrap_ai_camera_pre_night_gate(ai) : -1;
+}
+
+SpringtrapVent springtrap_ai_current_vent(const SpringtrapAI *ai)
+{
+    return ai != NULL && ai->night >= 2
+        ? springtrap_ai_current_vent_pre_night_gate(ai)
+        : SPRINGTRAP_VENT_NONE;
+}
+
+SpringtrapOfficeSide springtrap_ai_office_side(const SpringtrapAI *ai)
+{
+    return ai != NULL && ai->night >= 2
+        ? springtrap_ai_office_side_pre_night_gate(ai)
+        : SPRINGTRAP_OFFICE_NONE;
+}
+
+bool springtrap_ai_is_danger_near(const SpringtrapAI *ai)
+{
+    return ai != NULL && ai->night >= 2 &&
+           springtrap_ai_is_danger_near_pre_night_gate(ai);
 }
