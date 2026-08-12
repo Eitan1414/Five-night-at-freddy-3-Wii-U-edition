@@ -75,7 +75,7 @@ static bool wiiu_v4_hidden_touch_allowed(const Game *game)
 
 static bool wiiu_v4_try_shadow_touch(Game *game, const InputState *input)
 {
-    if (!wiiu_v4_hidden_touch_allowed(game) || game->night < 5) {
+    if (!wiiu_v4_hidden_touch_allowed(game) || game->night != 5) {
         sWiiUHiddenTouch.shadow_tap_armed = false;
         return false;
     }
@@ -108,7 +108,7 @@ static bool wiiu_v4_try_shadow_touch(Game *game, const InputState *input)
 
 static bool wiiu_v4_try_stage01_touch(Game *game, const InputState *input)
 {
-    if (!wiiu_v4_hidden_touch_allowed(game) || game->night < 4)
+    if (!wiiu_v4_hidden_touch_allowed(game) || game->night != 4)
         return false;
 
     const int key = wiiu_v4_stage01_touched_key(game, input);
