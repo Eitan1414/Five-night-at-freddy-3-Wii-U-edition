@@ -5,24 +5,23 @@ static void complete_draw_title(const Game *game)
 
     graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
 
-    /*
-     * The five MFA title images are complete 1024x768 PC frames, not isolated
-     * Springtrap cut-outs. Preserve the original 4:3 composition and center it
-     * on the Wii U's wider 854x480 logical surface instead of stretching or
-     * cropping the image into the right-hand side.
-     */
+    /* The five MFA title images are complete 1024x768 PC frames, not isolated
+     * Springtrap cut-outs. Preserve their original 4:3 composition. */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x, 0, 640, 480,
                      kTitleFrames[frame]);
 
-    /* Exact transparent PC horizontal/glitch-line frames (863/865/866/867/
-     * 868/869/871), scaled with the same 4:3 transform as the background. */
-    const int line_frame = (int)((game->screen_frames / 4u) % 7u);
+    /* The PC title spends most of its time on thin horizontal interference and
+     * only enters the heavier glitch-line frames during the short title burst. */
+    const uint32_t phase = game->screen_frames % 180u;
+    const int line_frame = phase < 144u
+        ? 3
+        : (int)(((phase - 144u) / 6u) % 7u);
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x, 0, 640, 480,
                      gPcCompatTitleLineTextures[line_frame]);
 
-    /* Original PC image-bank UI. No Wii U font reconstruction here. */
+    /* Original PC image-bank UI. */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 66, 29, 21, 141,
                      &gPcCompatTitleLogoTexture);
@@ -32,9 +31,13 @@ static void complete_draw_title(const Game *game)
     const int nightmare_y = 376;
     const int extra_y = 422;
 
-    texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                     content_x + 67, new_y, 135, 24,
-                     &gPcCompatTitleNewGameTexture);
+    /* ID 594 in the dump is REBOOT ALL, not NEW GAME. Until the converter's
+     * New Game entry is switched to verified ID 592, keep this single row as
+     * text rather than rendering a knowingly wrong PC sprite. */
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       content_x + 67, new_y + 4, 3,
+                       "NEW GAME", COLOUR_WHITE);
+
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 67, load_y, 152, 31,
                      &gPcCompatTitleLoadGameTexture);
@@ -50,15 +53,12 @@ static void complete_draw_title(const Game *game)
                          content_x + 67, extra_y, 91, 31,
                          &gPcCompatTitleExtraTexture);
     } else {
-        /* Keep the row position stable while locked without inventing a large
-         * green selection card. */
         graphics_draw_text(GRAPHICS_TARGET_BOTH,
                            content_x + 67, extra_y + 7, 2,
                            "EXTRA", GRAPHICS_RGB(66, 72, 64));
     }
 
-    /* The current recovery runtime still routes Night 6 through LOAD GAME.
-     * Show its saved-night digit without changing navigation behavior yet. */
+    /* Recovery keeps current menu routing for this hardware test. */
     char night_number[8];
     snprintf(night_number, sizeof(night_number), "%d",
              game->unlocked_night > 5 ? 5 : game->unlocked_night);
@@ -66,7 +66,7 @@ static void complete_draw_title(const Game *game)
                        content_x + 226, load_y + 9, 2,
                        night_number, COLOUR_WHITE);
 
-    /* Exact glowing PC cursor block (image 833), not a synthetic '>' glyph. */
+    /* Exact glowing PC cursor block (image 833). */
     const int marker_y = game->title_selection == 0
         ? new_y : (game->title_selection == 1 ? load_y : extra_y);
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
@@ -75,18 +75,16 @@ static void complete_draw_title(const Game *game)
 
     /* Exact PC star sprite. */
     int sx = content_x + 112;
-    int sy = 30;
     if (progress_save_is_night_completed(5)) {
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                         sx, sy, 35, 33,
+                         sx, 30, 35, 33,
                          &gPcCompatTitleStarTexture);
         sx += 47;
     }
     if (progress_save_is_night_completed(6)) {
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
-                         sx, sy, 35, 33,
+                         sx, 30, 35, 33,
                          &gPcCompatTitleStarTexture);
-        sx += 47;
     }
     if (progress_save_good_ending_unlocked()) {
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
