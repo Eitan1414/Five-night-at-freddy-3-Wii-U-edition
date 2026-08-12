@@ -87,10 +87,10 @@ static void monitor_v2_draw_camera_controls(void)
     /* PC layout: the two square controls are stacked below the camera image,
      * immediately left of the floor map. */
     monitor_v2_draw_texture(MONITOR_V2_PLAY_AUDIO,
-                            GRAPHICS_TARGET_GAMEPAD,
+                            sOriginalUiPanelTargets,
                             360, 312, 118, 64);
     monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
-                            GRAPHICS_TARGET_GAMEPAD,
+                            sOriginalUiPanelTargets,
                             349, 382, 140, 70);
 }
 
@@ -100,7 +100,7 @@ static void monitor_v2_draw_vent_controls(void)
 
     /* The ventilation map uses the map-toggle control, not Play Audio. */
     monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
-                            GRAPHICS_TARGET_GAMEPAD,
+                            sOriginalUiPanelTargets,
                             349, 382, 140, 70);
 }
 
@@ -133,8 +133,8 @@ static void monitor_v2_draw_transition(void)
     const MonitorV2TextureId id = (MonitorV2TextureId)
         (MONITOR_V2_TRANSITION_0 + sMonitorV2.transition_frame);
 
-    /* Never stretch the transition across the whole GamePad.  The office must
-     * remain visible around the physical monitor/panel just like on PC. */
-    monitor_v2_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
+    /* Preserve the original panel animation on whichever Wii U display(s)
+     * currently own the PC monitor presentation. */
+    monitor_v2_draw_texture(id, sOriginalUiPanelTargets,
                             174, 76, 674, 379);
 }
