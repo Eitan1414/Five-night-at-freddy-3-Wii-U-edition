@@ -45,12 +45,12 @@ static void original_ui_draw_maintenance_sprite(OriginalUiTextureId id,
                      x, y, width, height, texture);
 }
 
-static void original_ui_draw_maintenance_cursor(int y)
+static void original_ui_draw_maintenance_cursor(int x, int y)
 {
     const uint32_t colour = GRAPHICS_RGB(224, 238, 219);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 66, y + 13, 18, 3, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 78, y + 8, 3, 13, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 81, y + 11, 3, 7, colour);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x, y + 13, 18, 3, colour);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x + 12, y + 8, 3, 13, colour);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x + 15, y + 11, 3, 7, colour);
 }
 
 static void original_ui_draw_maintenance(const Game *game)
@@ -63,23 +63,28 @@ static void original_ui_draw_maintenance(const Game *game)
         MAINT_EXIT,
     };
 
-    graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(0, 2, 1));
+    /* Keep the office visible around the PC System Restart panel. */
+    pc_draw_gamepad_office_background(game);
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                       214, 48, 604, 390,
+                       GRAPHICS_RGB(0, 1, 0));
+    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+                        214, 48, 604, 390, 2,
+                        GRAPHICS_RGB(48, 67, 48));
 
-    /* ORIGINAL_UI_MAINT_MENU is the extracted PC "System Restart" heading;
-     * the previous Wii U pass incorrectly reused it as the EXIT row. */
     original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_MENU,
-                                        119, 39, 640, 58);
+                                        275, 67, 485, 50);
 
     for (int row = 0; row < MAINTENANCE_ITEM_COUNT; ++row) {
         const int item = display_order[row];
-        const int y = 116 + row * 55;
+        const int y = 127 + row * 50;
         const bool selected = item == game->maintenance_selection;
 
-        if (selected) original_ui_draw_maintenance_cursor(y);
+        if (selected) original_ui_draw_maintenance_cursor(252, y);
 
         if (item == MAINT_EXIT) {
             graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
-                               104, y + 8, 3, "EXIT",
+                               291, y + 8, 3, "EXIT",
                                selected ? COLOUR_WHITE
                                         : GRAPHICS_RGB(153, 171, 151));
             continue;
@@ -87,27 +92,22 @@ static void original_ui_draw_maintenance(const Game *game)
 
         original_ui_draw_maintenance_sprite(
             original_ui_maintenance_texture(game, item),
-            104, y, 620, 38);
+            291, y, 470, 34);
     }
 
     if (game->repairing) {
         original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_RESTART,
-                                            245, 399, 365, 34);
-
-        /* Clickteam's restart indicator advances as a small repeating dot
-         * animation; do not expose the artificial Wii U percentage bar. */
+                                            352, 376, 330, 31);
         const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
         for (int dot = 0; dot < dots; ++dot) {
             graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
-                               562 + dot * 13, 419, 6, 6,
+                               640 + dot * 13, 395, 6, 6,
                                COLOUR_WHITE);
         }
     } else {
-        /* Controller legend is the only Wii U-specific addition retained on
-         * this screen; all game-owned labels above come from the PC asset bank. */
         graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
-                           250, 452, 1,
-                           "UP/DOWN SELECT   A REBOOT   B CLOSE",
+                           369, 414, 1,
+                           "UP/DOWN   A REBOOT   B CLOSE",
                            GRAPHICS_RGB(105, 125, 103));
     }
 }
@@ -128,7 +128,7 @@ static void original_ui_draw_transition(void)
     const OriginalUiTextureId id = (OriginalUiTextureId)
         (ORIGINAL_UI_TRANSITION_0 + sOriginalUi.transition_frame);
     original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
-                             0, 0, 854, 480);
+                             174, 76, 674, 379);
 }
 
 static void original_ui_draw_office(Game *game)
@@ -144,7 +144,9 @@ static void original_ui_draw_office(Game *game)
         else
             original_ui_draw_camera_feed(game);
     } else {
-        draw_office_gamepad(game);
+        /* The GamePad now shows the real PC office instead of the temporary
+         * green "OFFICE CONTROL" debug screen. */
+        pc_draw_gamepad_office_background(game);
     }
 
     draw_ventilation_overlay(game);
