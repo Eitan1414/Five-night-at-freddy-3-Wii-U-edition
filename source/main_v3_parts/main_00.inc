@@ -40,9 +40,8 @@
 #define VENT_DIM_START_FRAMES 180u
 #define VENT_BLACK_START_FRAMES 360u
 #define AUDIO_LURE_TRAVEL_FRAMES 90u
-/* MFA groups 220-225: the Play Audio counter is reset to 0 on use and gains
- * one every 1500 ms until it reaches 7. At the port's source cadence of 60 Hz
- * that is an exact 10.5-second recharge, not the old temporary five seconds. */
+/* MFA groups 220-225: Play Audio resets its counter to zero and restores one
+ * point every 1500 ms until seven points are available again. */
 #define AUDIO_LURE_COOLDOWN_FRAMES 630u
 #define MESSAGE_FRAMES 150u
 #define REPAIR_SINGLE_FRAMES 120u
@@ -83,43 +82,24 @@ typedef enum MessageKind {
     MESSAGE_AUDIO_IGNORED,
     MESSAGE_VENT_SEALED,
     MESSAGE_DANGER_SOFT,
-    MESSAGE_DANGER_LOUD
+    MESSAGE_DANGER_LOUD,
+    MESSAGE_PHANTOM_MANGLE,
+    MESSAGE_PHANTOM_PUPPET
 } MessageKind;
 
-typedef enum NightIntroStage {
-    NIGHT_INTRO_STAGE_BLACK = 0,
-    NIGHT_INTRO_STAGE_STATIC,
-    NIGHT_INTRO_STAGE_NUMBER,
-    NIGHT_INTRO_STAGE_FADE
-} NightIntroStage;
-
-typedef enum GameButton {
-    GAME_BUTTON_LEFT = 0,
-    GAME_BUTTON_RIGHT,
-    GAME_BUTTON_UP,
-    GAME_BUTTON_DOWN,
-    GAME_BUTTON_CONFIRM,
-    GAME_BUTTON_BACK,
-    GAME_BUTTON_START,
-    GAME_BUTTON_PANEL,
-    GAME_BUTTON_SELECT,
-    GAME_BUTTON_MODE,
-    GAME_BUTTON_SEAL,
-    GAME_BUTTON_COUNT
-} GameButton;
+typedef struct NightConfig {
+    bool springtrap_enabled;
+    uint32_t move_interval;
+    uint32_t camera_failure_frame;
+    uint32_t ventilation_failure_frame;
+    uint32_t audio_failure_frame;
+    const char *subtitle;
+} NightConfig;
 
 typedef struct MapPoint {
     int x;
     int y;
 } MapPoint;
-
-typedef struct NightConfig {
-    uint32_t camera_failure_frame;
-    uint32_t audio_failure_frame;
-    uint32_t ventilation_failure_frame;
-    uint32_t springtrap_move_interval;
-    bool springtrap_enabled;
-} NightConfig;
 
 typedef struct Game {
     GameScreen screen;
@@ -167,23 +147,24 @@ typedef struct Game {
     MessageKind message;
     uint32_t message_frames;
 
+    bool springtrap_jumpscare_right;
     SpringtrapAI springtrap;
     PhantomSystem phantoms;
-    bool springtrap_jumpscare_right;
 } Game;
 
 static const NightConfig kNightConfigs[NIGHT_COUNT] = {
-    {NO_FAILURE_FRAME, NO_FAILURE_FRAME, NO_FAILURE_FRAME, 600u, false},
-    {NO_FAILURE_FRAME, 2700u, 4500u, 480u, true},
-    {2400u, 2100u, 3600u, 390u, true},
-    {1800u, 1650u, 3000u, 330u, true},
-    {1350u, 1200u, 2400u, 270u, true},
-    {900u, 900u, 1800u, 210u, true},
-};
-
-static const MapPoint kCameraMapPoints[CAMERA_COUNT] = {
-    {0, 2}, {1, 2}, {2, 2}, {2, 1}, {1, 1},
-    {0, 1}, {0, 0}, {1, 0}, {2, 0}, {3, 0},
+    {false, 0u, NO_FAILURE_FRAME, NO_FAILURE_FRAME, NO_FAILURE_FRAME,
+     "SYSTEM ORIENTATION"},
+    {true, 360u, 9000u, 12600u, 16200u,
+     "SPRINGTRAP ACTIVE"},
+    {true, 300u, 7200u, 10800u, 14400u,
+     "PHANTOMS ACTIVE"},
+    {true, 240u, 5400u, 9000u, 12600u,
+     "AGGRESSIVE MOVEMENT"},
+    {true, 180u, 3600u, 7200u, 10800u,
+     "FINAL SHIFT"},
+    {true, 120u, 2700u, 5400u, 8100u,
+     "AGGRESSIVE MODE"},
 };
 
 static const TextureRle *const kCameraTextures[CAMERA_COUNT] = {
@@ -207,18 +188,22 @@ static const TextureRle *const kTitleFrames[TITLE_FRAME_COUNT] = {
     &gMenuSpringtrapTexture5,
 };
 
-static const NightConfig *night_config(int night)
-{
-    int index = night - 1;
-    if (index < 0) index = 0;
-    if (index >= NIGHT_COUNT) index = NIGHT_COUNT - 1;
-    return &kNightConfigs[index];
-}
+static const MapPoint kCameraMapPoints[CAMERA_COUNT] = {
+    {600, 338}, {712, 306}, {782, 232}, {782, 158}, {699, 216},
+    {606, 218}, {600, 132}, {681, 113}, {718, 58}, {785, 91},
+};
 
 static uint32_t game_random(Game *game)
 {
     game->seed = game->seed * 1664525u + 1013904223u;
     return game->seed;
+}
+
+static const NightConfig *night_config(int night)
+{
+    if (night < 1) night = 1;
+    if (night > NIGHT_COUNT) night = NIGHT_COUNT;
+    return &kNightConfigs[night - 1];
 }
 
 static void set_message(Game *game, MessageKind message)
@@ -228,12 +213,34 @@ static void set_message(Game *game, MessageKind message)
     game->dirty = true;
 }
 
+static int title_frame_index(const Game *game)
+{
+    const uint32_t phase = game->screen_frames % 180u;
+    if (phase < 144u) return 0;
+    return 1 + (int) (((phase - 144u) / 9u) % 4u);
+}
+
+static uint32_t springtrap_interval(const Game *game)
+{
+    uint32_t interval = night_config(game->night)->move_interval;
+    if (game->hour >= 4 && interval > 0u) interval = (interval * 4u) / 5u;
+    if (game->hour >= 5 && interval > 0u) interval = (interval * 4u) / 5u;
+    if (game->ventilation_failed && interval > 0u) interval = (interval * 3u) / 4u;
+    return interval > 0u ? interval : 1u;
+}
+
+static void stop_lure_audio(void)
+{
+    audio_stop(AUDIO_CUE_LURE_ECHO_1);
+    audio_stop(AUDIO_CUE_LURE_ECHO_3B);
+    audio_stop(AUDIO_CUE_LURE_ECHO_4B);
+}
+
 static void stop_ventilation_audio(Game *game)
 {
-    if (game->breathing_started) {
-        audio_stop(AUDIO_CUE_BREATHING);
-        game->breathing_started = false;
-    }
+    audio_stop(AUDIO_CUE_ALARM);
+    audio_stop(AUDIO_CUE_BREATHING);
+    game->breathing_started = false;
 }
 
 static void set_ventilation_failure(Game *game)
@@ -243,29 +250,41 @@ static void set_ventilation_failure(Game *game)
     game->ventilation_error_frames = 0u;
     game->player_blinded = false;
     game->breathing_started = false;
-    audio_play(AUDIO_CUE_ALARM, 0.78f, false);
+    audio_restart(AUDIO_CUE_ALARM, 0.72f, true);
     game->dirty = true;
 }
 
-static uint32_t springtrap_interval(const Game *game)
+static void process_phantom_event(Game *game, PhantomEvent event)
 {
-    const NightConfig *config = night_config(game->night);
-    uint32_t interval = config->springtrap_move_interval;
-    if (game->ventilation_failed && interval > 120u) interval -= 120u;
-    if (game->hour >= 4 && interval > 90u) interval -= 90u;
-    if (game->idle_frames >= 300u && interval > 60u) interval -= 60u;
-    return interval < 90u ? 90u : interval;
-}
-
-static uint32_t repair_duration(const Game *game);
-static void trigger_audio_lure(Game *game);
-static void draw_office_tv(const Game *game);
-static void draw_office_gamepad(const Game *game);
-static void draw_camera_feed(const Game *game);
-static void draw_vent_map(const Game *game);
-static void draw_maintenance(const Game *game);
-static void draw_ventilation_overlay(const Game *game);
-static void draw_phantom_jumpscare(const Game *game);
-static void draw_springtrap_jumpscare(const Game *game);
-static void render_game(Game *game);
-static void update_game(Game *game, const InputState *input);
+    if ((event.flags & PHANTOM_EVENT_FORCE_CLOSE_PANEL) != 0u) {
+        game->camera_open = false;
+        game->maintenance_open = false;
+        game->vent_map_open = false;
+        audio_stop(AUDIO_CUE_STATIC);
+        audio_stop(AUDIO_CUE_WAIT);
+    }
+    if ((event.flags & PHANTOM_EVENT_RELEASE_SPRINGTRAP) != 0u) {
+        springtrap_ai_release_observation(&game->springtrap);
+    }
+    if ((event.flags & PHANTOM_EVENT_VENTILATION_FAILURE) != 0u) {
+        set_ventilation_failure(game);
+    }
+    if ((event.flags & PHANTOM_EVENT_AUDIO_FAILURE) != 0u) {
+        game->audio_failed = true;
+        game->audio_lure_active = false;
+        stop_lure_audio();
+        set_message(game, MESSAGE_PHANTOM_MANGLE);
+    }
+    if ((event.flags & PHANTOM_EVENT_GARBLE_STARTED) != 0u) {
+        audio_restart(AUDIO_CUE_GARBLE, 0.92f, true);
+    }
+    if ((event.flags & PHANTOM_EVENT_GARBLE_ENDED) != 0u) {
+        audio_stop(AUDIO_CUE_GARBLE);
+    }
+    if ((event.flags & PHANTOM_EVENT_MASK_STARTED) != 0u) {
+        audio_restart(AUDIO_CUE_MASK, 0.82f, true);
+        set_message(game, MESSAGE_PHANTOM_PUPPET);
+    }
+    if ((event.flags & PHANTOM_EVENT_MASK_ENDED) != 0u) {
+        audio_stop(AUDIO_CUE_MASK);
+    }
