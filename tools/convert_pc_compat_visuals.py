@@ -32,6 +32,16 @@ PHANTOMS = (
     ("gPcCompatPhantomBBTexture", 70, 230),
 )
 
+# Exact full-camera composites recovered from fivenights3-94.mfa.  These are
+# deliberately generated as compact single-RLE textures for real Wii U hardware
+# instead of falling back to the unrelated office sprites when the tiled path
+# is disabled for stability.
+PHANTOM_CAMERA_COMPOSITES = (
+    ("gPcCompatPhantomMangleCameraTexture", 38),
+    ("gPcCompatPhantomChicaCameraTexture", 387),
+    ("gPcCompatPhantomPuppetCameraTexture", 298),
+)
+
 
 def fmt(values, pattern: str, per_line: int) -> str:
     lines = []
@@ -54,8 +64,8 @@ def indexed_rgba(image: Image.Image) -> tuple[list[int], bytes]:
     for index in range(COLOURS):
         base = index * 3
         r = raw[base] if base < len(raw) else 0
-        g = raw[base + 1] if base + 1 < len(raw) else 0
-        b = raw[base + 2] if base + 2 < len(raw) else 0
+        g = raw[base + 1] if base < len(raw) else 0
+        b = raw[base + 2] if base < len(raw) else 0
         palette.append((r << 24) | (g << 16) | (b << 8) | 0xFF)
     palette.extend([0x000000FF] * (256 - len(palette)))
     pixels = bytearray(quantized.tobytes())
@@ -164,6 +174,7 @@ def main() -> None:
 
     required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS}
     required.update(sprite_id for _, sprite_id, _ in PHANTOMS)
+    required.update(sprite_id for _, sprite_id in PHANTOM_CAMERA_COMPOSITES)
     missing = sorted(sprite_id for sprite_id in required
                      if not (root / f"{sprite_id}.png").is_file())
     if missing:
@@ -222,6 +233,12 @@ def main() -> None:
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
 
+    for symbol, sprite_id in PHANTOM_CAMERA_COMPOSITES:
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     f"PC MFA full-camera composite, General Sprites ID {sprite_id}")
+        header.append(f"extern const TextureRle {symbol};\n")
+
     source.append("const TextureRle *const gPcCompatCameraTextures[10] = {\n")
     source.extend(f"    &{symbol},\n" for symbol in camera_symbols)
     source.append("};\n\n")
@@ -267,9 +284,9 @@ def main() -> None:
         "#define gPhantomPuppetOfficeTexture gPcCompatPhantomPuppetTexture\n",
         "#define gPhantomBBCameraTexture gPcCompatPhantomBBTexture\n",
         "#define gPhantomBBOfficeTexture gPcCompatPhantomBBTexture\n",
-        "#define gPhantomChicaCameraTexture gPcCompatPhantomChicaOfficeTexture\n",
-        "#define gPhantomMangleCameraTexture gPcCompatPhantomMangleOfficeTexture\n",
-        "#define gPhantomPuppetCameraTexture gPcCompatPhantomPuppetTexture\n",
+        "#define gPhantomChicaCameraTexture gPcCompatPhantomChicaCameraTexture\n",
+        "#define gPhantomMangleCameraTexture gPcCompatPhantomMangleCameraTexture\n",
+        "#define gPhantomPuppetCameraTexture gPcCompatPhantomPuppetCameraTexture\n",
         "#define gPhantomPuppetRealAnimation gPcCompatPhantomPuppetAnimation\n",
     ])
 
