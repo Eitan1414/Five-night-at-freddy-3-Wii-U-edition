@@ -137,12 +137,20 @@
 #include "main_v3_parts/main_original_ui_02.inc"
 #undef original_ui_draw_vent_map
 
-/* Keep the monitor V2 controls/transition, but expose its camera renderer as
- * a fallback so the final PC fidelity layer can restore the exact viewport. */
+/* Keep the exact eleven-frame PC monitor transition/control layer available as
+ * a fallback, while reserving the final public renderer names for the cleanup
+ * pass below. */
 #define original_ui_draw_camera_feed original_ui_draw_camera_feed_v2
+#define original_ui_draw_vent_map original_ui_draw_vent_map_v2
 #include "main_v3_parts/main_monitor_v2.inc"
+#undef original_ui_draw_vent_map
 #undef original_ui_draw_camera_feed
+
+/* Likewise expose the verified PC camera-composite renderer under an internal
+ * name so the final monitor layer can draw it without inheriting prototype UI. */
+#define original_ui_draw_camera_feed pc_camera_fidelity_draw_camera_feed_v3
 #include "main_v3_parts/main_pc_camera_fidelity.inc"
+#undef original_ui_draw_camera_feed
 
 #define draw_springtrap_office pc_draw_springtrap_office
 #define draw_phantom_office pc_draw_phantom_office
@@ -201,7 +209,11 @@ static void pc_audio_shutdown_with_extra_sfx(void)
  * replacing only the old deterministic night-system failures. */
 #include "main_v3_parts/main_pc_system_fidelity.inc"
 
-#define update_game pc_system_fidelity_update_game
+/* Final monitor presentation/audio layer: no AI-result debug box, one-shot
+ * healthy-camera static, proper PC crank/lever samples and cleaner vent map. */
+#include "main_v3_parts/main_pc_monitor_fidelity.inc"
+
+#define update_game pc_monitor_fidelity_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define draw_ventilation_overlay pc_draw_ventilation_overlay
