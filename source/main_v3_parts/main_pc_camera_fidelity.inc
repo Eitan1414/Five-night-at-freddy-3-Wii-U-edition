@@ -17,6 +17,87 @@ static uint32_t sPcHallucinationFrames = 0u;
 #define PC_CAMERA_FEED_Y 70
 #define PC_CAMERA_FEED_W 432
 #define PC_CAMERA_FEED_H 240
+#define PC_CAMERA_SOURCE_W 825
+#define PC_CAMERA_SOURCE_H 650
+
+typedef struct PcShadowCupcakeLayout {
+    int camera;
+    uint8_t collected_bit;
+    int source_x;
+    int source_y;
+    int hotspot_x;
+    int hotspot_y;
+    int source_w;
+    int source_h;
+    const TextureRle *texture;
+} PcShadowCupcakeLayout;
+
+/* fivenights3-94.mfa group 741 creates all four Shadow Cupcake actives as
+ * children of "00 anchor 4". Their Create parameters contain the real monitor
+ * workspace coordinates. The monitor workspace begins at X=1024, so the
+ * camera-source X values below are the exact Create X minus 1024.
+ *
+ * cupcake 3 / CAM02: Create (1552,426), image 959, hotspot (15,30), 31x51
+ * cupcake 1 / CAM03: Create (1678,360), image 999, hotspot (30,59), 61x99
+ * cupcake 4 / CAM04: Create (1456,430), image 1000, hotspot (20,39), 41x67
+ * cupcake 2 / CAM06: Create (1440,314), image 999, hotspot (30,59), 61x99
+ *
+ * collected_bit follows the existing PC trigger mask ordering CAM02/03/04/06.
+ */
+static const PcShadowCupcakeLayout kPcShadowCupcakes[4] = {
+    {1, 0x01u, 528, 426, 15, 30, 31, 51,
+     &gPcCompatShadowCupcakeSmallTexture},
+    {2, 0x02u, 654, 360, 30, 59, 61, 99,
+     &gPcCompatShadowCupcakeLargeTexture},
+    {3, 0x04u, 432, 430, 20, 39, 41, 67,
+     &gPcCompatShadowCupcakeMediumTexture},
+    {5, 0x08u, 416, 314, 30, 59, 61, 99,
+     &gPcCompatShadowCupcakeLargeTexture},
+};
+
+static const PcShadowCupcakeLayout *pc_shadow_cupcake_for_camera(int camera)
+{
+    for (unsigned index = 0u; index < 4u; ++index) {
+        if (kPcShadowCupcakes[index].camera == camera)
+            return &kPcShadowCupcakes[index];
+    }
+    return NULL;
+}
+
+static void pc_shadow_cupcake_drc_rect(const PcShadowCupcakeLayout *cupcake,
+                                       int *x, int *y, int *w, int *h)
+{
+    if (cupcake == NULL) return;
+    const int left = cupcake->source_x - cupcake->hotspot_x;
+    const int top = cupcake->source_y - cupcake->hotspot_y;
+    *x = PC_CAMERA_FEED_X + (left * PC_CAMERA_FEED_W) / PC_CAMERA_SOURCE_W;
+    *y = PC_CAMERA_FEED_Y + (top * PC_CAMERA_FEED_H) / PC_CAMERA_SOURCE_H;
+    *w = (cupcake->source_w * PC_CAMERA_FEED_W + PC_CAMERA_SOURCE_W - 1) /
+         PC_CAMERA_SOURCE_W;
+    *h = (cupcake->source_h * PC_CAMERA_FEED_H + PC_CAMERA_SOURCE_H - 1) /
+         PC_CAMERA_SOURCE_H;
+    if (*w < 1) *w = 1;
+    if (*h < 1) *h = 1;
+}
+
+static bool pc_shadow_cupcake_is_visible(const Game *game,
+                                         const PcShadowCupcakeLayout *cupcake)
+{
+    return cupcake != NULL && game->night == 3 &&
+           game->selected_camera == cupcake->camera &&
+           (sSecretTriggers.cupcake_mask & cupcake->collected_bit) == 0u;
+}
+
+static void pc_camera_draw_shadow_cupcake(const Game *game)
+{
+    const PcShadowCupcakeLayout *cupcake =
+        pc_shadow_cupcake_for_camera(game->selected_camera);
+    if (!pc_shadow_cupcake_is_visible(game, cupcake)) return;
+
+    int x = 0, y = 0, w = 0, h = 0;
+    pc_shadow_cupcake_drc_rect(cupcake, &x, &y, &w, &h);
+    texture_draw_rle(sOriginalUiPanelTargets, x, y, w, h, cupcake->texture);
+}
 
 static bool pc_camera_fidelity_has_hallucination(int camera)
 {
@@ -125,6 +206,11 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
                          PC_CAMERA_FEED_W, PC_CAMERA_FEED_H,
                          feed);
     }
+
+    /* The Shadow Cupcakes are separate Active objects in the PC MFA, created
+     * over the camera feed before the monitor UI. Keep them independent from
+     * camera backgrounds so collecting one removes only that object. */
+    pc_camera_draw_shadow_cupcake(game);
 
     /* Chica/Mangle/Puppet are exact PC full-camera composites; BB remains a
      * foreground object. All four use compact PC-derived RLE textures so the
