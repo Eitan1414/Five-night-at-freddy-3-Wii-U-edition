@@ -31,12 +31,10 @@ static void complete_draw_title(const Game *game)
     const int nightmare_y = 376;
     const int extra_y = 422;
 
-    /* Verified PC General Sprites ID 592 is NEW GAME. The converter is wired
-     * to that ID in the next asset pass; keep text as a safe fallback if an
-     * older generated bank is loaded. */
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       content_x + 67, new_y + 4, 3,
-                       "NEW GAME", COLOUR_WHITE);
+    /* Exact PC NEW GAME object (General Sprites image 592). */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 67, new_y, 152, 31,
+                     &gPcCompatTitleNewGameTexture);
 
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 67, load_y, 152, 31,
@@ -92,6 +90,13 @@ static void complete_draw_title(const Game *game)
                          &gPcCompatTitleStarTexture);
     }
 
+    /* Wii U-only settings stay outside the original menu rows so the PC title
+     * composition and Nightmare/Extra routing are not disturbed. */
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       content_x + 300, 440, 1,
+                       "R: WII U OPTIONS",
+                       GRAPHICS_RGB(135, 150, 132));
+
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 456, 456, 114, 13,
                      &gPcCompatTitleCopyrightTexture);
@@ -104,7 +109,7 @@ static void complete_draw_title(const Game *game)
 
     if (sFinishing.title_notice_frames > 0u) {
         graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                           content_x + 430, 440, 1,
+                           content_x + 430, 424, 1,
                            "EXTRA LOCKED",
                            GRAPHICS_RGB(155, 155, 145));
     }
