@@ -256,9 +256,90 @@ static void pc_systems_enforce_ventilation_error(Game *game)
     }
 }
 
+static int pc_title_item_count(void)
+{
+    /* Completing Night 5 reveals Nightmare and Extra as two independent rows. */
+    return progress_save_extras_unlocked() ? 4 : 2;
+}
+
+static void pc_systems_update_title(Game *game, const InputState *input)
+{
+    ++game->screen_frames;
+    if (sFinishing.title_notice_frames > 0u)
+        --sFinishing.title_notice_frames;
+
+    const int item_count = pc_title_item_count();
+    if (game->title_selection < 0 || game->title_selection >= item_count)
+        game->title_selection = 0;
+
+    if (input_was_pressed(input, GAME_BUTTON_UP)) {
+        game->title_selection =
+            (game->title_selection + item_count - 1) % item_count;
+        game->dirty = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
+        game->title_selection = (game->title_selection + 1) % item_count;
+        game->dirty = true;
+    }
+
+    if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+        input_was_pressed(input, GAME_BUTTON_START)) {
+        switch (game->title_selection) {
+            case 0:
+                /* New Game resets only the five-night Continue chain. PC bonus
+                 * unlocks, stars, Nightmare and Extras remain unlocked. */
+                progress_save_start_new_game();
+                sFinishing.mode = FINISHING_NONE;
+                finishing_stop_phone();
+                reset_night(game, 1);
+                return;
+
+            case 1:
+                sFinishing.mode = FINISHING_NONE;
+                finishing_stop_phone();
+                reset_night(game, progress_save_continue_night());
+                return;
+
+            case 2:
+                if (progress_save_extras_unlocked()) {
+                    sFinishing.mode = FINISHING_NONE;
+                    finishing_stop_phone();
+                    reset_night(game, 6);
+                    return;
+                }
+                break;
+
+            case 3:
+                if (progress_save_extras_unlocked()) {
+                    finishing_open_extras(game);
+                    return;
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        sFinishing.title_notice_frames = 180u;
+        game->dirty = true;
+    }
+
+    if ((game->screen_frames % 9u) == 0u ||
+        sFinishing.title_notice_frames > 0u) {
+        game->dirty = true;
+    }
+}
+
 static void pc_system_fidelity_update_game(Game *game,
                                            const InputState *input)
 {
+    /* Final title routing lives here so the old three-item compatibility menu
+     * cannot swallow Nightmare into Extra. */
+    if (game->screen == SCREEN_TITLE) {
+        pc_systems_update_title(game, input);
+        return;
+    }
+
     const bool lure_was_active = game->audio_lure_active;
     const bool repair_was_active = game->repairing;
     const int repair_target = game->repair_target;
