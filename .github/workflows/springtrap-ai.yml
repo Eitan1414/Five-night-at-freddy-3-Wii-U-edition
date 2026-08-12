@@ -1,0 +1,35 @@
+name: Springtrap AI Fidelity Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'source/game/springtrap_ai.c'
+      - 'source/game/springtrap_ai_base.inc'
+      - 'include/game/springtrap_ai.h'
+      - 'tests/springtrap_ai_test.c'
+      - '.github/workflows/springtrap-ai.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  springtrap-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile Springtrap state machine tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O2 \
+            -Iinclude \
+            source/game/springtrap_ai.c \
+            tests/springtrap_ai_test.c \
+            -o /tmp/springtrap-ai-test
+
+      - name: Run Springtrap state machine tests
+        run: /tmp/springtrap-ai-test
