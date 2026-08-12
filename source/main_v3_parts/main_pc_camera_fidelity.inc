@@ -33,7 +33,7 @@ static void pc_camera_draw_static(const Game *game)
     const int frame = (int)((game->night_frames / 2u) % 3u);
     const OriginalUiTextureId id = (OriginalUiTextureId)
         (ORIGINAL_UI_STATIC_0 + frame);
-    original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
+    original_ui_draw_texture(id, sOriginalUiPanelTargets,
                              PC_CAMERA_FEED_X, PC_CAMERA_FEED_Y,
                              PC_CAMERA_FEED_W, PC_CAMERA_FEED_H);
 }
@@ -44,7 +44,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
     switch (phantom) {
         case PHANTOM_BALLOON_BOY:
             /* BBpeek is a foreground object, not a full camera composite. */
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              PC_CAMERA_FEED_X + 104,
                              PC_CAMERA_FEED_Y + 18,
                              245, 205,
@@ -52,7 +52,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
             break;
         case PHANTOM_CHICA:
             /* MFA full-camera composite, General Sprites image 387. */
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
                              PC_CAMERA_FEED_W,
@@ -61,7 +61,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
             break;
         case PHANTOM_MANGLE:
             /* MFA full-camera composite, General Sprites image 38. */
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
                              PC_CAMERA_FEED_W,
@@ -70,7 +70,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
             break;
         case PHANTOM_PUPPET:
             /* MFA full-camera composite, General Sprites image 298. */
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
                              PC_CAMERA_FEED_W,
@@ -89,14 +89,14 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
     if (camera < 0 || camera >= CAMERA_COUNT)
         return;
 
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+    graphics_draw_rect(sOriginalUiPanelTargets,
                        PC_CAMERA_FEED_X, PC_CAMERA_FEED_Y,
                        PC_CAMERA_FEED_W, PC_CAMERA_FEED_H,
                        COLOUR_BLACK);
 
     if (game->camera_failed) {
         pc_camera_draw_static(game);
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_text(sOriginalUiPanelTargets,
                            PC_CAMERA_FEED_X + 118,
                            PC_CAMERA_FEED_Y + 106,
                            3, "VIDEO ERROR", COLOUR_RED);
@@ -120,7 +120,7 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
         feed = kCameraTextures[camera];
 
     if (feed != NULL) {
-        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+        texture_draw_rle(sOriginalUiPanelTargets,
                          PC_CAMERA_FEED_X, PC_CAMERA_FEED_Y,
                          PC_CAMERA_FEED_W, PC_CAMERA_FEED_H,
                          feed);
@@ -140,7 +140,7 @@ static void pc_camera_draw_map(const Game *game)
             ? ORIGINAL_UI_CAMERA_MAP_ALT
             : ORIGINAL_UI_CAMERA_MAP_BASE;
 
-    original_ui_draw_texture(map_id, GRAPHICS_TARGET_GAMEPAD,
+    original_ui_draw_texture(map_id, sOriginalUiPanelTargets,
                              591, 177, 252, 235);
     original_ui_draw_camera_nodes(game);
     original_ui_draw_radar(game);
@@ -148,14 +148,16 @@ static void pc_camera_draw_map(const Game *game)
 
 static void original_ui_draw_camera_feed(const Game *game)
 {
-    /* The office remains visible around the monitor, matching the PC layout. */
-    pc_draw_gamepad_office_background(game);
+    /* The TV office is already drawn by draw_office_tv(). The GamePad needs its
+     * own office copy only in mirrored mode. */
+    if ((sOriginalUiPanelTargets & GRAPHICS_TARGET_GAMEPAD) != 0u)
+        pc_draw_gamepad_office_background(game);
 
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+    graphics_draw_rect(sOriginalUiPanelTargets,
                        PC_MONITOR_PANEL_X, PC_MONITOR_PANEL_Y,
                        PC_MONITOR_PANEL_W, PC_MONITOR_PANEL_H,
                        GRAPHICS_RGB(0, 2, 1));
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+    graphics_draw_frame(sOriginalUiPanelTargets,
                         PC_MONITOR_PANEL_X, PC_MONITOR_PANEL_Y,
                         PC_MONITOR_PANEL_W, PC_MONITOR_PANEL_H,
                         2, GRAPHICS_RGB(52, 72, 52));
@@ -172,7 +174,7 @@ static void original_ui_draw_camera_feed(const Game *game)
 
     if (sFinishing.phone_active) {
         original_ui_draw_texture(ORIGINAL_UI_MUTE_CALL,
-                                 GRAPHICS_TARGET_GAMEPAD,
+                                 sOriginalUiPanelTargets,
                                  306, 100, 94, 22);
     }
 }
