@@ -184,10 +184,13 @@
  * non-final 200-count cake sequence after V7 sets its completion flag. */
 #include "main_v3_parts/main_pc_mfa_minigames_v8_render.inc"
 #include "main_v3_parts/main_pc_mfa_minigames_v8_update.inc"
+/* V9 keeps the extracted renderer active through the full Happiest Day finale
+ * and removes the last generic Wii U presentation overlays. */
+#include "main_v3_parts/main_pc_mfa_minigames_v9_render.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_v8_secret_render_override(game)) return;
+    if (pc_mfa_v9_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
