@@ -2,6 +2,12 @@
 
 static void pc_draw_springtrap_office(const Game *game)
 {
+    /* Night 1 has no Springtrap in the retail game.  springtrap_ai_reset()
+     * still initialises a camera slot for source/API stability, so every
+     * renderer must gate the character on the night configuration. */
+    if (!night_config(game->night)->springtrap_enabled)
+        return;
+
     const SpringtrapOfficeSide side = springtrap_ai_office_side(&game->springtrap);
     if (side == SPRINGTRAP_OFFICE_WINDOW && game->office_pan > 25) {
         texture_draw_rle(GRAPHICS_TARGET_TV,
