@@ -58,6 +58,24 @@ static void monitor_v2_update_transition(Game *game)
     game->dirty = true;
 }
 
+static void monitor_v2_play_panel_sounds(bool before_camera,
+                                         bool before_maintenance,
+                                         const Game *game)
+{
+    if (before_camera != game->camera_open) {
+        audio_play(game->camera_open
+                       ? AUDIO_CUE_CAMERA_OPEN
+                       : AUDIO_CUE_CAMERA_CLOSE,
+                   0.82f, false);
+    }
+    if (before_maintenance != game->maintenance_open) {
+        audio_play(game->maintenance_open
+                       ? AUDIO_CUE_MAINTENANCE_OPEN
+                       : AUDIO_CUE_MAINTENANCE_CLOSE,
+                   0.82f, false);
+    }
+}
+
 static void update_game(Game *game, const InputState *input)
 {
     const GameScreen before_screen = game->screen;
@@ -65,6 +83,9 @@ static void update_game(Game *game, const InputState *input)
     const bool before_maintenance = game->maintenance_open;
 
     original_ui_update_game_v1(game, input);
+
+    if (before_screen == SCREEN_OFFICE && game->screen == SCREEN_OFFICE)
+        monitor_v2_play_panel_sounds(before_camera, before_maintenance, game);
 
     if (sMonitorV2.assets_ready &&
         before_screen == SCREEN_OFFICE && game->screen == SCREEN_OFFICE &&
