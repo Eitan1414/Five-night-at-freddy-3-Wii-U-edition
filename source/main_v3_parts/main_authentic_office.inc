@@ -17,14 +17,14 @@ static void draw_authentic_office_tv(const Game *game)
     graphics_clear(GRAPHICS_TARGET_TV, COLOUR_BLACK);
 
     /*
-     * The supplied PC General Sprites panorama (203.png) is now the source of
-     * truth for the office background. It is generated at the exact 1120x430
-     * render size and split into row-RLE tiles so every tile stays within the
-     * renderer's 16-bit row-offset format.
+     * Use the compact Wii U-safe PC texture.  It is generated from the same
+     * PC General Sprites office image 203 as the former tiled panorama, but it
+     * stays in one validated TextureRle object and avoids the black-screen
+     * regression observed on hardware.
      */
-    pc_tiled_texture_draw(GRAPHICS_TARGET_TV,
-                          texture_x, 24, 1120, 430,
-                          &gPcOfficeTexture);
+    texture_draw_rle(GRAPHICS_TARGET_TV,
+                     texture_x, 24, 1120, 430,
+                     &gOfficeTexture);
 
     draw_springtrap_office(game);
     draw_authentic_office_fan(game, texture_x);
