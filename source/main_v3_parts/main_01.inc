@@ -55,7 +55,7 @@ static void game_init(Game *game)
 {
     memset(game, 0, sizeof(*game));
     game->screen = SCREEN_WARNING;
-    game->seed = 0xF3A30A10u;
+    game->seed = runtime_seed_now();
     game->unlocked_night = 1;
     game->night = 1;
     game->selected_camera = 2;
