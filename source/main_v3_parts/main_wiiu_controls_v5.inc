@@ -125,7 +125,7 @@ static int wiiu_v5_mangle_touched_button(const InputState *input)
 static bool wiiu_v5_try_mangle_touch(Game *game, const InputState *input)
 {
     if (!wiiu_v5_camera_secret_allowed(game) ||
-        game->night < 2 || game->selected_camera != 6) {
+        game->night != 2 || game->selected_camera != 6) {
         sWiiUCameraSecretTouch.mangle_step = 0u;
         return false;
     }
@@ -170,7 +170,8 @@ static bool wiiu_v5_try_bb_touch(Game *game, const InputState *input)
 
 static bool wiiu_v5_try_puppet_touch(Game *game, const InputState *input)
 {
-    if (!wiiu_v5_camera_secret_allowed(game) || game->selected_camera != 2) {
+    if (!wiiu_v5_camera_secret_allowed(game) ||
+        game->night != 5 || game->selected_camera != 2) {
         sWiiUCameraSecretTouch.puppet_tap_armed = false;
         return false;
     }
