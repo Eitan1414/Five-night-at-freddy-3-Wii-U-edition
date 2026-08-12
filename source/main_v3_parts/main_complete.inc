@@ -125,7 +125,9 @@ static bool complete_try_camera_trigger(Game *game,
         return true;
     }
 
-    if (game->night == 5 && game->selected_camera == 2 && mode_held) {
+    /* Unlike the other hidden minigames, Happiest Day is not night-specific.
+     * CAM03 + the Puppet drawing may enter it on any playable night. */
+    if (game->selected_camera == 2 && mode_held) {
         complete_consume(filtered, GAME_BUTTON_CONFIRM | GAME_BUTTON_MODE);
         complete_start_hidden_minigame(game, SECRET_MINIGAME_HAPPIEST_DAY);
         return true;
