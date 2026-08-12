@@ -19,8 +19,26 @@ TRANSPARENT_INDEX = 255
 CAMERA_IDS = (106, 97, 104, 105, 109, 98, 100, 112, 115, 116)
 SPRINGTRAP_CAMERA_IDS = (295, 146, 121, 122, 119, 117, 126, 127, 130, 140)
 
-# The five images used by the PC title frame's MFA object "Active 2".
+# The five full 1024x768 images used by the PC title frame's MFA object
+# "Active 2". They are backgrounds, not Springtrap cut-outs.
 TITLE_IDS = (862, 855, 864, 859, 861)
+
+# Exact title/menu image-bank objects from the supplied PC MFA / General Sprites.
+TITLE_UI_ASSETS = (
+    ("gPcCompatTitleLogoTexture", 155, 240),
+    ("gPcCompatTitleNewGameTexture", 594, 300),
+    ("gPcCompatTitleLoadGameTexture", 301, 300),
+    ("gPcCompatTitleNightmareTexture", 625, 300),
+    ("gPcCompatTitleExtraTexture", 826, 220),
+    ("gPcCompatTitleStarTexture", 840, 80),
+    ("gPcCompatTitleCursorTexture", 833, 80),
+    ("gPcCompatTitleCopyrightTexture", 849, 220),
+    ("gPcCompatTitleResetTexture", 1021, 300),
+    ("gPcCompatTitleVersionTexture", 289, 120),
+)
+
+# Transparent horizontal/glitch-line animation frames used by the PC title.
+TITLE_LINE_IDS = (863, 865, 866, 867, 868, 869, 871)
 
 # symbol, PC General Sprites id, maximum output dimension
 PHANTOMS = (
@@ -64,8 +82,8 @@ def indexed_rgba(image: Image.Image) -> tuple[list[int], bytes]:
     for index in range(COLOURS):
         base = index * 3
         r = raw[base] if base < len(raw) else 0
-        g = raw[base + 1] if base < len(raw) else 0
-        b = raw[base + 2] if base < len(raw) else 0
+        g = raw[base + 1] if base + 1 < len(raw) else 0
+        b = raw[base + 2] if base + 2 < len(raw) else 0
         palette.append((r << 24) | (g << 16) | (b << 8) | 0xFF)
     palette.extend([0x000000FF] * (256 - len(palette)))
     pixels = bytearray(quantized.tobytes())
@@ -172,9 +190,11 @@ def main() -> None:
     args = parser.parse_args()
     root = args.sprite_root
 
-    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS}
+    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS,
+                *TITLE_LINE_IDS}
     required.update(sprite_id for _, sprite_id, _ in PHANTOMS)
     required.update(sprite_id for _, sprite_id in PHANTOM_CAMERA_COMPOSITES)
+    required.update(sprite_id for _, sprite_id, _ in TITLE_UI_ASSETS)
     missing = sorted(sprite_id for sprite_id in required
                      if not (root / f"{sprite_id}.png").is_file())
     if missing:
@@ -205,9 +225,24 @@ def main() -> None:
         symbol = f"gPcCompatTitleSpringtrap{index}Texture"
         emit_texture(source, symbol,
                      fit(load(root, sprite_id), max_dimension=384),
-                     f"PC title Active 2 image ID {sprite_id} from fivenights3-94.mfa")
+                     f"PC full title background image ID {sprite_id} from fivenights3-94.mfa")
         header.append(f"extern const TextureRle {symbol};\n")
         title_symbols.append(symbol)
+
+    for symbol, sprite_id, max_dimension in TITLE_UI_ASSETS:
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_dimension=max_dimension),
+                     f"PC title UI image ID {sprite_id} from fivenights3-94.mfa")
+        header.append(f"extern const TextureRle {symbol};\n")
+
+    title_line_symbols = []
+    for index, sprite_id in enumerate(TITLE_LINE_IDS):
+        symbol = f"gPcCompatTitleLines{index}Texture"
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_size=(384, 288)),
+                     f"PC title scan/glitch line image ID {sprite_id}")
+        header.append(f"extern const TextureRle {symbol};\n")
+        title_line_symbols.append(symbol)
 
     camera_symbols = []
     for index, sprite_id in enumerate(CAMERA_IDS, start=1):
@@ -239,6 +274,10 @@ def main() -> None:
                      f"PC MFA full-camera composite, General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
 
+    source.append("const TextureRle *const gPcCompatTitleLineTextures[7] = {\n")
+    source.extend(f"    &{symbol},\n" for symbol in title_line_symbols)
+    source.append("};\n\n")
+
     source.append("const TextureRle *const gPcCompatCameraTextures[10] = {\n")
     source.extend(f"    &{symbol},\n" for symbol in camera_symbols)
     source.append("};\n\n")
@@ -255,7 +294,8 @@ def main() -> None:
     )
 
     header.extend([
-        "\nextern const TextureRle *const gPcCompatCameraTextures[10];\n",
+        "\nextern const TextureRle *const gPcCompatTitleLineTextures[7];\n",
+        "extern const TextureRle *const gPcCompatCameraTextures[10];\n",
         "extern const TextureRle *const gPcCompatSpringtrapCameraTextures[10];\n",
         "extern const JumpscareSequence gPcCompatPhantomPuppetAnimation;\n\n",
         "/* Historical renderer names now resolve to PC-derived objects. */\n",
