@@ -31,9 +31,9 @@ static void complete_draw_title(const Game *game)
     const int nightmare_y = 376;
     const int extra_y = 422;
 
-    /* ID 594 in the dump is REBOOT ALL, not NEW GAME. Until the converter's
-     * New Game entry is switched to verified ID 592, keep this single row as
-     * text rather than rendering a knowingly wrong PC sprite. */
+    /* Verified PC General Sprites ID 592 is NEW GAME. The converter is wired
+     * to that ID in the next asset pass; keep text as a safe fallback if an
+     * older generated bank is loaded. */
     graphics_draw_text(GRAPHICS_TARGET_BOTH,
                        content_x + 67, new_y + 4, 3,
                        "NEW GAME", COLOUR_WHITE);
@@ -46,29 +46,24 @@ static void complete_draw_title(const Game *game)
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
                          content_x + 67, nightmare_y, 161, 31,
                          &gPcCompatTitleNightmareTexture);
-    }
-
-    if (progress_save_extras_unlocked()) {
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
                          content_x + 67, extra_y, 91, 31,
                          &gPcCompatTitleExtraTexture);
-    } else {
-        graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                           content_x + 67, extra_y + 7, 2,
-                           "EXTRA", GRAPHICS_RGB(66, 72, 64));
     }
 
-    /* Recovery keeps current menu routing for this hardware test. */
     char night_number[8];
     snprintf(night_number, sizeof(night_number), "%d",
-             game->unlocked_night > 5 ? 5 : game->unlocked_night);
+             progress_save_continue_night());
     graphics_draw_text(GRAPHICS_TARGET_BOTH,
                        content_x + 226, load_y + 9, 2,
                        night_number, COLOUR_WHITE);
 
-    /* Exact glowing PC cursor block (image 833). */
-    const int marker_y = game->title_selection == 0
-        ? new_y : (game->title_selection == 1 ? load_y : extra_y);
+    /* Exact glowing PC cursor block (image 833). Nightmare and Extra are two
+     * distinct menu rows after Night 5, matching the original title routing. */
+    int marker_y = new_y;
+    if (game->title_selection == 1) marker_y = load_y;
+    else if (game->title_selection == 2) marker_y = nightmare_y;
+    else if (game->title_selection == 3) marker_y = extra_y;
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 36, marker_y, 21, 31,
                      &gPcCompatTitleCursorTexture);
