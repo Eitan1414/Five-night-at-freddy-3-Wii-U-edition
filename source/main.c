@@ -1,4 +1,5 @@
 #include "game/progress_save.h"
+#include "game/wiiu_controls.h"
 #include "assets/ending_assets.h"
 #include "assets/original_ui_assets.h"
 #include "assets/monitor_v2_assets.h"
@@ -22,7 +23,8 @@
 
 /* Retail PC restart timing is six seconds for one system and twelve seconds
  * for Reboot All. Override the old fast Wii U scaffolding before the function
- * that consumes these constants is compiled. */
+ * that consumes these constants is compiled. The final MFA system layer later
+ * maps its randomized 0..10 progress onto these compatibility durations. */
 #undef REPAIR_SINGLE_FRAMES
 #undef REPAIR_ALL_FRAMES
 #define REPAIR_SINGLE_FRAMES (6u * 60u)
@@ -37,9 +39,8 @@
 #include "main_v3_parts/main_phantom_visuals.inc"
 
 /* The legacy layer used ten seconds without player input as a ventilation
- * failure. In the PC game ten seconds idle instead contributes to Springtrap's
- * aggression. Let the idle counter continue and disable that old shortcut;
- * the real ventilation-health failure is applied by main_pc_system_fidelity. */
+ * failure. In the PC game the independent no-screen counter instead degrades
+ * ventilation health and contributes to Springtrap aggression. */
 #undef IDLE_VENT_FAILURE_FRAMES
 #define IDLE_VENT_FAILURE_FRAMES UINT32_MAX
 #include "main_v3_parts/main_02.inc"
@@ -201,7 +202,12 @@ static void pc_audio_shutdown_with_extra_sfx(void)
  * replacing only the old deterministic night-system failures. */
 #include "main_v3_parts/main_pc_system_fidelity.inc"
 
-#define update_game pc_system_fidelity_update_game
+/* Wii U-only presentation/control choices are layered last. They never alter
+ * the PC AI/state model; they only route the panel displays and translate DRC
+ * touch presses into the same gameplay actions. */
+#include "main_v3_parts/main_wiiu_controls.inc"
+
+#define update_game wiiu_control_update_game
 #define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
 #define draw_office_tv draw_authentic_office_tv
 #define draw_ventilation_overlay pc_draw_ventilation_overlay
