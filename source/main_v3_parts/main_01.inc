@@ -192,10 +192,9 @@ static void play_random_lure(Game *game)
 
 static void trigger_audio_lure(Game *game)
 {
-    if (!night_config(game->night)->springtrap_enabled) {
-        set_message(game, MESSAGE_AUDIO_NO_TARGET);
-        return;
-    }
+    /* MFA group 225 does not exclude Night 1. With AI=0 the audio system takes
+     * no health damage and there is no Springtrap target, but the sound still
+     * plays and the seven-step recharge counter is consumed. */
     if (game->audio_failed) {
         set_message(game, MESSAGE_AUDIO_FAILED);
         return;
