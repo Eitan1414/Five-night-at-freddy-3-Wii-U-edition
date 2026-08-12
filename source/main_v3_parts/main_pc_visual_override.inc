@@ -18,21 +18,12 @@ static void pc_original_ui_texture_draw_rle(uint32_t targets,
     texture_draw_rle(targets, x, y, width, height, texture);
 }
 
+/* Implemented later by main_authentic_office.inc after all character helpers
+ * are available. Keeping one office compositor is what makes IDENTICAL truly
+ * identical instead of copying only the panorama background to the DRC. */
+static void draw_authentic_office_targets(const Game *game, uint32_t targets);
+
 static void pc_draw_gamepad_office_background(const Game *game)
 {
-    const int texture_x = -133 + game->office_pan;
-    graphics_clear(GRAPHICS_TARGET_GAMEPAD, COLOUR_BLACK);
-
-    /* gOfficeTexture is mapped by pc_compat_visuals.h to the compact texture
-     * generated from PC General Sprites office image 203. */
-    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                     texture_x, 24, 1120, 430,
-                     &gOfficeTexture);
-
-    /* Keep the subtle PC monitor/CRT feel without covering the office. */
-    for (int y = 30; y < 454; y += 12) {
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
-                           0, y, GRAPHICS_LOGICAL_WIDTH, 1,
-                           GRAPHICS_RGB(4, 8, 5));
-    }
+    draw_authentic_office_targets(game, GRAPHICS_TARGET_GAMEPAD);
 }
