@@ -26,7 +26,7 @@ TITLE_IDS = (862, 855, 864, 859, 861)
 # Exact title/menu image-bank objects from the supplied PC MFA / General Sprites.
 TITLE_UI_ASSETS = (
     ("gPcCompatTitleLogoTexture", 155, 240),
-    ("gPcCompatTitleNewGameTexture", 594, 300),
+    ("gPcCompatTitleNewGameTexture", 592, 300),
     ("gPcCompatTitleLoadGameTexture", 301, 300),
     ("gPcCompatTitleNightmareTexture", 625, 300),
     ("gPcCompatTitleExtraTexture", 826, 220),
