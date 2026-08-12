@@ -1,4 +1,13 @@
-/* High-resolution PC visual bridge for the original monitor UI. */
+/*
+ * Wii U-safe PC visual bridge.
+ *
+ * The build generates two PC-derived banks: a large tiled bank and a compact
+ * single-RLE compatibility bank.  The tiled bank is useful for offline/high-
+ * resolution work, but on real Wii U hardware it caused black office frames
+ * and camera-specific crashes.  The historical symbols already resolve to
+ * compact textures generated from the same PC General Sprites sources, so the
+ * final night renderer deliberately uses those stable objects directly.
+ */
 static void pc_original_ui_texture_draw_rle(uint32_t targets,
                                             int x,
                                             int y,
@@ -6,76 +15,24 @@ static void pc_original_ui_texture_draw_rle(uint32_t targets,
                                             int height,
                                             const TextureRle *texture)
 {
-    /* Replace every verified monitor background with its PC composite. */
-    for (int camera_index = 0; camera_index < 10; ++camera_index) {
-        if (texture == kCameraTextures[camera_index]) {
-            const PcTiledTexture *pc_texture =
-                pc_core_camera_texture(camera_index);
-            if (pc_texture != NULL) {
-                pc_tiled_texture_draw(targets, x, y, width, height, pc_texture);
-                return;
-            }
-            break;
-        }
-    }
-
-    /*
-     * The old authentic-monitor layer placed PSX Springtrap cut-outs over a
-     * camera background. General Sprites contains the real PC composite for
-     * every CAM state, so replace the complete feed instead of layering the
-     * lower-resolution PSX sprite.
-     */
-    for (int camera_index = 0; camera_index < 10; ++camera_index) {
-        if (texture == gOriginalCameraSpringtrapTextures[camera_index]) {
-            const PcTiledTexture *pc_texture =
-                pc_springtrap_camera_texture(camera_index);
-            if (pc_texture != NULL) {
-                pc_tiled_texture_draw(targets,
-                                      28, 65, 532, 295,
-                                      pc_texture);
-                return;
-            }
-            break;
-        }
-    }
-
-    /* Exact PC full-frame Phantom camera appearances. */
-    if (texture == &gPhantomChicaCameraTexture) {
-        pc_tiled_texture_draw(targets,
-                              28, 65, 532, 295,
-                              &gPcPhantomChicaCameraTexture);
-        return;
-    }
-    if (texture == &gPhantomMangleCameraTexture) {
-        pc_tiled_texture_draw(targets,
-                              28, 65, 532, 295,
-                              &gPcPhantomMangleCameraTexture);
-        return;
-    }
-
-    /* Transparent PC Phantom objects used by monitor hallucinations. */
-    if (texture == &gPhantomBBCameraTexture ||
-        texture == &gPhantomBBOfficeTexture) {
-        texture_draw_rle(targets, x, y, width, height,
-                         &gPcPhantomBBTexture);
-        return;
-    }
-    if (texture == &gPhantomPuppetCameraTexture ||
-        texture == &gPhantomPuppetOfficeTexture) {
-        texture_draw_rle(targets, x, y, width, height,
-                         &gPcPhantomPuppetTexture);
-        return;
-    }
-    if (texture == &gPhantomChicaOfficeTexture) {
-        texture_draw_rle(targets, x, y, width, height,
-                         &gPcPhantomChicaOfficeTexture);
-        return;
-    }
-    if (texture == &gPhantomFoxyOfficeTexture) {
-        texture_draw_rle(targets, x, y, width, height,
-                         &gPcPhantomFoxyOfficeTexture);
-        return;
-    }
-
     texture_draw_rle(targets, x, y, width, height, texture);
+}
+
+static void pc_draw_gamepad_office_background(const Game *game)
+{
+    const int texture_x = -133 + game->office_pan;
+    graphics_clear(GRAPHICS_TARGET_GAMEPAD, COLOUR_BLACK);
+
+    /* gOfficeTexture is mapped by pc_compat_visuals.h to the compact texture
+     * generated from PC General Sprites office image 203. */
+    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                     texture_x, 24, 1120, 430,
+                     &gOfficeTexture);
+
+    /* Keep the subtle PC monitor/CRT feel without covering the office. */
+    for (int y = 30; y < 454; y += 12) {
+        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                           0, y, GRAPHICS_LOGICAL_WIDTH, 1,
+                           GRAPHICS_RGB(4, 8, 5));
+    }
 }
