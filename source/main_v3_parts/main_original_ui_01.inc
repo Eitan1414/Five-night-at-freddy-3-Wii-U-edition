@@ -11,6 +11,10 @@ typedef struct OriginalUiState {
 
 static OriginalUiState sOriginalUi;
 
+/* Final Wii U control modes can route the PC panel to TV, GamePad, or both
+ * without duplicating the original camera/maintenance renderer. */
+static uint32_t sOriginalUiPanelTargets = GRAPHICS_TARGET_GAMEPAD;
+
 static const MapPoint kOriginalCameraUiPoints[CAMERA_COUNT] = {
     {656, 369}, {753, 356}, {817, 320}, {817, 269}, {742, 302},
     {653, 303}, {653, 253}, {716, 242}, {755, 201}, {817, 218},
@@ -97,7 +101,7 @@ static void update_game(Game *game, const InputState *input)
 static void original_ui_draw_toolbar(void)
 {
     original_ui_draw_texture(ORIGINAL_UI_TOOLBAR,
-                             GRAPHICS_TARGET_GAMEPAD,
+                             sOriginalUiPanelTargets,
                              414, 0, 440, 122);
 }
 
@@ -111,13 +115,13 @@ static void original_ui_draw_camera_nodes(const Game *game)
             : GRAPHICS_RGB(215, 220, 215);
         char label[8];
         snprintf(label, sizeof(label), "C%02d", camera + 1);
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_rect(sOriginalUiPanelTargets,
                            point.x - 20, point.y - 9, 40, 18,
                            GRAPHICS_RGB(2, 4, 3));
-        graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_frame(sOriginalUiPanelTargets,
                             point.x - 20, point.y - 9, 40, 18, 1,
                             colour);
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_text(sOriginalUiPanelTargets,
                            point.x - 15, point.y - 4, 1, label, colour);
     }
 }
@@ -138,15 +142,15 @@ static void original_ui_draw_radar(const Game *game)
 
     if (camera >= 0 && camera < CAMERA_COUNT) {
         const MapPoint point = kOriginalCameraUiPoints[camera];
-        graphics_draw_ellipse(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_ellipse(sOriginalUiPanelTargets,
                               point.x, point.y, 8, 8, COLOUR_RED);
-        graphics_draw_ellipse(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_ellipse(sOriginalUiPanelTargets,
                               point.x, point.y, 3, 3, COLOUR_WHITE);
     } else if (springtrap_ai_office_side(&game->springtrap)
                != SPRINGTRAP_OFFICE_NONE) {
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 18, 403, 190, 28,
+        graphics_draw_rect(sOriginalUiPanelTargets, 18, 403, 190, 28,
                            GRAPHICS_RGB(2, 5, 3));
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 34, 413, 1,
+        graphics_draw_text(sOriginalUiPanelTargets, 34, 413, 1,
                            "RADAR: OFFICE", COLOUR_RED);
     }
 }
@@ -157,28 +161,28 @@ static void original_ui_draw_static(const Game *game, bool full_screen)
     const OriginalUiTextureId id = (OriginalUiTextureId)
         (ORIGINAL_UI_STATIC_0 + frame);
     if (full_screen) {
-        original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
+        original_ui_draw_texture(id, sOriginalUiPanelTargets,
                                  0, 0, 854, 480);
     } else {
-        original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
+        original_ui_draw_texture(id, sOriginalUiPanelTargets,
                                  28, 65, 532, 295);
     }
 }
 
 static void original_ui_draw_camera_map(const Game *game)
 {
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 577, 155, 277, 305,
+    graphics_draw_rect(sOriginalUiPanelTargets, 577, 155, 277, 305,
                        GRAPHICS_RGB(1, 3, 2));
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD, 577, 155, 277, 305, 2,
+    graphics_draw_frame(sOriginalUiPanelTargets, 577, 155, 277, 305, 2,
                         GRAPHICS_RGB(63, 94, 67));
     const OriginalUiTextureId map_id =
         ((game->night_frames / 12u) & 1u)
             ? ORIGINAL_UI_CAMERA_MAP_ALT
             : ORIGINAL_UI_CAMERA_MAP_BASE;
-    original_ui_draw_texture(map_id, GRAPHICS_TARGET_GAMEPAD,
+    original_ui_draw_texture(map_id, sOriginalUiPanelTargets,
                              591, 177, 252, 235);
     original_ui_draw_camera_nodes(game);
-    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 601, 427, 1,
+    graphics_draw_text(sOriginalUiPanelTargets, 601, 427, 1,
                        "D-PAD: CAMERA", GRAPHICS_RGB(188, 205, 184));
 }
 
@@ -211,13 +215,13 @@ static void original_ui_draw_authentic_springtrap(const Game *game)
 
     const int jitter =
         (int) ((game->night_frames / 3u + (uint32_t) camera * 5u) % 3u) - 1;
-    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+    texture_draw_rle(sOriginalUiPanelTargets,
                      x[camera] + jitter,
                      y[camera] - jitter,
                      width[camera], height[camera], texture);
 
     if ((game->night_frames % 29u) < 2u) {
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_rect(sOriginalUiPanelTargets,
                            28, y[camera] + height[camera] / 2,
                            532, 2, GRAPHICS_RGB(105, 130, 104));
     }
@@ -235,12 +239,12 @@ static void original_ui_draw_authentic_phantom(const Game *game)
         case PHANTOM_BALLOON_BOY: {
             const int bob = phantom_bob(game->night_frames, 24u, 7);
             if (game->phantoms.bb_seen_frames >= 22u) {
-                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                texture_draw_rle(sOriginalUiPanelTargets,
                                  138 - bob, 52 - bob,
                                  334 + bob * 2, 314 + bob * 2,
                                  &gPhantomBBOfficeTexture);
             } else {
-                texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+                texture_draw_rle(sOriginalUiPanelTargets,
                                  174 + bob / 2, 82 - bob,
                                  262, 262,
                                  &gPhantomBBCameraTexture);
@@ -248,19 +252,19 @@ static void original_ui_draw_authentic_phantom(const Game *game)
             break;
         }
         case PHANTOM_CHICA:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              350 + flicker, 210 - flicker,
                              184, 108,
                              &gPhantomChicaCameraTexture);
             break;
         case PHANTOM_MANGLE:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              56 + flicker, 64 - flicker,
                              400, 286,
                              &gPhantomMangleCameraTexture);
             break;
         case PHANTOM_PUPPET:
-            texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+            texture_draw_rle(sOriginalUiPanelTargets,
                              205 + flicker, 45 - flicker,
                              205, 320,
                              &gPhantomPuppetCameraTexture);
@@ -271,7 +275,7 @@ static void original_ui_draw_authentic_phantom(const Game *game)
 
     if ((game->night_frames % 11u) < 3u) {
         const int offset = (int) (game->night_frames % 47u);
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_rect(sOriginalUiPanelTargets,
                            28, 86 + offset * 5 % 250,
                            532, 3, GRAPHICS_RGB(121, 143, 120));
     }
@@ -279,37 +283,37 @@ static void original_ui_draw_authentic_phantom(const Game *game)
 
 static void original_ui_draw_camera_feed(const Game *game)
 {
-    graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(1, 4, 2));
+    graphics_clear(sOriginalUiPanelTargets, GRAPHICS_RGB(1, 4, 2));
     original_ui_draw_toolbar();
     if (sFinishing.phone_active)
         original_ui_draw_texture(ORIGINAL_UI_MUTE_CALL,
-                                 GRAPHICS_TARGET_GAMEPAD,
+                                 sOriginalUiPanelTargets,
                                  306, 100, 94, 22);
 
     char label[16];
     snprintf(label, sizeof(label), "CAM %02d", game->selected_camera + 1);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 17, 13, 194, 33,
+    graphics_draw_rect(sOriginalUiPanelTargets, 17, 13, 194, 33,
                        GRAPHICS_RGB(1, 5, 2));
-    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 26, 23, 2,
+    graphics_draw_text(sOriginalUiPanelTargets, 26, 23, 2,
                        label, COLOUR_GREEN);
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD, 18, 55, 552, 315, 3,
+    graphics_draw_frame(sOriginalUiPanelTargets, 18, 55, 552, 315, 3,
                         GRAPHICS_RGB(61, 112, 62));
 
     if (game->camera_failed) {
         original_ui_draw_static(game, false);
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 74, 155, 438, 70,
+        graphics_draw_rect(sOriginalUiPanelTargets, 74, 155, 438, 70,
                            GRAPHICS_RGB(2, 2, 2));
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 107, 173, 4,
+        graphics_draw_text(sOriginalUiPanelTargets, 107, 173, 4,
                            "VIDEO ERROR", COLOUR_RED);
     } else {
-        graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 28, 65, 532, 295,
+        graphics_draw_rect(sOriginalUiPanelTargets, 28, 65, 532, 295,
                            COLOUR_BLACK);
-        texture_draw_rle(GRAPHICS_TARGET_GAMEPAD, 28, 65, 532, 295,
+        texture_draw_rle(sOriginalUiPanelTargets, 28, 65, 532, 295,
                          kCameraTextures[game->selected_camera]);
         original_ui_draw_authentic_springtrap(game);
         original_ui_draw_authentic_phantom(game);
         for (int y_scan = 70; y_scan < 360; y_scan += 9)
-            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+            graphics_draw_rect(sOriginalUiPanelTargets,
                                28, y_scan, 532, 1,
                                GRAPHICS_RGB(5, 10, 6));
     }
@@ -317,15 +321,15 @@ static void original_ui_draw_camera_feed(const Game *game)
     original_ui_draw_camera_map(game);
     original_ui_draw_radar(game);
 
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 17, 381, 545, 80,
+    graphics_draw_rect(sOriginalUiPanelTargets, 17, 381, 545, 80,
                        GRAPHICS_RGB(1, 5, 2));
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD, 17, 381, 545, 80, 2,
+    graphics_draw_frame(sOriginalUiPanelTargets, 17, 381, 545, 80, 2,
                         GRAPHICS_RGB(48, 83, 50));
-    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 29, 394, 2,
+    graphics_draw_text(sOriginalUiPanelTargets, 29, 394, 2,
                        message_text(game),
                        game->message == MESSAGE_AUDIO_FAILED
                            ? COLOUR_RED : COLOUR_GREEN);
-    graphics_draw_text(GRAPHICS_TARGET_GAMEPAD, 29, 435, 1,
+    graphics_draw_text(sOriginalUiPanelTargets, 29, 435, 1,
                        "A: PLAY AUDIO   R: VENT MAP   X/Y: CLOSE",
                        GRAPHICS_RGB(171, 198, 166));
 
