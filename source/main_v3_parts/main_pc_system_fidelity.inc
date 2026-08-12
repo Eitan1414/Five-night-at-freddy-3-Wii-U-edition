@@ -13,6 +13,8 @@ typedef struct PcSystemFidelityState {
     int camera_health;
     uint32_t camera_seconds;
     int ventilation_health;
+    uint32_t repair_progress;
+    int repair_target;
     uint32_t hallucination_rng;
 } PcSystemFidelityState;
 
@@ -55,6 +57,7 @@ static void pc_systems_reset_for_night(int night)
 {
     memset(&sPcSystems, 0, sizeof(sPcSystems));
     sPcSystems.night = night;
+    sPcSystems.repair_target = -1;
     sPcSystems.hallucination_rng =
         0xA341316Cu ^ ((uint32_t)night * 0x9E3779B9u);
     sPcHallucinationCameraMask = 0u;
@@ -98,6 +101,82 @@ static void pc_systems_apply_completed_repair(const Game *game,
     if (repaired_target == MAINT_VENTILATION ||
         repaired_target == MAINT_REBOOT_ALL)
         pc_systems_reset_ventilation();
+
+    sPcSystems.repair_progress = 0u;
+    sPcSystems.repair_target = -1;
+}
+
+static uint32_t pc_systems_repair_interval(int target)
+{
+    /* MFA groups 309/310: single-system repairs advance every 1000 ms;
+     * Reboot All advances every 2000 ms. */
+    return target == MAINT_REBOOT_ALL ? 120u : 60u;
+}
+
+static void pc_systems_map_repair_progress(Game *game)
+{
+    const uint32_t duration = repair_duration(game);
+    if (duration == 0u) return;
+
+    if (sPcSystems.repair_progress >= 10u) {
+        /* Let the legacy completion path fire in this same update so all of its
+         * normal state/audio/UI hooks remain intact. */
+        game->repair_frames = duration - 1u;
+        return;
+    }
+
+    uint32_t mapped =
+        (duration * sPcSystems.repair_progress) / 10u;
+    if (mapped >= duration)
+        mapped = duration - 1u;
+    game->repair_frames = mapped;
+}
+
+static void pc_systems_prepare_existing_repair(Game *game)
+{
+    if (!game->repairing) return;
+
+    if (sPcSystems.repair_target != game->repair_target) {
+        sPcSystems.repair_target = game->repair_target;
+        sPcSystems.repair_progress = 0u;
+    }
+
+    /* Clickteam Every timers are tied to the event sheet, not restarted by a
+     * click. The nested legacy update increments night_frames once this turn,
+     * so inspect that upcoming frame to preserve the source phase. */
+    const uint32_t next_frame = game->night_frames + 1u;
+    const uint32_t interval =
+        pc_systems_repair_interval(game->repair_target);
+    if (interval != 0u && (next_frame % interval) == 0u) {
+        sPcSystems.repair_progress +=
+            1u + (pc_systems_random() % 2u);
+        if (sPcSystems.repair_progress > 10u)
+            sPcSystems.repair_progress = 10u;
+    }
+
+    pc_systems_map_repair_progress(game);
+}
+
+static void pc_systems_capture_new_repair(Game *game)
+{
+    if (!game->repairing) return;
+
+    sPcSystems.repair_target = game->repair_target;
+    sPcSystems.repair_progress = 0u;
+
+    /* Groups 304-307 occur before 309/310. If the click itself lands on an
+     * Every boundary, the first +1/+2 progress tick happens immediately later
+     * in the same Clickteam event loop. */
+    const uint32_t interval =
+        pc_systems_repair_interval(game->repair_target);
+    if (interval != 0u &&
+        game->night_frames != 0u &&
+        (game->night_frames % interval) == 0u) {
+        sPcSystems.repair_progress =
+            1u + (pc_systems_random() % 2u);
+    }
+
+    pc_systems_map_repair_progress(game);
 }
 
 static void pc_systems_update_camera(Game *game)
@@ -340,6 +419,13 @@ static void pc_system_fidelity_update_game(Game *game,
     const PhantomId phantom_before =
         phantoms_active_jumpscare(&game->phantoms);
 
+    /* If a repair was already running when this update began, advance the
+     * source cursor on the upcoming global Every boundary and map its 0..10
+     * progress onto the legacy repair_frames bar. At 10 the legacy completion
+     * path is primed to finish later in this same update. */
+    if (repair_was_active)
+        pc_systems_prepare_existing_repair(game);
+
     /* Disable the old deterministic frame-based system failures. The legacy
      * update still owns the normal gameplay ordering, but these three flags
      * prevent its scaffolding thresholds from firing. */
@@ -351,6 +437,9 @@ static void pc_system_fidelity_update_game(Game *game,
 
     if (sPcSystems.night != game->night)
         pc_systems_reset_for_night(game->night);
+
+    if (!repair_was_active && game->repairing)
+        pc_systems_capture_new_repair(game);
 
     /* PC Phantom jumpscares enter the ventilation fade immediately. Natural
      * health depletion begins at B=0 and therefore keeps the short alarm/red
