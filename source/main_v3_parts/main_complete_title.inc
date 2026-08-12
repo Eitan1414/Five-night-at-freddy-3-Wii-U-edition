@@ -1,72 +1,97 @@
 static void complete_draw_title(const Game *game)
 {
     static const char *const items[TITLE_ITEM_COUNT] = {
-        "NEW GAME", "LOAD GAME", "EXTRAS"
+        "NEW GAME", "LOAD GAME", "EXTRA"
     };
     const int frame = title_frame_index(game);
     const int glitch = frame == 0
-        ? (int) ((game->seed >> 8) % 7u) - 3
+        ? (int)((game->seed >> 8) % 7u) - 3
         : (frame - 2) * 3;
 
-    graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(1, 4, 2));
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 0, 410, 480,
-                       GRAPHICS_RGB(2, 7, 4));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 47, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 119, 7, "N", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 191, 7, "A", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 263, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 349, 8, "3", COLOUR_GREEN);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 120, 72, 2,
-                       "FIVE NIGHTS AT FREDDYS 3", COLOUR_GREEN);
+    /* PC title: black field, stacked title at left, Springtrap emerging from
+     * darkness at right and simple text selection.  Do not use the previous
+     * Wii U green cards/filled selection rectangles. */
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
 
-    char continue_text[32];
-    snprintf(continue_text, sizeof(continue_text),
-             "CURRENT NIGHT: %d", game->unlocked_night);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 119, 1,
-                       continue_text, GRAPHICS_RGB(74, 111, 73));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 145, 1,
-                       progress_save_load_status_text(),
-                       progress_save_load_status_is_error()
-                           ? COLOUR_RED : GRAPHICS_RGB(74, 111, 73));
-
-    const uint32_t star = GRAPHICS_RGB(225, 219, 103);
-    if (progress_save_is_night_completed(5))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 288, 40, 4, "*", star);
-    if (progress_save_is_night_completed(6))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 320, 40, 4, "*", star);
-    if (progress_save_good_ending_unlocked())
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 352, 40, 4, "*", star);
-    if (progress_save_aggressive_nightmare_completed())
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 384, 40, 4, "*", star);
-
-    for (int item = 0; item < TITLE_ITEM_COUNT; ++item) {
-        const int y = 284 + item * 48;
-        if (item == game->title_selection) {
-            graphics_draw_rect(GRAPHICS_TARGET_BOTH, 106, y - 10, 262, 36,
-                               GRAPHICS_RGB(31, 72, 37));
-            graphics_draw_rect(GRAPHICS_TARGET_BOTH, 106, y - 10, 5, 36,
-                               GRAPHICS_RGB(129, 207, 121));
-        }
-        uint32_t colour = item == game->title_selection
-            ? COLOUR_WHITE : GRAPHICS_RGB(112, 139, 113);
-        if (item == 2 && !progress_save_extras_unlocked())
-            colour = GRAPHICS_RGB(70, 78, 70);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 124, y, 3,
-                           items[item], colour);
-        if (item == 2 && !progress_save_extras_unlocked())
-            graphics_draw_text(GRAPHICS_TARGET_BOTH, 300, y + 5, 1,
-                               "LOCKED", GRAPHICS_RGB(91, 67, 62));
+    /* Subtle green horizontal interference, kept behind every title object. */
+    for (int y = 4; y < GRAPHICS_LOGICAL_HEIGHT; y += 7) {
+        const uint32_t phase =
+            (game->screen_frames + (uint32_t)y * 3u) % 31u;
+        const uint32_t shade = phase < 3u ? 18u : 7u;
+        graphics_draw_rect(GRAPHICS_TARGET_BOTH,
+                           0, y, GRAPHICS_LOGICAL_WIDTH, 1,
+                           GRAPHICS_RGB(2, shade, 4));
     }
 
-    if (sFinishing.title_notice_frames > 0u)
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 112, 445, 1,
-                           "COMPLETE NIGHT 5 TO UNLOCK EXTRAS", COLOUR_RED);
-
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 410, 0, 444, 480, COLOUR_BLACK);
-    texture_draw_rle(GRAPHICS_TARGET_BOTH, 410 + glitch, 16, 444, 448,
+    /* The five PC title animation images are generated from the MFA's
+     * original Active 2 image IDs. */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     398 + glitch, -12, 472, 516,
                      kTitleFrames[frame]);
-    draw_scanlines(GRAPHICS_TARGET_BOTH,
-                   game->seed + game->screen_frames);
+
+    const uint32_t title_main = GRAPHICS_RGB(196, 207, 194);
+    const uint32_t title_dim = GRAPHICS_RGB(102, 115, 100);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 52, 42, 4,
+                       "FIVE", title_main);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 52, 82, 4,
+                       "NIGHTS", title_main);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 52, 122, 3,
+                       "AT", title_dim);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 52, 156, 4,
+                       "FREDDY'S", title_main);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 52, 203, 5,
+                       "3", GRAPHICS_RGB(107, 149, 98));
+
+    for (int item = 0; item < TITLE_ITEM_COUNT; ++item) {
+        const int y = 300 + item * 42;
+        const bool selected = item == game->title_selection;
+        uint32_t colour = selected
+            ? COLOUR_WHITE : GRAPHICS_RGB(106, 116, 104);
+        if (item == 2 && !progress_save_extras_unlocked())
+            colour = selected
+                ? GRAPHICS_RGB(143, 143, 137)
+                : GRAPHICS_RGB(68, 72, 67);
+
+        if (selected) {
+            graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                               48, y, 2, ">>", COLOUR_WHITE);
+        }
+        graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                           91, y, 3, items[item], colour);
+    }
+
+    char continue_text[16];
+    snprintf(continue_text, sizeof(continue_text),
+             "NIGHT %d", game->unlocked_night);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       274, 344, 1,
+                       continue_text,
+                       GRAPHICS_RGB(104, 118, 103));
+
+    const uint32_t star = GRAPHICS_RGB(216, 216, 202);
+    int star_x = 305;
+    if (progress_save_is_night_completed(5)) {
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, star_x, 42, 3, "*", star);
+        star_x += 28;
+    }
+    if (progress_save_is_night_completed(6)) {
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, star_x, 42, 3, "*", star);
+        star_x += 28;
+    }
+    if (progress_save_good_ending_unlocked()) {
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, star_x, 42, 3, "*", star);
+        star_x += 28;
+    }
+    if (progress_save_aggressive_nightmare_completed())
+        graphics_draw_text(GRAPHICS_TARGET_BOTH, star_x, 42, 3, "*", star);
+
+    if (sFinishing.title_notice_frames > 0u) {
+        graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                           51, 434, 1,
+                           "COMPLETE NIGHT 5 TO UNLOCK EXTRA",
+                           GRAPHICS_RGB(145, 145, 137));
+    }
+
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
