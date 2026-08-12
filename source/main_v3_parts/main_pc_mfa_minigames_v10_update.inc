@@ -32,11 +32,19 @@ static void pc_mfa_v10_exact_update_game(Game *game,
                                  before_delivered, before_follow_event);
 
     /* V8 behaviour: normal cake sequences finish at 200 and then allow the
-     * regular completed-frame path to advance. Happiest Day owns a separate
-     * final_sequence and therefore remains latched until its 1300-count event. */
+     * regular completed-frame path to advance. */
     if (sSecret.completed && sPcMfaV7.cake_sequence &&
         !sPcMfaV7.final_sequence && sPcMfaV7.sequence_frames >= 200u) {
         sPcMfaV7.cake_sequence = false;
+        game->dirty = true;
+    }
+
+    /* Marion group 49 sets win at the final cake counter >=1300. Once that
+     * source event has fired, release the final-sequence latch so the completed
+     * hold/return path can advance instead of ticking the 1300 event forever. */
+    if (sSecret.completed && sPcMfaV7.final_sequence &&
+        sPcMfaV7.sequence_frames >= 1300u) {
+        sPcMfaV7.final_sequence = false;
         game->dirty = true;
     }
 
