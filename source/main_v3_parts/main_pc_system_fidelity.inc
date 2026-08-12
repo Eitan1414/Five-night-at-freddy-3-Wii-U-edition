@@ -172,21 +172,41 @@ static void pc_systems_finish_pending_audio_failure(Game *game)
     game->dirty = true;
 }
 
-static void pc_systems_update_ventilation_health(Game *game)
+static void pc_systems_damage_ventilation(Game *game)
 {
-    if (game->ventilation_failed) return;
-
-    const uint32_t interval = pc_ventilation_health_interval(game->night);
-    if (interval == UINT32_MAX) return;
-
-    if (++sPcSystems.ventilation_health_frames < interval) return;
-    sPcSystems.ventilation_health_frames = 0u;
-
     if (sPcSystems.ventilation_health > -10)
         --sPcSystems.ventilation_health;
 
     if (sPcSystems.ventilation_health <= -10)
         set_ventilation_failure(game);
+}
+
+static void pc_systems_update_ventilation_health(Game *game)
+{
+    if (game->ventilation_failed) return;
+
+    /* MFA groups 330-334: independent natural health drain by AI level. */
+    const uint32_t interval = pc_ventilation_health_interval(game->night);
+    if (interval != UINT32_MAX) {
+        if (++sPcSystems.ventilation_health_frames >= interval) {
+            sPcSystems.ventilation_health_frames = 0u;
+            pc_systems_damage_ventilation(game);
+            if (game->ventilation_failed) return;
+        }
+    }
+
+    /* MFA groups 746-749 are a second, independent drain path. The no-screen
+     * counter gains one every 1000 ms, is reset by either system screen, and
+     * begins subtracting one ventilation-health point per second only when the
+     * counter is strictly greater than 10. springtrap.office_idle_frames is now
+     * the exact same source counter, so the first damage tick is 11 seconds.
+     * Night 1 is explicitly excluded by group 748. */
+    const uint32_t no_screen_frames = game->springtrap.office_idle_frames;
+    if (game->night > 1 &&
+        no_screen_frames >= 11u * 60u &&
+        (no_screen_frames % 60u) == 0u) {
+        pc_systems_damage_ventilation(game);
+    }
 }
 
 static void pc_systems_begin_hallucination(Game *game)
