@@ -19,6 +19,15 @@ TRANSPARENT_INDEX = 255
 CAMERA_IDS = (106, 97, 104, 105, 109, 98, 100, 112, 115, 116)
 SPRINGTRAP_CAMERA_IDS = (295, 146, 121, 122, 119, 117, 126, 127, 130, 140)
 
+# Shadow Cupcake actives recovered from fivenights3-94.mfa. The create actions
+# place cupcake 1/2/3/4 on CAM03/CAM06/CAM02/CAM04 respectively. Cupcakes 1
+# and 2 share image 999; 3 uses 959 and 4 uses 1000.
+SHADOW_CUPCAKES = (
+    ("gPcCompatShadowCupcakeLargeTexture", 999),
+    ("gPcCompatShadowCupcakeSmallTexture", 959),
+    ("gPcCompatShadowCupcakeMediumTexture", 1000),
+)
+
 # The five full 1024x768 images used by the PC title frame's MFA object
 # "Active 2". They are backgrounds, not Springtrap cut-outs.
 TITLE_IDS = (862, 855, 864, 859, 861)
@@ -192,6 +201,7 @@ def main() -> None:
 
     required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS,
                 *TITLE_LINE_IDS}
+    required.update(sprite_id for _, sprite_id in SHADOW_CUPCAKES)
     required.update(sprite_id for _, sprite_id, _ in PHANTOMS)
     required.update(sprite_id for _, sprite_id in PHANTOM_CAMERA_COMPOSITES)
     required.update(sprite_id for _, sprite_id, _ in TITLE_UI_ASSETS)
@@ -261,6 +271,14 @@ def main() -> None:
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         springtrap_symbols.append(symbol)
+
+    # Keep the Shadow Cupcake source art at its native PC dimensions. The camera
+    # renderer scales its source-space rectangle with the same 825x650 ->
+    # 432x240 transform as the PC feed, preserving the MFA create coordinates.
+    for symbol, sprite_id in SHADOW_CUPCAKES:
+        emit_texture(source, symbol, load(root, sprite_id).convert("RGBA"),
+                     f"PC Shadow Cupcake image ID {sprite_id} from fivenights3-94.mfa")
+        header.append(f"extern const TextureRle {symbol};\n")
 
     for symbol, sprite_id, max_dimension in PHANTOMS:
         emit_texture(source, symbol,
