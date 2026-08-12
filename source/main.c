@@ -190,9 +190,13 @@
 /* V10 keeps the MFA update alive after goodend and removes the Wii U-only
  * confirmation prompt when a hidden night minigame finishes. */
 #include "main_v3_parts/main_pc_mfa_minigames_v10_update.inc"
+/* V11 keeps Happiest Day as a hidden sixth scene but matches the retail PC
+ * Extras page by exposing only the five replayable secret minigames. */
+#include "main_v3_parts/main_pc_mfa_minigames_v11_extras.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
+    if (pc_mfa_v11_extras_render_override(game)) return;
     if (pc_mfa_v9_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
@@ -207,7 +211,7 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 /* Final retail-PC maintenance/system counters. This wrapper deliberately sits
  * after the minigame/cheat layers so it can preserve those features while
  * replacing only the old deterministic night-system failures. */
-#define pc_mfa_v8_exact_update_game pc_mfa_v10_exact_update_game
+#define pc_mfa_v8_exact_update_game pc_mfa_v11_exact_update_game
 #include "main_v3_parts/main_pc_system_fidelity.inc"
 #undef pc_mfa_v8_exact_update_game
 
