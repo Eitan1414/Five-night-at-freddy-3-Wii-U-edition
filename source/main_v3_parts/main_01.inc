@@ -234,7 +234,9 @@ static int camera_in_direction(int current, int horizontal, int vertical)
 
 static void restart_camera_static(void)
 {
-    audio_restart(AUDIO_CUE_STATIC, 0.28f, true);
+    /* The PC monitor uses short static bursts on open/switch. Do not keep the
+       sample looping for the entire time the monitor is raised. */
+    audio_restart(AUDIO_CUE_STATIC, 0.28f, false);
 }
 
 static void open_cameras(Game *game)
