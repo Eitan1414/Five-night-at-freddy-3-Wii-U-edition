@@ -96,6 +96,32 @@ static bool wiiu_v5_double_tap(Game *game,
     return false;
 }
 
+static int wiiu_v5_mangle_touched_button(const InputState *input)
+{
+    if (input == NULL || !input->touch_valid || !input->touch_pressed)
+        return -1;
+
+    /* The original four mouse targets are only a few DRC pixels apart after
+     * the 825x650 feed is reduced to 432x240. Use the closest exact MFA centre
+     * inside one fingertip-sized cluster instead of overlapping four boxes. */
+    int best = -1;
+    int best_distance = 0x7FFFFFFF;
+    for (int index = 0; index < 4; ++index) {
+        const MapPoint point =
+            wiiu_v5_camera_source_to_drc(kMfaMangleArcadeButtons[index]);
+        const int dx = input->touch_x - point.x;
+        const int dy = input->touch_y - point.y;
+        if (dx < -18 || dx > 18 || dy < -18 || dy > 18)
+            continue;
+        const int distance = dx * dx + dy * dy;
+        if (distance < best_distance) {
+            best_distance = distance;
+            best = index;
+        }
+    }
+    return best;
+}
+
 static bool wiiu_v5_try_mangle_touch(Game *game, const InputState *input)
 {
     if (!wiiu_v5_camera_secret_allowed(game) ||
@@ -103,18 +129,8 @@ static bool wiiu_v5_try_mangle_touch(Game *game, const InputState *input)
         sWiiUCameraSecretTouch.mangle_step = 0u;
         return false;
     }
-    if (input == NULL || !input->touch_pressed || !input->touch_valid)
-        return false;
 
-    int touched = -1;
-    for (int index = 0; index < 4; ++index) {
-        if (wiiu_v5_touch_near_camera_source(input,
-                                             kMfaMangleArcadeButtons[index],
-                                             12, 12)) {
-            touched = index;
-            break;
-        }
-    }
+    const int touched = wiiu_v5_mangle_touched_button(input);
     if (touched < 0) return false;
 
     /* Array order is already the PC sequence TL -> BL -> TR -> BR. */
