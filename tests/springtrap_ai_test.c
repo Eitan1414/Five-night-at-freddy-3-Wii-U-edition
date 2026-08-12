@@ -30,6 +30,33 @@ static SpringtrapEvent tick_until_event(SpringtrapAI *ai,
     return event;
 }
 
+/* Force one MFA movement opportunity without altering the actual action roll.
+ * This makes attack-chain tests deterministic in timing while still exercising
+ * the same Random(4)+1 branch used by gameplay. */
+static SpringtrapEvent force_opportunity(SpringtrapAI *ai,
+                                         int night,
+                                         bool camera_open,
+                                         bool maintenance_open,
+                                         bool blinded)
+{
+    springtrap_ai_set_runtime_state(ai,
+                                    camera_open,
+                                    maintenance_open,
+                                    2,
+                                    false,
+                                    0u);
+    ai->move_counter = 100u;
+    ai->one_second_frames = 59u;
+    ai->aggressive = true;
+    return springtrap_ai_update(ai,
+                                night,
+                                1,
+                                0u,
+                                SPRINGTRAP_VENT_NONE,
+                                false,
+                                blinded);
+}
+
 static void test_night1_is_absent(void)
 {
     SpringtrapAI ai;
@@ -152,6 +179,142 @@ static void test_phantom_force_move(void)
     assert(!ai.force_move_pending);
 }
 
+static void test_window_waits_for_system_screen(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xD8123412u);
+    ai.kind = SPRINGTRAP_LOCATION_OFFICE_WINDOW;
+    ai.camera = -1;
+
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        SpringtrapEvent event = force_opportunity(&ai, 5, false, false, false);
+        assert((event.flags & SPRINGTRAP_EVENT_ATTACK) == 0u);
+        assert(ai.kind == SPRINGTRAP_LOCATION_OFFICE_WINDOW);
+    }
+
+    bool advanced = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, true, false, false);
+        if (ai.kind == SPRINGTRAP_LOCATION_HALL_RUN) {
+            advanced = true;
+            break;
+        }
+    }
+    assert(advanced);
+}
+
+static void test_hall_run_reaches_hidden_stage(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xE9234523u);
+    ai.kind = SPRINGTRAP_LOCATION_HALL_RUN;
+    ai.camera = -1;
+
+    bool advanced = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, false, false, false);
+        if (ai.kind == SPRINGTRAP_LOCATION_HALL_HIDDEN) {
+            advanced = true;
+            break;
+        }
+    }
+    assert(advanced);
+}
+
+static void test_hidden_stage_waits_then_advances(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xFA345634u);
+    ai.kind = SPRINGTRAP_LOCATION_HALL_HIDDEN;
+    ai.camera = -1;
+
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, false, false, false);
+        assert(ai.kind == SPRINGTRAP_LOCATION_HALL_HIDDEN);
+    }
+
+    bool advanced = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, false, true, false);
+        if (ai.kind == SPRINGTRAP_LOCATION_CAMERA ||
+            ai.kind == SPRINGTRAP_LOCATION_OFFICE_LEFT) {
+            advanced = true;
+            if (ai.kind == SPRINGTRAP_LOCATION_CAMERA)
+                assert(ai.camera == 0); /* CAM01 */
+            break;
+        }
+    }
+    assert(advanced);
+}
+
+static void test_cam01_waits_then_enters_attack_chain(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xAB456745u);
+    ai.kind = SPRINGTRAP_LOCATION_CAMERA;
+    ai.camera = 0; /* CAM01 */
+
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, false, false, false);
+        assert(ai.kind == SPRINGTRAP_LOCATION_CAMERA);
+        assert(ai.camera == 0);
+    }
+
+    bool advanced = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, true, false, false);
+        if (ai.kind == SPRINGTRAP_LOCATION_HALL_HIDDEN ||
+            ai.kind == SPRINGTRAP_LOCATION_OFFICE_LEFT) {
+            advanced = true;
+            break;
+        }
+    }
+    assert(advanced);
+}
+
+static void test_left_stage_waits_then_attacks(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xBC567856u);
+    ai.kind = SPRINGTRAP_LOCATION_OFFICE_LEFT;
+    ai.camera = -1;
+
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        SpringtrapEvent event = force_opportunity(&ai, 5, false, false, false);
+        assert((event.flags & SPRINGTRAP_EVENT_ATTACK) == 0u);
+        assert(ai.kind == SPRINGTRAP_LOCATION_OFFICE_LEFT);
+    }
+
+    bool attacked = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        SpringtrapEvent event = force_opportunity(&ai, 5, false, true, false);
+        if ((event.flags & SPRINGTRAP_EVENT_ATTACK) != 0u) {
+            attacked = true;
+            assert(ai.kind == SPRINGTRAP_LOCATION_OFFICE_INSIDE);
+            break;
+        }
+    }
+    assert(attacked);
+}
+
+static void test_blackout_can_advance_cam01(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0xCD678967u);
+    ai.kind = SPRINGTRAP_LOCATION_CAMERA;
+    ai.camera = 0;
+
+    bool advanced = false;
+    for (int attempt = 0; attempt < 64; ++attempt) {
+        (void)force_opportunity(&ai, 5, false, false, true);
+        if (ai.kind != SPRINGTRAP_LOCATION_CAMERA || ai.camera != 0) {
+            advanced = true;
+            break;
+        }
+    }
+    assert(advanced);
+}
+
 int main(void)
 {
     test_night1_is_absent();
@@ -161,6 +324,12 @@ int main(void)
     test_sealed_vent_returns_to_source();
     test_unsealed_vent14_attacks_office();
     test_phantom_force_move();
+    test_window_waits_for_system_screen();
+    test_hall_run_reaches_hidden_stage();
+    test_hidden_stage_waits_then_advances();
+    test_cam01_waits_then_enters_attack_chain();
+    test_left_stage_waits_then_attacks();
+    test_blackout_can_advance_cam01();
     puts("Springtrap AI fidelity tests passed");
     return 0;
 }
