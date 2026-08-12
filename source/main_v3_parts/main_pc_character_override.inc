@@ -1,5 +1,10 @@
 /* PC character bridge: replace PSX/placeholder office art in the final renderer. */
 
+/* The authentic office renderer changes this target while drawing the TV or a
+ * mirrored GamePad copy. Character code must never hard-wire BOTH: doing so
+ * leaked Phantom Puppet onto the DRC in TOUCH/TV ONLY modes. */
+static uint32_t sPcOfficeTargets = GRAPHICS_TARGET_TV;
+
 static void pc_draw_springtrap_office(const Game *game)
 {
     /* Night 1 has no Springtrap in the retail game.  springtrap_ai_reset()
@@ -10,11 +15,11 @@ static void pc_draw_springtrap_office(const Game *game)
 
     const SpringtrapOfficeSide side = springtrap_ai_office_side(&game->springtrap);
     if (side == SPRINGTRAP_OFFICE_WINDOW && game->office_pan > 25) {
-        texture_draw_rle(GRAPHICS_TARGET_TV,
+        texture_draw_rle(sPcOfficeTargets,
                          646, 77, 164, 362,
                          &gPcSpringtrapOfficeWindowTexture);
     } else if (side == SPRINGTRAP_OFFICE_LEFT && game->office_pan < -25) {
-        texture_draw_rle(GRAPHICS_TARGET_TV,
+        texture_draw_rle(sPcOfficeTargets,
                          22, 72, 170, 374,
                          &gPcSpringtrapOfficeLeftTexture);
     }
@@ -53,7 +58,7 @@ static void pc_draw_phantom_office(const Game *game)
          * (698,768) relative to the original 2000x768 office panorama. Image
          * 302 has hotspot (156,708), giving top-left (542,60). The PC office
          * panorama is rendered at 1120x430, i.e. a uniform 0.56 scale. */
-        texture_draw_rle(GRAPHICS_TARGET_TV,
+        texture_draw_rle(sPcOfficeTargets,
                          texture_x + 304, 58,
                          175, 397,
                          &gPcPhantomFoxyOfficeTexture);
@@ -75,7 +80,7 @@ static void pc_draw_phantom_office(const Game *game)
              * accumulator instead of the old hand-authored 5 px/frame slide. */
             const int x = 760 -
                 (int) (game->phantoms.freddy_path_eighths / 8u);
-            texture_draw_rle(GRAPHICS_TARGET_TV,
+            texture_draw_rle(sPcOfficeTargets,
                              x, 126,
                              190, 255,
                              frame);
@@ -86,7 +91,7 @@ static void pc_draw_phantom_office(const Game *game)
         /* MFA object "chica 2": image 399. Creation hotspot (4,2) with image
          * hotspot (-202,-114) resolves to office top-left (206,116), scaled
          * with the same 0.56 PC-panorama transform. */
-        texture_draw_rle(GRAPHICS_TARGET_TV,
+        texture_draw_rle(sPcOfficeTargets,
                          texture_x + 115, 89,
                          362, 366,
                          &gPcPhantomChicaOfficeTexture);
@@ -97,7 +102,7 @@ static void pc_draw_phantom_office(const Game *game)
          * 202 hotspot is (83,103). This yields top-left (1035,409) in the
          * original 2000x768 office panorama. Draw the actual PC sprite and
          * let the AI/path timer own its lifetime; no synthetic glitch bars. */
-        texture_draw_rle(GRAPHICS_TARGET_TV,
+        texture_draw_rle(sPcOfficeTargets,
                          texture_x + 580, 253,
                          94, 115,
                          &gPcPhantomMangleOfficeTexture);
@@ -105,7 +110,7 @@ static void pc_draw_phantom_office(const Game *game)
 
     if (phantoms_puppet_active(&game->phantoms)) {
         /* PC image-bank frame 320 (MFA object "phantom head"). */
-        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+        texture_draw_rle(sPcOfficeTargets,
                          102, 5, 650, 465,
                          &gPcPhantomPuppetTexture);
     }
