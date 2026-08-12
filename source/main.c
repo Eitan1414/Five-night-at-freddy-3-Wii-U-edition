@@ -212,8 +212,9 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 #include "main_v3_parts/main_wiiu_controls.inc"
 #include "main_v3_parts/main_wiiu_controls_v2.inc"
 #include "main_v3_parts/main_wiiu_controls_v3.inc"
+#include "main_v3_parts/main_wiiu_controls_v4.inc"
 
-#define update_game wiiu_control_update_game_v2
+#define update_game wiiu_control_update_game_v4
 #define fnaf3_full_audio_render_game wiiu_control_nonoffice_render
 #define draw_office_tv draw_authentic_office_tv
 #define draw_ventilation_overlay pc_draw_ventilation_overlay
