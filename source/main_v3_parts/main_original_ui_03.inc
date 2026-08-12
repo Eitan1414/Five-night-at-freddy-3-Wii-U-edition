@@ -41,16 +41,16 @@ static void original_ui_draw_maintenance_sprite(OriginalUiTextureId id,
         height = (int)(((uint32_t)texture->height * (uint32_t)width) /
                        (uint32_t)texture->width);
     }
-    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+    texture_draw_rle(sOriginalUiPanelTargets,
                      x, y, width, height, texture);
 }
 
 static void original_ui_draw_maintenance_cursor(int x, int y)
 {
     const uint32_t colour = GRAPHICS_RGB(224, 238, 219);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x, y + 13, 18, 3, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x + 12, y + 8, 3, 13, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, x + 15, y + 11, 3, 7, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x, y + 13, 18, 3, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x + 12, y + 8, 3, 13, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x + 15, y + 11, 3, 7, colour);
 }
 
 static void original_ui_draw_maintenance(const Game *game)
@@ -63,12 +63,15 @@ static void original_ui_draw_maintenance(const Game *game)
         MAINT_EXIT,
     };
 
-    /* Keep the office visible around the PC System Restart panel. */
-    pc_draw_gamepad_office_background(game);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+    /* TV already has the PC office. In mirrored mode only, copy the same office
+     * to the GamePad before drawing the System Restart overlay on both. */
+    if ((sOriginalUiPanelTargets & GRAPHICS_TARGET_GAMEPAD) != 0u)
+        pc_draw_gamepad_office_background(game);
+
+    graphics_draw_rect(sOriginalUiPanelTargets,
                        214, 48, 604, 390,
                        GRAPHICS_RGB(0, 1, 0));
-    graphics_draw_frame(GRAPHICS_TARGET_GAMEPAD,
+    graphics_draw_frame(sOriginalUiPanelTargets,
                         214, 48, 604, 390, 2,
                         GRAPHICS_RGB(48, 67, 48));
 
@@ -83,7 +86,7 @@ static void original_ui_draw_maintenance(const Game *game)
         if (selected) original_ui_draw_maintenance_cursor(252, y);
 
         if (item == MAINT_EXIT) {
-            graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+            graphics_draw_text(sOriginalUiPanelTargets,
                                291, y + 8, 3, "EXIT",
                                selected ? COLOUR_WHITE
                                         : GRAPHICS_RGB(153, 171, 151));
@@ -100,12 +103,12 @@ static void original_ui_draw_maintenance(const Game *game)
                                             352, 376, 330, 31);
         const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
         for (int dot = 0; dot < dots; ++dot) {
-            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+            graphics_draw_rect(sOriginalUiPanelTargets,
                                640 + dot * 13, 395, 6, 6,
                                COLOUR_WHITE);
         }
     } else {
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
+        graphics_draw_text(sOriginalUiPanelTargets,
                            369, 414, 1,
                            "UP/DOWN   A REBOOT   B CLOSE",
                            GRAPHICS_RGB(105, 125, 103));
@@ -127,13 +130,16 @@ static void original_ui_draw_transition(void)
     }
     const OriginalUiTextureId id = (OriginalUiTextureId)
         (ORIGINAL_UI_TRANSITION_0 + sOriginalUi.transition_frame);
-    original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
+    original_ui_draw_texture(id, sOriginalUiPanelTargets,
                              174, 76, 674, 379);
 }
 
 static void original_ui_draw_office(Game *game)
 {
     game->dirty = false;
+    sOriginalUiPanelTargets = wiiu_control_panel_targets();
+
+    /* The television always owns the main game presentation. */
     draw_office_tv(game);
 
     if (game->maintenance_open)
@@ -143,9 +149,8 @@ static void original_ui_draw_office(Game *game)
             original_ui_draw_vent_map(game);
         else
             original_ui_draw_camera_feed(game);
-    } else {
-        /* The GamePad now shows the real PC office instead of the temporary
-         * green "OFFICE CONTROL" debug screen. */
+    } else if (wiiu_controls_mode() == WIIU_CONTROL_MIRROR) {
+        /* Identical mode keeps the office itself on both displays too. */
         pc_draw_gamepad_office_background(game);
     }
 
@@ -154,11 +159,21 @@ static void original_ui_draw_office(Game *game)
     if (phantoms_active_jumpscare(&game->phantoms) == PHANTOM_NONE)
         original_ui_draw_transition();
     finishing_draw_phone_overlay();
+
+    /* Last GamePad pass is deliberate: in TOUCH/TV modes it erases any shared
+     * overlays and leaves exactly the requested black/contextual DRC image. */
+    wiiu_control_draw_gamepad(game);
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
 static void render_game(Game *game)
 {
+    if (sWiiUOptionsOpen) {
+        game->dirty = false;
+        wiiu_draw_options(game);
+        return;
+    }
+
     if (!sOriginalUi.assets_ready || game->screen != SCREEN_OFFICE) {
         fnaf3_full_audio_render_game(game);
         return;
@@ -191,6 +206,9 @@ int main(int argc, char **argv)
 
     Game game;
     game_init(&game);
+    /* game_init mounts storage through progress_save_init; load the separate
+     * Wii U control preference only after that mount exists. */
+    wiiu_controls_init();
     (void) audio_init();
 
     render_game(&game);
