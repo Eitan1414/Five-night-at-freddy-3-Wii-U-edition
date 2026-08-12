@@ -187,6 +187,9 @@
 /* V9 keeps the extracted renderer active through the full Happiest Day finale
  * and removes the last generic Wii U presentation overlays. */
 #include "main_v3_parts/main_pc_mfa_minigames_v9_render.inc"
+/* V10 keeps the MFA update alive after goodend and removes the Wii U-only
+ * confirmation prompt when a hidden night minigame finishes. */
+#include "main_v3_parts/main_pc_mfa_minigames_v10_update.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
@@ -204,7 +207,9 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 /* Final retail-PC maintenance/system counters. This wrapper deliberately sits
  * after the minigame/cheat layers so it can preserve those features while
  * replacing only the old deterministic night-system failures. */
+#define pc_mfa_v8_exact_update_game pc_mfa_v10_exact_update_game
 #include "main_v3_parts/main_pc_system_fidelity.inc"
+#undef pc_mfa_v8_exact_update_game
 
 /* Wii U-only presentation/control choices are layered last. They never alter
  * the PC AI/state model; they only route the panel displays and translate DRC
