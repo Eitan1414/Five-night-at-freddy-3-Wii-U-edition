@@ -170,8 +170,10 @@ static bool wiiu_v5_try_bb_touch(Game *game, const InputState *input)
 
 static bool wiiu_v5_try_puppet_touch(Game *game, const InputState *input)
 {
-    if (!wiiu_v5_camera_secret_allowed(game) ||
-        game->night != 5 || game->selected_camera != 2) {
+    /* Happiest Day is the exception to the night-specific secret triggers: on
+     * PC the Puppet drawing on CAM03 can be double-clicked on any playable
+     * night. Keep only the camera/monitor restrictions here. */
+    if (!wiiu_v5_camera_secret_allowed(game) || game->selected_camera != 2) {
         sWiiUCameraSecretTouch.puppet_tap_armed = false;
         return false;
     }
