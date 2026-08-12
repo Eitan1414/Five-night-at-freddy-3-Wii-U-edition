@@ -22,12 +22,14 @@ typedef enum AchievementId {
 void progress_save_init(int *unlocked_night);
 void progress_save_shutdown(void);
 
+void progress_save_start_new_game(void);
 void progress_save_complete_night(int completed_night,
                                   int *unlocked_night);
 void progress_save_complete_secret_minigame(int minigame);
 void progress_save_complete_aggressive_nightmare(void);
 
 int progress_save_highest_unlocked_night(void);
+int progress_save_continue_night(void);
 bool progress_save_is_night_completed(int night);
 bool progress_save_extras_unlocked(void);
 uint8_t progress_save_secret_minigames_mask(void);
