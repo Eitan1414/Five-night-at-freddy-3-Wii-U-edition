@@ -84,15 +84,14 @@ static void monitor_v2_draw_camera_controls(void)
 {
     if (!sMonitorV2.assets_ready) return;
 
-    /* PC layout: Play Audio and Map Toggle are stacked low on the monitor,
-     * immediately to the left of the map.  They remain visible while the
-     * camera feed itself flashes static. */
+    /* PC layout: the two square controls are stacked below the camera image,
+     * immediately left of the floor map. */
     monitor_v2_draw_texture(MONITOR_V2_PLAY_AUDIO,
                             GRAPHICS_TARGET_GAMEPAD,
-                            452, 316, 118, 64);
+                            360, 312, 118, 64);
     monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
                             GRAPHICS_TARGET_GAMEPAD,
-                            441, 386, 140, 70);
+                            349, 382, 140, 70);
 }
 
 static void monitor_v2_draw_vent_controls(void)
@@ -102,7 +101,7 @@ static void monitor_v2_draw_vent_controls(void)
     /* The ventilation map uses the map-toggle control, not Play Audio. */
     monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
                             GRAPHICS_TARGET_GAMEPAD,
-                            441, 386, 140, 70);
+                            349, 382, 140, 70);
 }
 
 /* Keep the historical helper name for the final camera fidelity layer. */
