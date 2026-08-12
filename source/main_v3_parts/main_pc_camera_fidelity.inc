@@ -43,6 +43,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
 {
     switch (phantom) {
         case PHANTOM_BALLOON_BOY:
+            /* BBpeek is a foreground object, not a full camera composite. */
             texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
                              PC_CAMERA_FEED_X + 104,
                              PC_CAMERA_FEED_Y + 18,
@@ -50,6 +51,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
                              &gPhantomBBCameraTexture);
             break;
         case PHANTOM_CHICA:
+            /* MFA full-camera composite, General Sprites image 387. */
             texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
                              PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
@@ -58,6 +60,7 @@ static void pc_camera_draw_compact_phantom(const Game *game,
                              &gPhantomChicaCameraTexture);
             break;
         case PHANTOM_MANGLE:
+            /* MFA full-camera composite, General Sprites image 38. */
             texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
                              PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
@@ -66,10 +69,12 @@ static void pc_camera_draw_compact_phantom(const Game *game,
                              &gPhantomMangleCameraTexture);
             break;
         case PHANTOM_PUPPET:
+            /* MFA full-camera composite, General Sprites image 298. */
             texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
-                             PC_CAMERA_FEED_X + 74,
+                             PC_CAMERA_FEED_X,
                              PC_CAMERA_FEED_Y,
-                             285, PC_CAMERA_FEED_H,
+                             PC_CAMERA_FEED_W,
+                             PC_CAMERA_FEED_H,
                              &gPhantomPuppetCameraTexture);
             break;
         default:
@@ -121,9 +126,9 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
                          feed);
     }
 
-    /* Chica/Mangle/Puppet replace most of the camera view; BB is a foreground
-     * object.  Drawing all of them from compact PC-derived textures keeps the
-     * encounter visible without invoking the unstable tiled renderer. */
+    /* Chica/Mangle/Puppet are exact PC full-camera composites; BB remains a
+     * foreground object. All four use compact PC-derived RLE textures so the
+     * real Wii U never touches the unstable tiled camera renderer. */
     if (phantom != PHANTOM_NONE)
         pc_camera_draw_compact_phantom(game, phantom);
 }
