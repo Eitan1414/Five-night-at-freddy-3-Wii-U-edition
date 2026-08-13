@@ -128,11 +128,15 @@ static void pc_camera_draw_compact_phantom(const Game *game,
 {
     switch (phantom) {
         case PHANTOM_BALLOON_BOY:
-            /* BBpeek is a foreground object, not a full camera composite. */
+            /* MFA object BBpeek uses General Sprites image 70. The extracted
+             * PNG is already an 825x650 transparent canvas, so its right-side
+             * placement is encoded in the source image itself. Stretching a
+             * cropped rectangle here used to move/resize BB twice. */
             texture_draw_rle(sOriginalUiPanelTargets,
-                             PC_CAMERA_FEED_X + 104,
-                             PC_CAMERA_FEED_Y + 18,
-                             245, 205,
+                             PC_CAMERA_FEED_X,
+                             PC_CAMERA_FEED_Y,
+                             PC_CAMERA_FEED_W,
+                             PC_CAMERA_FEED_H,
                              &gPhantomBBCameraTexture);
             break;
         case PHANTOM_CHICA:
@@ -216,9 +220,10 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
      * camera backgrounds so collecting one removes only that object. */
     pc_camera_draw_shadow_cupcake(game);
 
-    /* Chica/Mangle/Puppet are exact PC full-camera composites; BB remains a
-     * foreground object. All four use compact PC-derived RLE textures so the
-     * real Wii U never touches the unstable tiled camera renderer. */
+    /* Chica/Mangle/Puppet are exact PC full-camera composites. BBpeek also
+     * keeps its original 825x650 transparent coordinate canvas. All four use
+     * compact PC-derived RLE textures so the real Wii U never touches the
+     * unstable tiled camera renderer. */
     if (phantom != PHANTOM_NONE)
         pc_camera_draw_compact_phantom(game, phantom);
 }
