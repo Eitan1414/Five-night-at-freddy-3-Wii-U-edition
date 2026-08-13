@@ -166,11 +166,33 @@ static void original_ui_draw_office(Game *game)
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
+static void pc_warning_fidelity_render(Game *game)
+{
+    if (game == NULL || !game->dirty) return;
+    game->dirty = false;
+
+    /* The supplied PC MFA stores the warning wording as text. gWarningTexture
+     * is the PC-only rasterization of that exact wording. The recovery renderer
+     * added a flashing red frame and visible `A: SKIP` prompt; those are Wii U
+     * prototype presentation and are intentionally omitted here.  Confirm/Start
+     * may still skip the warning as an invisible platform convenience. */
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     67, 174, 720, 138,
+                     &gWarningTexture);
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
 static void render_game(Game *game)
 {
     if (sWiiUOptionsOpen) {
         game->dirty = false;
         wiiu_draw_options(game);
+        return;
+    }
+
+    if (game->screen == SCREEN_WARNING) {
+        pc_warning_fidelity_render(game);
         return;
     }
 
