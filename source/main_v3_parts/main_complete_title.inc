@@ -49,6 +49,9 @@ static void complete_draw_title(const Game *game)
                          &gPcCompatTitleExtraTexture);
     }
 
+    /* The LOAD GAME night value is still rendered through the compatibility
+     * bitmap font. Do not claim an MFA counter match until the title-frame
+     * counter object is positively identified. */
     char night_number[8];
     snprintf(night_number, sizeof(night_number), "%d",
              progress_save_continue_night());
@@ -90,13 +93,9 @@ static void complete_draw_title(const Game *game)
                          &gPcCompatTitleStarTexture);
     }
 
-    /* Wii U-only settings stay outside the original menu rows so the PC title
-     * composition and Nightmare/Extra routing are not disturbed. */
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       content_x + 300, 440, 1,
-                       "R: WII U OPTIONS",
-                       GRAPHICS_RGB(135, 150, 132));
-
+    /* Wii U options remain bound to the platform input layer but no longer
+     * advertise themselves over the retail-PC title composition. Likewise the
+     * prototype `EXTRA LOCKED` notice is intentionally presentation-silent. */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 456, 456, 114, 13,
                      &gPcCompatTitleCopyrightTexture);
@@ -106,13 +105,6 @@ static void complete_draw_title(const Game *game)
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 574, 468, 47, 9,
                      &gPcCompatTitleVersionTexture);
-
-    if (sFinishing.title_notice_frames > 0u) {
-        graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                           content_x + 430, 424, 1,
-                           "EXTRA LOCKED",
-                           GRAPHICS_RGB(155, 155, 145));
-    }
 
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
