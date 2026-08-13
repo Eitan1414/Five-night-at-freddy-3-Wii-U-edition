@@ -111,8 +111,9 @@ static void mfa_exact_update_aggression(SpringtrapAI *ai, int current_hour)
     }
 
     /* Group 758 appears later in the Event Editor than the forcing groups, so
-     * 12 AM wins for the retail game. Game::hour stores midnight as 12. */
-    if (current_hour == 12) {
+     * midnight wins. The legacy Wii U caller normalizes Game::hour 12 to zero,
+     * while direct/test callers may pass the stored value 12; accept both. */
+    if (current_hour == 0 || current_hour == 12) {
         ai->aggressive = false;
     }
 }
