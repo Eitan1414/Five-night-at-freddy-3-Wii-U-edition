@@ -113,6 +113,20 @@ static void test_no_screen_counter_and_reset(void)
     assert(ai.office_idle_frames == 0u);
 }
 
+static void test_midnight_clears_late_hour_aggression(void)
+{
+    SpringtrapAI ai;
+    springtrap_ai_reset(&ai, 5, 0x30405060u);
+
+    /* Group 744 (>=4) appears before group 758 (==12) in the MFA.  Game::hour
+     * stores midnight as 12, so the later clear must win in the same update. */
+    ai.aggressive = true;
+    ai.aggressive_refresh_frames = 0u;
+    springtrap_ai_set_runtime_state(&ai, true, false, 2, false, 0u);
+    tick(&ai, 5, 12, SPRINGTRAP_VENT_NONE, false);
+    assert(!ai.aggressive);
+}
+
 static void test_lure_adjacency(void)
 {
     /* The MFA hearing graph is directional. */
@@ -320,6 +334,7 @@ int main(void)
     test_night1_is_absent();
     test_spawn_is_cam06_to_cam10();
     test_no_screen_counter_and_reset();
+    test_midnight_clears_late_hour_aggression();
     test_lure_adjacency();
     test_sealed_vent_returns_to_source();
     test_unsealed_vent14_attacks_office();
