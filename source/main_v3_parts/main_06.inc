@@ -2,18 +2,10 @@
     graphics_draw_text(GRAPHICS_TARGET_BOTH, six ? 301 : 275, 145, 8,
                        six ? "6:00" : "5:59", six ? GRAPHICS_RGB(224, 222, 93) : COLOUR_WHITE);
     graphics_draw_text(GRAPHICS_TARGET_BOTH, 577, 193, 4, "AM", COLOUR_GREEN);
-    if (game->screen_frames >= 180u) {
-        char text[32]; snprintf(text, sizeof(text), "NIGHT %d COMPLETE", game->night);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 248, 305, 3, text, COLOUR_GREEN);
-        if (progress_save_write_attempted()) {
-            graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 346, 1,
-                               progress_save_write_status_text(),
-                               progress_save_last_write_ok() ? COLOUR_GREEN : COLOUR_RED);
-        }
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 236, 379, 2,
-                           game->night < NIGHT_COUNT ? "A: START NEXT NIGHT" : "A: RETURN TO TITLE",
-                           GRAPHICS_RGB(104, 151, 101));
-    }
+    /* Retail PC owns this screen entirely with the 5:59 -> 6:00 animation.
+     * The old Wii U prototype appended `NIGHT n COMPLETE`, save diagnostics and
+     * an A-button prompt after 180 frames. Inter-night progression is handled
+     * by the finishing layer, so none of that platform/debug UI belongs here. */
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
