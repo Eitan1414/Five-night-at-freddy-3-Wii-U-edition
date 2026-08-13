@@ -223,6 +223,21 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
         pc_camera_draw_compact_phantom(game, phantom);
 }
 
+static void pc_camera_draw_selection_outline(const Game *game)
+{
+    const int camera = game->selected_camera;
+    if (camera < 0 || camera >= CAMERA_COUNT) return;
+
+    /* The extracted PC map already contains CAM01..CAM10 labels and node art.
+     * Wii U D-pad navigation only needs a non-destructive selected-node cue;
+     * never paint opaque boxes or duplicate C01/C02 text over the source map. */
+    const MapPoint point = kOriginalCameraUiPoints[camera];
+    graphics_draw_frame(sOriginalUiPanelTargets,
+                        point.x - 21, point.y - 10,
+                        42, 20, 2,
+                        GRAPHICS_RGB(194, 255, 77));
+}
+
 static void pc_camera_draw_map(const Game *game)
 {
     const OriginalUiTextureId map_id =
@@ -232,7 +247,7 @@ static void pc_camera_draw_map(const Game *game)
 
     original_ui_draw_texture(map_id, sOriginalUiPanelTargets,
                              591, 177, 252, 235);
-    original_ui_draw_camera_nodes(game);
+    pc_camera_draw_selection_outline(game);
     original_ui_draw_radar(game);
 }
 
