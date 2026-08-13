@@ -8,6 +8,7 @@ endif
 
 TOPDIR ?= $(CURDIR)
 PC_MINIGAME_SHEETS ?= /tmp/fnaf3-pc-minigames
+PC_GENERAL_SPRITES ?= /tmp/fnaf3-pc-general/DataDump3
 
 APP_NAME      := Five Nights at Freddy's 3 - Wii U Edition
 APP_SHORTNAME := FNaF3 Wii U
@@ -110,6 +111,17 @@ endif
 all: $(BUILD)
 
 $(BUILD):
+	@if [ ! -d "$(PC_GENERAL_SPRITES)" ]; then \
+		echo "Missing verified PC General Sprites at $(PC_GENERAL_SPRITES)" >&2; \
+		echo "Set PC_GENERAL_SPRITES to the extracted DataDump3 directory." >&2; \
+		exit 1; \
+	fi
+	@echo "Generating exact Follow Me MFA visuals from PC image-bank assets..."
+	@mkdir -p source/generated
+	@python3 tools/convert_pc_follow_me_mfa_visuals.py \
+		"$(PC_GENERAL_SPRITES)" \
+		source/generated/follow_me_mfa_visuals.inc \
+		include/assets/follow_me_mfa_visuals.h
 	@if [ -d "$(PC_MINIGAME_SHEETS)" ] && \
 	    [ -f source/pc_finishing_visuals.c ] && \
 	    [ -f include/assets/pc_finishing_visuals.h ] && \
@@ -126,6 +138,7 @@ $(BUILD):
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
+	@rm -f source/generated/follow_me_mfa_visuals.inc
 
 else
 
