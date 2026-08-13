@@ -119,6 +119,9 @@ jobs:
           test -f /tmp/fnaf3-pc-general/DataDump3/123.png
           test -f /tmp/fnaf3-pc-general/DataDump3/172.png
           test -f /tmp/fnaf3-pc-general/DataDump3/346.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/245.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/246.png
+          test -f /tmp/fnaf3-pc-general/DataDump3/306.png
 
       - name: Fetch original PC minigame sprite sheets
         shell: bash
@@ -191,6 +194,10 @@ jobs:
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_compat_visuals.c \
             include/assets/pc_compat_visuals.h
+          python3 tools/convert_pc_hud_visuals.py \
+            /tmp/fnaf3-pc-general/DataDump3 \
+            source/pc_hud_visuals.c \
+            include/assets/pc_hud_visuals.h
           python3 tools/convert_pc_character_visuals.py \
             /tmp/fnaf3-pc-general/DataDump3 \
             source/pc_character_visuals.c \
