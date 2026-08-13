@@ -43,30 +43,31 @@ static void draw_authentic_office_hud(const Game *game, uint32_t targets)
 
     const TextureRle *am = &gPcHudAmLabelTexture;
     const int am_w = pc_office_hud_width(am);
-    const int am_h = pc_office_hud_height(am);
     int cursor = right;
 
     cursor -= am_w;
     pc_office_hud_draw(targets, cursor, 12, am);
     cursor -= spacing;
 
+    /* The MFA object `time of night` uses the same 15x22 Clickteam counter
+     * image bank as `night number` (0=318, 1=195, 2=247, ...). Do not use the
+     * separate small 14x17 counter bank here. */
     const int hour = game->hour;
     if (hour == 12) {
-        const TextureRle *one = gPcHudClockDigits[1];
-        const TextureRle *two = gPcHudClockDigits[2];
+        const TextureRle *one = gPcHudNightDigits[1];
+        const TextureRle *two = gPcHudNightDigits[2];
         const int two_w = pc_office_hud_width(two);
         const int one_w = pc_office_hud_width(one);
         cursor -= two_w;
-        pc_office_hud_draw(targets, cursor, 10, two);
+        pc_office_hud_draw(targets, cursor, 8, two);
         cursor -= 1;
         cursor -= one_w;
-        pc_office_hud_draw(targets, cursor, 10, one);
-    } else if (hour >= 0 && hour <= 9) {
-        const TextureRle *digit = gPcHudClockDigits[hour];
+        pc_office_hud_draw(targets, cursor, 8, one);
+    } else if (hour >= 0 && hour <= 6) {
+        const TextureRle *digit = gPcHudNightDigits[hour];
         cursor -= pc_office_hud_width(digit);
-        pc_office_hud_draw(targets, cursor, 10, digit);
+        pc_office_hud_draw(targets, cursor, 8, digit);
     }
-    (void)am_h;
 
     int night = game->night;
     if (night < 1) night = 1;
