@@ -2,15 +2,15 @@
 """Generate the retail-PC office HUD sprites used by the Wii U renderer.
 
 The image IDs below come from the supplied FNaF 3 PC General Sprites bank and
-match the Clickteam counter/image sequences in fivenights3-94.mfa:
+match the Clickteam objects decoded from fivenights3-94.mfa:
 
 - 245: `night`
 - 246: `AM`
-- night/counter digits: 318,195,247,248,249,250,306 for 0..6
-- small clock digits: 230..239 for 0..9
+- the `night number` and `time of night` Counter objects both use the same
+  image bank: 318,195,247,248,249,250,306 for values 0..6.
 
 The Spriters Resource PNGs preserve Clickteam's black colour key as opaque
-black.  The original Active/Counter objects key that black out at runtime, so
+black. The original Active/Counter objects key that black out at runtime, so
 this converter restores the same transparency before generating TextureRle.
 """
 from __future__ import annotations
@@ -24,8 +24,7 @@ TRANSPARENT_INDEX = 255
 
 NIGHT_LABEL_ID = 245
 AM_LABEL_ID = 246
-NIGHT_DIGIT_IDS = (318, 195, 247, 248, 249, 250, 306)
-CLOCK_DIGIT_IDS = tuple(range(230, 240))
+COUNTER_DIGIT_IDS = (318, 195, 247, 248, 249, 250, 306)
 
 
 def fmt(values, pattern: str, per_line: int) -> str:
@@ -129,8 +128,7 @@ def main() -> None:
     args = parser.parse_args()
     root = args.sprite_root
 
-    required = {NIGHT_LABEL_ID, AM_LABEL_ID,
-                *NIGHT_DIGIT_IDS, *CLOCK_DIGIT_IDS}
+    required = {NIGHT_LABEL_ID, AM_LABEL_ID, *COUNTER_DIGIT_IDS}
     missing = sorted(sprite_id for sprite_id in required
                      if not (root / f"{sprite_id}.png").is_file())
     if missing:
@@ -151,29 +149,17 @@ def main() -> None:
     emit_texture(source, header, root,
                  "gPcHudAmLabelTexture", AM_LABEL_ID)
 
-    night_symbols: list[str] = []
-    for value, sprite_id in enumerate(NIGHT_DIGIT_IDS):
-        symbol = f"gPcHudNightDigit{value}Texture"
+    digit_symbols: list[str] = []
+    for value, sprite_id in enumerate(COUNTER_DIGIT_IDS):
+        symbol = f"gPcHudCounterDigit{value}Texture"
         emit_texture(source, header, root, symbol, sprite_id)
-        night_symbols.append(symbol)
-
-    clock_symbols: list[str] = []
-    for value, sprite_id in enumerate(CLOCK_DIGIT_IDS):
-        symbol = f"gPcHudClockDigit{value}Texture"
-        emit_texture(source, header, root, symbol, sprite_id)
-        clock_symbols.append(symbol)
+        digit_symbols.append(symbol)
 
     source.append("const TextureRle *const gPcHudNightDigits[7] = {\n")
-    source.extend(f"    &{symbol},\n" for symbol in night_symbols)
-    source.append("};\n\n")
-    source.append("const TextureRle *const gPcHudClockDigits[10] = {\n")
-    source.extend(f"    &{symbol},\n" for symbol in clock_symbols)
+    source.extend(f"    &{symbol},\n" for symbol in digit_symbols)
     source.append("};\n")
 
-    header.extend([
-        "\nextern const TextureRle *const gPcHudNightDigits[7];\n",
-        "extern const TextureRle *const gPcHudClockDigits[10];\n",
-    ])
+    header.append("\nextern const TextureRle *const gPcHudNightDigits[7];\n")
 
     args.output_c.parent.mkdir(parents=True, exist_ok=True)
     args.output_h.parent.mkdir(parents=True, exist_ok=True)
