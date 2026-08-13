@@ -56,7 +56,7 @@ jobs:
           echo "b083700bfbcbe0254c59a3f4acf451f6c647c20719a6db2ea29c8f4a644c6a23  /tmp/fnaf3-general-sprites.zip" | sha256sum -c -
           unzip -q /tmp/fnaf3-general-sprites.zip -d /tmp/fnaf3-pc-general
 
-      - name: Dump 14x17 clock glyphs
+      - name: Dump larger counter glyph neighborhood
         shell: bash
         run: |
           python3 - <<'PY'
@@ -65,13 +65,18 @@ jobs:
           from PIL import Image
 
           root = Path('/tmp/fnaf3-pc-general/DataDump3')
-          print('=== PC General Sprites IDs 230..243 ===')
-          print('Bright pixels are #; black/key pixels are .')
-          for sprite_id in range(230, 244):
-              im = Image.open(root / f'{sprite_id}.png').convert('RGBA')
+          print('=== PC General Sprites IDs 254..275 ===')
+          for sprite_id in range(254, 276):
+              path = root / f'{sprite_id}.png'
+              if not path.is_file():
+                  print(f'ID {sprite_id}: MISSING')
+                  continue
+              im = Image.open(path).convert('RGBA')
               colours = Counter((r, g, b) for r, g, b, a in im.getdata() if a >= 32)
               bright = sum(n for (r, g, b), n in colours.items() if max(r, g, b) >= 48)
               print(f'\nID {sprite_id} size={im.size} bright={bright} top_colours={colours.most_common(4)}')
+              if im.width > 50 or im.height > 60:
+                  continue
               for y in range(im.height):
                   row = []
                   for x in range(im.width):
@@ -79,7 +84,6 @@ jobs:
                       if a < 32 or max(r, g, b) < 48:
                           row.append('.')
                       else:
-                          # Preserve rough intensity so antialiasing does not hide shape.
                           v = max(r, g, b)
                           row.append('#' if v >= 160 else '+' if v >= 96 else ':')
                   print(''.join(row))
