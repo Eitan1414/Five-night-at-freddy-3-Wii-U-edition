@@ -86,3 +86,30 @@ static void wiiu_control_update_game_v6(Game *game, const InputState *input)
         return;
     wiiu_v6_update_pc_victory_flow(game, input);
 }
+
+/* The first Wii U touch layer predates delayed PC vent sealing and labels its
+ * action `SEAL / UNSEAL`. V2 already translates that touch into the same
+ * GAME_BUTTON_CONFIRM path as a physical controller, so gameplay is correct;
+ * this final presentation wrapper only fixes the stale label and exposes the
+ * pending state without changing hitboxes or input routing. */
+static void wiiu_control_draw_gamepad_v6(const Game *game)
+{
+    wiiu_control_draw_gamepad(game);
+
+    if (game == NULL ||
+        wiiu_controls_mode() != WIIU_CONTROL_TOUCH_GAMEPAD ||
+        game->screen != SCREEN_OFFICE || !game->camera_open ||
+        !game->vent_map_open) {
+        return;
+    }
+
+    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
+                       30, 389, 254, 42, COLOUR_BLACK);
+    wiiu_draw_touch_button(32, 391, 250, 38,
+                           pc_vent_seal_is_active()
+                               ? "SEALING..." : "SEAL VENT",
+                           pc_vent_seal_is_active(),
+                           game->ventilation_failed);
+}
+
+#define wiiu_control_draw_gamepad wiiu_control_draw_gamepad_v6
