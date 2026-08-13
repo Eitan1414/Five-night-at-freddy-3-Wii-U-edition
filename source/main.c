@@ -135,6 +135,14 @@
 #undef update_game
 #undef texture_draw_rle
 
+/* main_original_ui_02 renders the sealing progress before the final system
+ * wrapper is defined below. Forward declarations keep that presentation layer
+ * independent from the implementation order of the compatibility state. */
+static bool pc_vent_seal_is_active(void);
+static SpringtrapVent pc_vent_seal_target(void);
+static uint32_t pc_vent_seal_progress_frames(void);
+static uint32_t pc_vent_seal_duration_frames(void);
+
 #define original_ui_draw_vent_map original_ui_draw_vent_map_v1
 #include "main_v3_parts/main_original_ui_02.inc"
 #undef original_ui_draw_vent_map
@@ -215,15 +223,23 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 #include "main_v3_parts/main_pc_system_fidelity.inc"
 #undef pc_mfa_v8_exact_update_game
 
+/* Keep delayed vent closure outside the decoded AI/system counters. Its input
+ * wrapper consumes only the legacy instant-seal action, then delegates every
+ * gameplay frame through pc_system_fidelity_update_game. */
+#include "main_v3_parts/main_pc_vent_seal_fidelity.inc"
+
 /* Wii U-only presentation/control choices are layered last. They never alter
  * the PC AI/state model; they only route the panel displays and translate DRC
- * touch presses into the same gameplay actions. */
+ * touch presses into the same gameplay actions. Remap their system call through
+ * the vent-seal compatibility wrapper so physical and touch input share it. */
+#define pc_system_fidelity_update_game pc_vent_seal_update_game
 #include "main_v3_parts/main_wiiu_controls.inc"
 #include "main_v3_parts/main_wiiu_controls_v2.inc"
 #include "main_v3_parts/main_wiiu_controls_v3.inc"
 #include "main_v3_parts/main_wiiu_controls_v4.inc"
 #include "main_v3_parts/main_wiiu_controls_v5.inc"
 #include "main_v3_parts/main_wiiu_controls_v6.inc"
+#undef pc_system_fidelity_update_game
 
 #define update_game wiiu_control_update_game_v6
 #define fnaf3_full_audio_render_game wiiu_control_nonoffice_render
