@@ -1,13 +1,18 @@
 /*
  * PC/MFA Phantom runtime.
  *
- * part00 contains the decoded state machine.  The final wrapper below fixes an
- * integration detail that a single camera_open boolean cannot represent on its
- * own: the PC events clear Chica/Mangle/Puppet when the camera monitor is
- * LOWERED, not on every frame for which the monitor merely happens to be down.
+ * part00 contains the decoded state machine.  The final wrapper below fixes two
+ * integration details that the legacy Wii U representation cannot express on
+ * its own:
+ *   - the gameplay clock stores midnight as 12, while the decoded Phantom core
+ *     uses zero as its internal non-1AM..5AM sentinel;
+ *   - the PC events clear Chica/Mangle/Puppet when the camera monitor is
+ *     LOWERED, not on every frame for which the monitor merely happens to be down.
  */
 #define phantoms_update phantoms_update_pre_panel_edge
+#define phantoms_on_hour_changed phantoms_on_hour_changed_pre_midnight
 #include "phantom_ai_parts/part00.inc"
+#undef phantoms_on_hour_changed
 #undef phantoms_update
 
 #include "phantom_ai_parts/part01.inc"
@@ -16,6 +21,21 @@
 static PhantomSystem *sPanelHistorySystem = NULL;
 static int sPanelHistoryNight = -1;
 static bool sPanelWasOpen = false;
+
+static int pc_mfa_phantom_hour(int hour)
+{
+    /* Game::hour is 12 at midnight.  The decoded Phantom event layer treats
+     * midnight as the value outside the 1..5 hourly event range.  Normalizing
+     * here keeps the explicit "no random Phantom cycles at 12 AM" rule and
+     * prevents the >=4 aggression helper from mistaking 12 AM for late night. */
+    return hour == 12 ? 0 : hour;
+}
+
+PhantomEvent phantoms_on_hour_changed(PhantomSystem *system, int hour)
+{
+    return phantoms_on_hour_changed_pre_midnight(
+        system, pc_mfa_phantom_hour(hour));
+}
 
 PhantomEvent phantoms_update(PhantomSystem *system,
                              int hour,
@@ -38,6 +58,7 @@ PhantomEvent phantoms_update(PhantomSystem *system,
 
     const bool panel_lowered = sPanelWasOpen && !camera_open;
     sPanelWasOpen = camera_open;
+    const int event_hour = pc_mfa_phantom_hour(hour);
 
     const bool one_second = tick_every_second(system);
     const bool every20 = tick_every_20_seconds(system);
@@ -47,12 +68,13 @@ PhantomEvent phantoms_update(PhantomSystem *system,
         return update_jumpscare(system);
     }
 
-    system->aggressive_mode = hour >= 4;
+    system->aggressive_mode = event_hour >= 4;
 
-    /* Spawn/forced-event conditions still see the REAL monitor state. */
-    arm_random_phantoms(system, hour, camera_open, selected_camera,
+    /* Spawn/forced-event conditions still see the REAL monitor state, but use
+     * the MFA-normalized hour so 12 AM cannot satisfy late-night/random rules. */
+    arm_random_phantoms(system, event_hour, camera_open, selected_camera,
                         every20, every60);
-    apply_forced_phantoms(system, hour, camera_open, selected_camera);
+    apply_forced_phantoms(system, event_hour, camera_open, selected_camera);
 
     PhantomEvent sub = update_freddy(system, camera_open, maintenance_open,
                                      one_second);
