@@ -37,6 +37,30 @@ static void test_night1_has_no_forced_phantoms(void)
     }
 }
 
+static void test_midnight_blocks_random_phantom_cycles(void)
+{
+    PhantomSystem system;
+    phantoms_reset(&system, 4, false, 0x12121212u);
+
+    /* Force every random comparison to succeed if a 20/60-second roll is
+     * incorrectly evaluated.  The MFA explicitly excludes time-of-night 12. */
+    system.ai_level = 100;
+    (void)phantoms_on_hour_changed(&system, 12);
+    assert(!system.aggressive_mode);
+
+    for (int frame = 0; frame < 61 * 60; ++frame)
+        (void)update(&system, 12, false, false, CAM01, 0);
+
+    assert(!system.aggressive_mode);
+    assert(!system.bb_armed);
+    assert(!system.bb_camera_visible);
+    assert(!system.freddy_armed);
+    assert(!system.freddy_walking);
+    assert(!system.chica_camera_visible);
+    assert(!system.mangle_camera_visible);
+    assert(!system.puppet_camera_visible);
+}
+
 static void test_forced_hour_availability_by_night(void)
 {
     PhantomSystem n2;
@@ -222,6 +246,7 @@ static void test_foxy_office_collision_starts_scare(void)
 int main(void)
 {
     test_night1_has_no_forced_phantoms();
+    test_midnight_blocks_random_phantom_cycles();
     test_forced_hour_availability_by_night();
     test_bb_camera_and_vent_failure();
     test_chica_switch_pauses_and_lower_clears();
