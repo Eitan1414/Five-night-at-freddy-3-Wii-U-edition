@@ -8,6 +8,7 @@ endif
 
 TOPDIR ?= $(CURDIR)
 PC_MINIGAME_SHEETS ?= /tmp/fnaf3-pc-minigames
+PC_GENERAL_SPRITES ?= /tmp/fnaf3-pc-general/DataDump3
 
 APP_NAME      := Five Nights at Freddy's 3 - Wii U Edition
 APP_SHORTNAME := FNaF3 Wii U
@@ -110,6 +111,12 @@ endif
 all: $(BUILD)
 
 $(BUILD):
+	@if [ ! -d "$(PC_GENERAL_SPRITES)" ]; then \
+		echo "Exact PC General Sprites root is missing: $(PC_GENERAL_SPRITES)" >&2; \
+		exit 1; \
+	fi
+	@python3 tools/convert_pc_night_intro_visuals.py \
+		"$(PC_GENERAL_SPRITES)" source/pc_night_intro_visuals.c
 	@if [ -d "$(PC_MINIGAME_SHEETS)" ] && \
 	    [ -f source/pc_finishing_visuals.c ] && \
 	    [ -f include/assets/pc_finishing_visuals.h ] && \
