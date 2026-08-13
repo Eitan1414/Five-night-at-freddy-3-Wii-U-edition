@@ -1,27 +1,50 @@
-static void follow_me_pc_draw_decay(uint32_t seed)
+/* PC/MFA coordinate helpers. Original Follow Me is a 1024x768 Clickteam frame.
+ * Wii U preserves it as a centered 640x480 image instead of stretching 16:9. */
+static int follow_me_pc_mfa_scale(int value)
 {
-    for (int index = 0; index < 18; ++index) {
-        seed = seed * 1664525u + 1013904223u;
-        const int x = (int) ((seed >> 8) % 810u);
-        seed = seed * 1664525u + 1013904223u;
-        const int y = 70 + (int) ((seed >> 8) % 330u);
-        const int w = 12 + (int) ((seed >> 20) % 45u);
-        graphics_draw_rect(GRAPHICS_TARGET_BOTH, x, y, w, 6,
-                           GRAPHICS_RGB(10, 10, 12));
-    }
+    if (value >= 0) return (value * 5 + 4) / 8;
+    return -(((-value) * 5 + 4) / 8);
+}
+
+static int follow_me_pc_mfa_x(int pc_x)
+{
+    return 107 + follow_me_pc_mfa_scale(pc_x);
+}
+
+static int follow_me_pc_mfa_y(int pc_y)
+{
+    return follow_me_pc_mfa_scale(pc_y);
+}
+
+static void follow_me_pc_draw_mfa(const FollowMeMfaTexture *asset,
+                                  int pc_x, int pc_y)
+{
+    if (asset == NULL || asset->texture.width == 0u ||
+        asset->texture.height == 0u) return;
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     follow_me_pc_mfa_x(pc_x) - asset->hotspot_x,
+                     follow_me_pc_mfa_y(pc_y) - asset->hotspot_y,
+                     (int) asset->texture.width,
+                     (int) asset->texture.height,
+                     &asset->texture);
+}
+
+static void follow_me_pc_draw_checker_mfa(void)
+{
+    texture_draw_rle(GRAPHICS_TARGET_BOTH, 107, 0,
+                     (int) gFollowMfaChecker.texture.width,
+                     (int) gFollowMfaChecker.texture.height,
+                     &gFollowMfaChecker.texture);
 }
 
 static void follow_me_pc_draw_room(const Game *game)
 {
     (void) game;
-    graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(8, 7, 11));
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 0, 854, 64,
-                       GRAPHICS_RGB(26, 23, 31));
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 64, 854, 230,
-                       GRAPHICS_RGB(60, 59, 66));
-    follow_me_pc_draw_checker_floor(294);
-    /* Room damage is static like the PC minigame, not animated noise. */
-    follow_me_pc_draw_decay(0x91E10DA5u + (uint32_t) sFollowMePc.room * 173u);
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+
+    /* Exact PC image-bank ID 335. This removes the procedural checker and the
+     * pseudo-random wall damage from the previous reconstruction. */
+    follow_me_pc_draw_checker_mfa();
 
     if (sFollowMePc.room == FOLLOW_ROOM_SHOW_STAGE) {
         follow_me_pc_draw_env(FOLLOW_ME_ENV_CURTAIN, 72, 66, 2);
@@ -59,7 +82,6 @@ static void follow_me_pc_draw_room(const Game *game)
         follow_me_pc_draw_env(FOLLOW_ME_ENV_PARTY_TABLE, 610, 260, 2);
         follow_me_pc_draw_env(FOLLOW_ME_ENV_KEYPAD, 742, 84, 2);
 
-        /* Keep the original post-night secret clues visible in the hall. */
         if (sFollowMePc.chapter == 1) {
             graphics_draw_text(GRAPHICS_TARGET_BOTH, 116, 235, 1,
                                "BBDBLCLICK", GRAPHICS_RGB(154, 154, 159));
