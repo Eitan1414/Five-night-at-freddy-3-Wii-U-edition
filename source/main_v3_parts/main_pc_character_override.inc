@@ -7,7 +7,7 @@ static uint32_t sPcOfficeTargets = GRAPHICS_TARGET_TV;
 
 static void pc_draw_springtrap_office(const Game *game)
 {
-    /* Night 1 has no Springtrap in the retail game.  springtrap_ai_reset()
+    /* Night 1 has no Springtrap in the retail game. springtrap_ai_reset()
      * still initialises a camera slot for source/API stability, so every
      * renderer must gate the character on the night configuration. */
     if (!night_config(game->night)->springtrap_enabled)
@@ -49,6 +49,11 @@ static const TextureRle *pc_sequence_clamped_frame(const JumpscareSequence *sequ
     return sequence->frames[frame];
 }
 
+#define PC_FREDDY_SOURCE_PATH_LENGTH 1061u
+#define PC_FREDDY_SOURCE_PATH_DY 12u
+#define PC_OFFICE_SCALE_NUM 14u
+#define PC_OFFICE_SCALE_DEN 25u
+
 static void pc_draw_phantom_office(const Game *game)
 {
     const int texture_x = -133 + game->office_pan;
@@ -76,13 +81,25 @@ static void pc_draw_phantom_office(const Game *game)
             ? pc_sequence_clamped_frame(sequence, timer)
             : pc_sequence_loop_frame(sequence, timer);
         if (frame != NULL) {
-            /* fwalk's horizontal travel follows the decoded MFA path
-             * accumulator instead of the old hand-authored 5 px/frame slide. */
-            const int x = 760 -
-                (int) (game->phantoms.freddy_path_eighths / 8u);
+            /* MFA Movement #5 encodes the fwalk vector as dx=-1061, dy=-12
+             * with speed 6. The gameplay accumulator deliberately remains in
+             * source units so its duration is exact. Convert only at render
+             * time with the same 2000->1120 (14/25) office transform used by
+             * Foxy/Chica/Mangle instead of treating source units as Wii U px. */
+            const uint32_t source_progress =
+                game->phantoms.freddy_path_eighths / 8u;
+            const int path_x = (int)((source_progress * PC_OFFICE_SCALE_NUM +
+                                      PC_OFFICE_SCALE_DEN / 2u) /
+                                     PC_OFFICE_SCALE_DEN);
+            const uint32_t y_den =
+                PC_FREDDY_SOURCE_PATH_LENGTH * PC_OFFICE_SCALE_DEN;
+            const int path_y = (int)((source_progress *
+                                      PC_FREDDY_SOURCE_PATH_DY *
+                                      PC_OFFICE_SCALE_NUM + y_den / 2u) /
+                                     y_den);
             texture_draw_rle(sPcOfficeTargets,
-                             x, 126,
-                             190, 255,
+                             760 - path_x, 126 - path_y,
+                             174, 231,
                              frame);
         }
     }
