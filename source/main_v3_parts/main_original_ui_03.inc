@@ -107,12 +107,9 @@ static void original_ui_draw_maintenance(const Game *game)
                                640 + dot * 13, 395, 6, 6,
                                COLOUR_WHITE);
         }
-    } else {
-        graphics_draw_text(sOriginalUiPanelTargets,
-                           369, 414, 1,
-                           "UP/DOWN   A REBOOT   B CLOSE",
-                           GRAPHICS_RGB(105, 125, 103));
     }
+    /* Physical/touch bindings remain active, but the PC System Restart panel
+     * no longer carries the Wii U-only `UP/DOWN A REBOOT B CLOSE` legend. */
 }
 
 static void original_ui_draw_transition(void)
