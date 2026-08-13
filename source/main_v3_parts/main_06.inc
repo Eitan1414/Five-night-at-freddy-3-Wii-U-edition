@@ -19,12 +19,15 @@
 
 static void draw_game_over(const Game *game)
 {
-    const uint32_t pulse = ((game->screen_frames / 5u) & 1u) ? COLOUR_RED : GRAPHICS_RGB(93, 10, 7);
-    graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(4, 0, 0));
-    for (int y = 0; y < 480; y += 9) graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, y, 854, 2, pulse);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 183, 135, 7, "GAME OVER", pulse);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 227, 269, 3, "SPRINGTRAP GOT YOU", GRAPHICS_RGB(213, 170, 155));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 257, 370, 2, "A: RETRY   B: MENU", GRAPHICS_RGB(169, 118, 108));
+    /* Retail PC FNaF 3 deliberately drops to an almost empty death screen:
+     * black background and red `Game Over` text.  The previous Wii U prototype
+     * added a red scanline field, `SPRINGTRAP GOT YOU`, and visible retry/menu
+     * prompts.  Keep the existing controller input behavior, but do not alter
+     * the source presentation to advertise those platform bindings. */
+    (void)game;
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 247, 218, 5,
+                       "Game Over", GRAPHICS_RGB(160, 0, 0));
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
