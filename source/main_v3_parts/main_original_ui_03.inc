@@ -183,6 +183,39 @@ static void pc_warning_fidelity_render(Game *game)
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
+static const char *pc_night_intro_label(int night)
+{
+    static const char *const labels[6] = {
+        "1ST NIGHT", "2ND NIGHT", "3RD NIGHT",
+        "4TH NIGHT", "5TH NIGHT", "6TH NIGHT",
+    };
+    if (night < 1) night = 1;
+    if (night > 6) night = 6;
+    return labels[night - 1];
+}
+
+static void pc_night_intro_fidelity_render(Game *game)
+{
+    if (game == NULL || !game->dirty) return;
+    game->dirty = false;
+
+    /* Retail-PC observed presentation: 12:00 AM above an ordinal night label;
+     * Night 1 is green while subsequent nights use white. Nightmare is still
+     * introduced as `6TH NIGHT`. The raw MFA object coordinates/font metrics
+     * have not yet been re-extracted, so placement/scaling here remains an
+     * explicitly documented Wii U adaptation rather than a claimed MFA match. */
+    const uint32_t colour = game->night == 1
+        ? GRAPHICS_RGB(68, 190, 88) : COLOUR_WHITE;
+
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       329, 145, 4, "12:00 AM", colour);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       278, 241, 5,
+                       pc_night_intro_label(game->night), colour);
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
 static void render_game(Game *game)
 {
     if (sWiiUOptionsOpen) {
@@ -193,6 +226,10 @@ static void render_game(Game *game)
 
     if (game->screen == SCREEN_WARNING) {
         pc_warning_fidelity_render(game);
+        return;
+    }
+    if (game->screen == SCREEN_NIGHT_INTRO) {
+        pc_night_intro_fidelity_render(game);
         return;
     }
 
