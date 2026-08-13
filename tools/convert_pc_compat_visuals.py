@@ -59,15 +59,20 @@ PHANTOMS = (
     ("gPcCompatPhantomBBTexture", 70, 230),
 )
 
-# Exact full-camera composites recovered from fivenights3-94.mfa.  These are
+# Exact full-camera composites recovered from fivenights3-94.mfa. These are
 # deliberately generated as compact single-RLE textures for real Wii U hardware
-# instead of falling back to the unrelated office sprites when the tiled path
-# is disabled for stability.
+# instead of falling back to unrelated office sprites when the tiled path is
+# disabled for stability.
 PHANTOM_CAMERA_COMPOSITES = (
     ("gPcCompatPhantomMangleCameraTexture", 38),
     ("gPcCompatPhantomChicaCameraTexture", 387),
     ("gPcCompatPhantomPuppetCameraTexture", 298),
 )
+
+# 825x650 PC source aspect, reduced enough that every tested compact RLE remains
+# below the uint16 row-offset limit while retaining substantially more vertical
+# detail than the old 266x148 stretched compatibility frames.
+COMPACT_CAMERA_SIZE = (240, 189)
 
 
 def fmt(values, pattern: str, per_line: int) -> str:
@@ -258,7 +263,7 @@ def main() -> None:
     for index, sprite_id in enumerate(CAMERA_IDS, start=1):
         symbol = f"gPcCompatCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         camera_symbols.append(symbol)
@@ -267,14 +272,14 @@ def main() -> None:
     for index, sprite_id in enumerate(SPRINGTRAP_CAMERA_IDS, start=1):
         symbol = f"gPcCompatSpringtrapCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         springtrap_symbols.append(symbol)
 
-    # Keep the Shadow Cupcake source art at its native PC dimensions. The camera
+    # Keep Shadow Cupcake source art at native PC dimensions. The camera
     # renderer scales its source-space rectangle with the same 825x650 ->
-    # 432x240 transform as the PC feed, preserving the MFA create coordinates.
+    # 432x340 transform as the PC feed, preserving the MFA create coordinates.
     for symbol, sprite_id in SHADOW_CUPCAKES:
         emit_texture(source, symbol, load(root, sprite_id).convert("RGBA"),
                      f"PC Shadow Cupcake image ID {sprite_id} from fivenights3-94.mfa")
@@ -288,7 +293,7 @@ def main() -> None:
 
     for symbol, sprite_id in PHANTOM_CAMERA_COMPOSITES:
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
                      f"PC MFA full-camera composite, General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
 
