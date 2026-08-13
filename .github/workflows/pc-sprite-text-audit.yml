@@ -20,7 +20,7 @@ jobs:
         run: |
           apt-get update
           DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-            ca-certificates curl unzip python3 python3-pil tesseract-ocr
+            ca-certificates curl unzip python3 python3-pil
 
       - name: Fetch verified PC General Sprites source
         shell: bash
@@ -56,58 +56,31 @@ jobs:
           echo "b083700bfbcbe0254c59a3f4acf451f6c647c20719a6db2ea29c8f4a644c6a23  /tmp/fnaf3-general-sprites.zip" | sha256sum -c -
           unzip -q /tmp/fnaf3-general-sprites.zip -d /tmp/fnaf3-pc-general
 
-      - name: Audit clock neighborhood and text sprites
+      - name: Dump 14x17 clock glyphs
         shell: bash
         run: |
           python3 - <<'PY'
+          from collections import Counter
           from pathlib import Path
-          from PIL import Image, ImageOps
-          import re, subprocess, tempfile
+          from PIL import Image
 
           root = Path('/tmp/fnaf3-pc-general/DataDump3')
-          print('=== IDs 220..260: size and visible alpha bbox ===')
-          for sprite_id in range(220, 261):
-              path = root / f'{sprite_id}.png'
-              if not path.is_file():
-                  continue
-              im = Image.open(path).convert('RGBA')
-              alpha = im.getchannel('A')
-              bbox = alpha.getbbox()
-              print(f'ID {sprite_id}: size={im.size} alpha_bbox={bbox}')
-
-          print('=== OCR keyword candidates ===')
-          keywords = re.compile(r'(seal|vent|game|over|night|am|5.?59|6.?00)', re.I)
-          hits = []
-          for path in sorted(root.glob('*.png'), key=lambda p: int(p.stem)):
-              try:
-                  im = Image.open(path).convert('RGBA')
-              except Exception:
-                  continue
-              w, h = im.size
-              if h > 180 or w > 700 or w < 4 or h < 4:
-                  continue
-              alpha = im.getchannel('A')
-              if alpha.getbbox() is None:
-                  continue
-              # Composite on black, enlarge hard-edged UI text, and try both
-              # normal and inverted luminance because the bank mixes white,
-              # green, red, and black-keyed Clickteam text objects.
-              base = Image.new('RGB', im.size, 'black')
-              base.paste(im.convert('RGB'), mask=alpha)
-              scale = max(4, min(10, 640 // max(1, w)))
-              enlarged = base.resize((w * scale, h * scale), Image.Resampling.NEAREST)
-              variants = [enlarged, ImageOps.invert(enlarged)]
-              text = ''
-              for variant in variants:
-                  with tempfile.NamedTemporaryFile(suffix='.png') as tmp:
-                      variant.save(tmp.name)
-                      proc = subprocess.run(['tesseract', tmp.name, 'stdout', '--psm', '7'], capture_output=True, text=True)
-                      candidate = ' '.join(proc.stdout.split())
-                      if len(candidate) > len(text):
-                          text = candidate
-              if text and keywords.search(text):
-                  hits.append((int(path.stem), im.size, text))
-          for sprite_id, size, text in hits:
-              print(f'OCR HIT ID {sprite_id}: size={size} text={text!r}')
-          print(f'OCR hit count: {len(hits)}')
+          print('=== PC General Sprites IDs 230..243 ===')
+          print('Bright pixels are #; black/key pixels are .')
+          for sprite_id in range(230, 244):
+              im = Image.open(root / f'{sprite_id}.png').convert('RGBA')
+              colours = Counter((r, g, b) for r, g, b, a in im.getdata() if a >= 32)
+              bright = sum(n for (r, g, b), n in colours.items() if max(r, g, b) >= 48)
+              print(f'\nID {sprite_id} size={im.size} bright={bright} top_colours={colours.most_common(4)}')
+              for y in range(im.height):
+                  row = []
+                  for x in range(im.width):
+                      r, g, b, a = im.getpixel((x, y))
+                      if a < 32 or max(r, g, b) < 48:
+                          row.append('.')
+                      else:
+                          # Preserve rough intensity so antialiasing does not hide shape.
+                          v = max(r, g, b)
+                          row.append('#' if v >= 160 else '+' if v >= 96 else ':')
+                  print(''.join(row))
           PY
