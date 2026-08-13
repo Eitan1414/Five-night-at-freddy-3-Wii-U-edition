@@ -3,7 +3,7 @@
  *
  * The compact compatibility textures are generated from the same verified PC
  * General Sprites bank as the high-resolution tiled textures, but use a single
- * TextureRle per feed.  Keeping the night monitor on this bank avoids the
+ * TextureRle per feed. Keeping the night monitor on this bank avoids the
  * camera-dependent crashes seen with the tiled path while preserving PC art.
  */
 static uint16_t sPcHallucinationCameraMask = 0u;
@@ -16,7 +16,11 @@ static uint32_t sPcHallucinationFrames = 0u;
 #define PC_CAMERA_FEED_X 196
 #define PC_CAMERA_FEED_Y 70
 #define PC_CAMERA_FEED_W 432
-#define PC_CAMERA_FEED_H 240
+/* Every retail-PC camera/Springtrap/full-Phantom composite in General Sprites
+ * is 825x650. 432x340 preserves that source aspect (1.2706 vs 1.2692) instead
+ * of the old 432x240 Wii U stretch. The original map then naturally overlays
+ * the lower-right portion of the video feed. */
+#define PC_CAMERA_FEED_H 340
 #define PC_CAMERA_SOURCE_W 825
 #define PC_CAMERA_SOURCE_H 650
 
@@ -179,7 +183,7 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
         pc_camera_draw_static(game);
         graphics_draw_text(sOriginalUiPanelTargets,
                            PC_CAMERA_FEED_X + 118,
-                           PC_CAMERA_FEED_Y + 106,
+                           PC_CAMERA_FEED_Y + 156,
                            3, "VIDEO ERROR", COLOUR_RED);
         return;
     }
@@ -250,7 +254,7 @@ static void original_ui_draw_camera_feed(const Game *game)
 
     pc_camera_fidelity_redraw_viewport(game);
 
-    /* Camera-switch static belongs to the VIDEO FEED only.  The PC map and
+    /* Camera-switch static belongs to the VIDEO FEED only. The PC map and
      * controls remain readable during the burst. */
     if (!game->camera_failed && sOriginalUi.static_flash_frames > 0u)
         pc_camera_draw_static(game);
