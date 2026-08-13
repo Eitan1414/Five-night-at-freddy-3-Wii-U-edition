@@ -55,8 +55,32 @@ static bool wiiu_v6_try_shadow_cupcake_touch(Game *game,
     return true;
 }
 
+static bool wiiu_v6_update_pc_victory_flow(Game *game)
+{
+    if (game == NULL || game->screen != SCREEN_VICTORY)
+        return false;
+
+    /* Retail PC has no `NIGHT COMPLETE / press A` gate after the 5:59 -> 6:00
+     * clock. Keep the existing 180-frame compatibility duration until the raw
+     * Clickteam end-of-clock event is decoded, then enter the same inter-night
+     * route already used by the finishing layer. */
+    ++game->screen_frames;
+    if ((game->screen_frames % 6u) == 0u)
+        game->dirty = true;
+
+    if (game->screen_frames >= 180u) {
+        if (game->night <= 5)
+            finishing_start_minigame(game, game->night, false);
+        else
+            finishing_start_ending(game, FINISHING_NIGHT6_ENDING);
+    }
+    return true;
+}
+
 static void wiiu_control_update_game_v6(Game *game, const InputState *input)
 {
+    if (wiiu_v6_update_pc_victory_flow(game))
+        return;
     if (wiiu_v6_try_shadow_cupcake_touch(game, input))
         return;
     wiiu_control_update_game_v5(game, input);
