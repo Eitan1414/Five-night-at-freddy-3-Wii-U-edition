@@ -22,10 +22,10 @@ static void draw_authentic_office_targets(const Game *game, uint32_t targets)
     graphics_clear(targets, COLOUR_BLACK);
 
     /*
-     * Use the compact Wii U-safe PC texture.  It is generated from the same
-     * PC General Sprites office image 203 as the former tiled panorama, but it
-     * stays in one validated TextureRle object and avoids the black-screen
-     * regression observed on hardware.
+     * Use the compact Wii U-safe PC texture. It is generated from the same PC
+     * General Sprites office image 203 as the former tiled panorama, but stays
+     * in one validated TextureRle object and avoids the black-screen regression
+     * observed on real Wii U hardware.
      */
     texture_draw_rle(targets,
                      texture_x, 24, 1120, 430,
@@ -35,27 +35,25 @@ static void draw_authentic_office_targets(const Game *game, uint32_t targets)
     draw_authentic_office_fan(game, texture_x, targets);
     draw_phantom_office(game);
 
-    for (int y = 30; y < 454; y += 12)
-        graphics_draw_rect(targets, 0, y, 854, 1,
-                           GRAPHICS_RGB(4, 8, 5));
+    /*
+     * Do not add the old Wii U prototype scanline grid here. The retail PC
+     * office is the source artwork itself; camera/static effects and the
+     * ventilation blackout are rendered by their dedicated PC/MFA layers.
+     */
 
+    /* Keep only the gameplay HUD information while the exact PC `night`, `AM`
+     * and counter sprites are wired from General Sprites in the next asset
+     * pass. Unlike the former prototype, these labels have no invented frame,
+     * status box or green tint. */
     char night_text[24], clock_text[16];
-    snprintf(night_text, sizeof(night_text), "NIGHT %d", game->night);
+    snprintf(night_text, sizeof(night_text), "night %d", game->night);
     snprintf(clock_text, sizeof(clock_text), "%d AM", game->hour);
-    graphics_draw_text(targets, 18, 5, 2, night_text,
-                       GRAPHICS_RGB(166, 191, 151));
-    graphics_draw_rect(targets, 718, 4, 118, 36,
-                       GRAPHICS_RGB(1, 5, 2));
-    graphics_draw_frame(targets, 718, 4, 118, 36, 2,
-                        GRAPHICS_RGB(65, 103, 63));
-    graphics_draw_text(targets, 744, 16, 2, clock_text,
-                       COLOUR_WHITE);
-    if (game->ventilation_failed) {
-        graphics_draw_frame(targets, 555, 9, 157, 34, 3,
-                            COLOUR_RED);
-        graphics_draw_text(targets, 572, 20, 1,
-                           "VENT ERROR", COLOUR_RED);
-    }
+    graphics_draw_text(targets, 741, 35, 1, clock_text, COLOUR_WHITE);
+    graphics_draw_text(targets, 741, 54, 1, night_text, COLOUR_WHITE);
+
+    /* Ventilation failure presentation is owned by pc_draw_ventilation_overlay:
+     * red alarm pulse + MFA B-counter blackout. Do not draw the Wii U-only
+     * `VENT ERROR` banner over the office. */
 
     sPcOfficeTargets = previous_targets;
 }
