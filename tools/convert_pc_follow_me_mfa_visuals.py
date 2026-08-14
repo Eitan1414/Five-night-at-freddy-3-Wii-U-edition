@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 import argparse
 from pathlib import Path
 from PIL import Image
@@ -9,9 +10,9 @@ COLOURS = 48
 NUM = 5
 DEN = 8
 
-# symbol, General Sprites image id, hotspot x/y from fivenights3-94.mfa,
-# transparent RGB (None = opaque). Follow Me runs in the PC 1024x768 frame;
-# the Wii U renderer keeps that 4:3 image at 640x480 with side pillars.
+# symbol, PC General Sprites image id, MFA hotspot x/y, transparent RGB.
+# Every image is converted from the original 1024x768 Clickteam coordinate
+# space to the centered 640x480 Wii U content area at an exact 5/8 scale.
 ASSETS = (
     ("Checker", 335, 0, 0, None),
     ("BackdropWide", 31, 0, 0, None),
@@ -38,10 +39,7 @@ ASSETS = (
     ("Controls", 348, 128, 80, (0, 0, 0)),
     ("Blocked", 372, 65, 200, (0, 0, 0)),
 
-    # Exact playable animatronic frames from the MFA Active objects. The source
-    # canvases are 200x200; converting the whole canvas by 5/8 preserves the
-    # Clickteam hotspot and removes the old cropped-texture *3 approximation.
-    # Active 297 (Freddy), directions E/N/W/S.
+    # Playable Freddy, Bonnie, Chica and Foxy: directions E/N/W/S.
     ("PlayerFreddyRight0", 21, 106, 99, (0, 0, 0)),
     ("PlayerFreddyRight1", 22, 106, 101, (0, 0, 0)),
     ("PlayerFreddyUp0", 23, 104, 101, (0, 0, 0)),
@@ -50,7 +48,7 @@ ASSETS = (
     ("PlayerFreddyLeft1", 26, 93, 101, (0, 0, 0)),
     ("PlayerFreddyDown0", 27, 104, 99, (0, 0, 0)),
     ("PlayerFreddyDown1", 28, 103, 99, (0, 0, 0)),
-    # Active 356 `bonnie walk`.
+
     ("PlayerBonnieRight0", 402, 101, 92, (0, 0, 0)),
     ("PlayerBonnieRight1", 403, 101, 94, (0, 0, 0)),
     ("PlayerBonnieUp0", 404, 105, 95, (0, 0, 0)),
@@ -59,7 +57,7 @@ ASSETS = (
     ("PlayerBonnieLeft1", 407, 98, 94, (0, 0, 0)),
     ("PlayerBonnieDown0", 408, 105, 93, (0, 0, 0)),
     ("PlayerBonnieDown1", 409, 104, 93, (0, 0, 0)),
-    # Active 358 `chica walk`.
+
     ("PlayerChicaRight0", 412, 105, 108, (0, 0, 0)),
     ("PlayerChicaRight1", 413, 104, 108, (0, 0, 0)),
     ("PlayerChicaUp0", 414, 104, 110, (0, 0, 0)),
@@ -68,7 +66,7 @@ ASSETS = (
     ("PlayerChicaLeft1", 417, 104, 108, (0, 0, 0)),
     ("PlayerChicaDown0", 418, 105, 108, (0, 0, 0)),
     ("PlayerChicaDown1", 419, 104, 108, (0, 0, 0)),
-    # Active 361 `foxy walk`.
+
     ("PlayerFoxyRight0", 444, 104, 98, (0, 0, 0)),
     ("PlayerFoxyRight1", 445, 104, 99, (0, 0, 0)),
     ("PlayerFoxyUp0", 446, 104, 102, (0, 0, 0)),
@@ -78,8 +76,33 @@ ASSETS = (
     ("PlayerFoxyDown0", 450, 103, 102, (0, 0, 0)),
     ("PlayerFoxyDown1", 451, 102, 102, (0, 0, 0)),
 
-    # Exact secret-room clue objects, handles 373..384. Image IDs, hotspots
-    # and colour keys are read directly from the MFA image bank.
+    # Active 360 `child`; handle 366 `child 2` uses the Up pair 423/424.
+    ("PlayerGhostRight0", 421, 25, 43, (0, 0, 0)),
+    ("PlayerGhostRight1", 422, 25, 38, (0, 0, 0)),
+    ("PlayerGhostUp0", 423, 25, 42, (0, 0, 0)),
+    ("PlayerGhostUp1", 424, 25, 36, (0, 0, 0)),
+    ("PlayerGhostLeft0", 429, 25, 43, (0, 0, 0)),
+    ("PlayerGhostLeft1", 440, 25, 38, (0, 0, 0)),
+    ("PlayerGhostDown0", 442, 25, 43, (0, 0, 0)),
+    ("PlayerGhostDown1", 443, 25, 40, (0, 0, 0)),
+
+    # Shadow Freddy guide objects 347/348/349.
+    ("ShadowRight0", 375, 106, 100, (0, 0, 0)),
+    ("ShadowRight1", 376, 106, 101, (0, 0, 0)),
+    ("ShadowDown0", 377, 104, 99, (0, 0, 0)),
+    ("ShadowDown1", 378, 103, 99, (0, 0, 0)),
+    ("ShadowUp0", 379, 104, 102, (0, 0, 0)),
+    ("ShadowUp1", 380, 103, 102, (0, 0, 0)),
+
+    # Ch.1-4 Purple Guy and exact dismantled-parts Actives.
+    ("HuntMan0", 382, 103, 101, (0, 0, 0)),
+    ("HuntMan1", 383, 103, 104, (0, 0, 0)),
+    ("WreckFreddy", 401, 145, 60, (0, 0, 0)),
+    ("WreckBonnie", 410, 203, 77, (0, 0, 0)),
+    ("WreckChica", 420, 179, 63, (0, 0, 0)),
+    ("WreckFoxy", 452, 168, 50, (0, 0, 0)),
+
+    # Secret-room clue Actives 373..384.
     ("ClueBBDouble", 1007, -3, 0, (90, 90, 90)),
     ("Clue6", 1009, 43, 35, (0, 0, 0)),
     ("Clue7", 1011, 43, 35, (0, 0, 0)),
@@ -90,8 +113,7 @@ ASSETS = (
     ("Clue15", 1006, -3, 0, (90, 90, 90)),
     ("Clue16", 173, 54, 112, (0, 0, 0)),
 
-    # Final Follow Me (chapter 5). These are the actual frames referenced by
-    # handles 363 (`man`), 368 (`man run`) and 369 (`Active 4`) in the MFA.
+    # Final Follow Me actors / suit / springlock.
     ("FinalManRight0", 453, 104, 94, (0, 0, 0)),
     ("FinalManRight1", 454, 108, 99, (0, 0, 0)),
     ("FinalManLeft0", 455, 95, 94, (0, 0, 0)),
@@ -109,7 +131,6 @@ ASSETS = (
     ("Spring16B", 496, 102, 196, (0, 0, 0)),
     ("Spring17A", 497, 101, 162, (0, 0, 0)),
     ("Spring17B", 498, 101, 160, (0, 0, 0)),
-    # Handle 370 `brud`, created by event184 around the springlock body.
     ("Brud", 502, 12, 12, (0, 0, 0)),
 )
 
