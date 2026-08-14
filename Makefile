@@ -145,6 +145,8 @@ $(BUILD):
 			source/pc_finishing_visuals.c \
 			include/assets/pc_finishing_visuals.h; \
 	fi
+	@echo "Auditing final runtime visual routes for PC-only assets..."
+	@python3 tools/verify_pc_only_visuals.py
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
