@@ -34,6 +34,18 @@ ASSETS = (
     ("FollowText", 1005, -4, 0, (90, 90, 90)),
     ("Controls", 348, 128, 80, (0, 0, 0)),
     ("Blocked", 372, 65, 200, (0, 0, 0)),
+
+    # Exact secret-room clue objects, handles 373..384.  Image IDs, hotspots
+    # and colour keys are read directly from the MFA image bank.
+    ("ClueBBDouble", 1007, -3, 0, (90, 90, 90)),
+    ("Clue6", 1009, 43, 35, (0, 0, 0)),
+    ("Clue7", 1011, 43, 35, (0, 0, 0)),
+    ("Clue8", 1012, 43, 35, (0, 0, 0)),
+    ("Clue9", 1013, 43, 35, (0, 0, 0)),
+    ("ClueButtons", 171, 38, 44, (0, 0, 0)),
+    ("Clue14", 1016, -3, 0, (90, 90, 90)),
+    ("Clue15", 1006, -3, 0, (90, 90, 90)),
+    ("Clue16", 173, 54, 112, (0, 0, 0)),
 )
 
 
