@@ -25,12 +25,16 @@ static void wiiu_control_nonoffice_render(Game *game)
 }
 
 /* Phone subtitle presentation is layered after the original finishing code so
- * it does not alter call playback or timing. Capture the legacy overlay before
- * remapping later office render calls to the bilingual subtitle wrapper. */
+ * it does not alter call playback. Keep the first percentage-based renderer
+ * available for reference, but route the actual office overlay through the
+ * MFA/WAV-backed timing pass below. */
 static void (*const wiiu_base_phone_overlay)(void) = finishing_draw_phone_overlay;
 #define finishing_draw_phone_overlay_base wiiu_base_phone_overlay
-#define finishing_draw_phone_overlay wiiu_phone_overlay_with_subtitles
+#define finishing_draw_phone_overlay wiiu_phone_overlay_with_estimated_subtitles
 #include "main_v3_parts/main_phone_subtitles.inc"
 #undef finishing_draw_phone_overlay
 #undef finishing_draw_phone_overlay_base
+
+#include "main_v3_parts/main_phone_subtitles_mfa_sync.inc"
+
 #define finishing_draw_phone_overlay wiiu_phone_overlay_with_subtitles
