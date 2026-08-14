@@ -28,12 +28,17 @@ for path in ROOT.rglob("*"):
     if "psx" in path.name.lower():
         fail(f"PSX-labelled file present: {relative}")
 
-# These were the old standalone fallback payloads. The PC renderer owns these
-# routes now, so restoring any of them is an explicit regression.
+# These were old standalone/custom fallback payloads. The PC renderer owns all
+# of these routes now, so restoring any one is an explicit regression.
 for relative in (
     "source/phantom_assets.c",
     "source/camera_springtrap_assets.c",
     "source/jumpscare_assets.c",
+    "tools/convert_user_chica_png.py",
+    "assets/user_visuals/phantom_chica_jumpscare.png.b64.part1",
+    "assets/user_visuals/phantom_chica_jumpscare.png.b64.part2",
+    "assets/user_visuals/phantom_chica_jumpscare.png.b64.part3",
+    "assets/user_visuals/phantom_chica_jumpscare.png.b64.part4",
 ):
     if (ROOT / relative).exists():
         fail(f"obsolete visual fallback restored: {relative}")
@@ -97,6 +102,9 @@ for route in required_runtime_routes:
     if route not in main_c:
         fail(f"final runtime PC route is missing: {route}")
 
+if "phantom_chica_user_jumpscare" in main_c:
+    fail("obsolete custom Phantom Chica include returned to the final runtime")
+
 for relative in (
     "source/pc_core_visuals.c",
     "source/pc_compat_visuals.c",
@@ -109,4 +117,4 @@ for relative in (
     if not path.is_file() or path.stat().st_size == 0:
         fail(f"generated PC visual bank is missing/empty: {relative}")
 
-print("PC-only visual audit passed: no TIM/PSX file paths and all legacy runtime sprite routes resolve to PC assets")
+print("PC-only visual audit passed: no TIM/PSX/custom fallback paths and all legacy runtime sprite routes resolve to PC assets")

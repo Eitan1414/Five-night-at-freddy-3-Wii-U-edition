@@ -14,18 +14,6 @@ if ! command -v curl >/dev/null 2>&1 || ! command -v unzip >/dev/null 2>&1; then
     exit 1
 fi
 
-mkdir -p assets/user_visuals
-cat assets/user_visuals/phantom_chica_jumpscare.png.b64.part* \
-    | base64 -d > assets/user_visuals/phantom_chica_jumpscare.png
-
-if ls source/generated/user_content.tar.xz.b64.* >/dev/null 2>&1; then
-    temporary_user_content="${TMPDIR:-/tmp}/fnaf3-user-content.tar.xz"
-    # shellcheck disable=SC2086
-    cat source/generated/user_content.tar.xz.b64.* | base64 -d > "$temporary_user_content"
-    tar -xJf "$temporary_user_content" -C .
-    rm -f "$temporary_user_content"
-fi
-
 # Supplied Wii U achievement package. This is project-specific content and has
 # no PlayStation source dependency.
 if ls source/generated/achievement_assets_micro.tar.xz.b64.* >/dev/null 2>&1; then
@@ -44,11 +32,6 @@ test -s source/achievement_assets.c
 test -s include/assets/achievement_assets.h
 test -s assets/user_audio/achievement.ogg
 test -s assets/user_audio/utine.ogg
-
-python3 tools/convert_user_chica_png.py \
-    assets/user_visuals/phantom_chica_jumpscare.png \
-    source/phantom_chica_user_jumpscare.c \
-    include/assets/phantom_chica_user_jumpscare.h
 
 USER_AUDIO_ROOT="${FNAF3_USER_AUDIO_ROOT:-assets/user_audio}"
 mkdir -p data/audio
