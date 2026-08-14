@@ -64,9 +64,7 @@ jobs:
           import xml.etree.ElementTree as ET
 
           root = Path('build/wup-fnaf3-hw')
-          # New hardware-test ID avoids stale tickets/caches from the failed GX2 packages.
           title_id = '000500001337F3A4'
-          # Preserve the group id from the hardware-working NUSspli-layout diagnostic.
           group_id = '00000812'
 
           app_path = root/'code'/'app.xml'
@@ -106,29 +104,27 @@ jobs:
           except AttributeError:
               resampling = Image.LANCZOS
 
-          # Replace every visible NUSspli static image with the project's FNAF3 artwork.
-          icon = Image.open('icon.jpg').convert('RGBA')
-          icon = ImageOps.fit(icon, (128, 128), method=resampling)
+          # icon.jpg is the verified valid project artwork. Build every static boot image from it.
+          icon_src = Image.open('icon.jpg').convert('RGBA')
+          icon = ImageOps.fit(icon_src, (128, 128), method=resampling)
           icon.save(root/'meta'/'iconTex.tga', format='TGA')
 
-          tv = Image.open('boot-tv.jpg').convert('RGB')
-          tv = ImageOps.fit(tv, (1280, 720), method=resampling)
-          tv.save(root/'meta'/'bootTvTex.tga', format='TGA')
+          def make_boot(size):
+              canvas = Image.new('RGB', size, (0, 0, 0))
+              art = icon_src.convert('RGB').copy()
+              max_side = int(min(size) * 0.42)
+              art.thumbnail((max_side, max_side), resampling)
+              canvas.paste(art, ((size[0]-art.width)//2, (size[1]-art.height)//2))
+              return canvas
 
-          drc = Image.open('boot-drc.jpg').convert('RGB')
-          drc = ImageOps.fit(drc, (854, 480), method=resampling)
-          drc.save(root/'meta'/'bootDrcTex.tga', format='TGA')
+          make_boot((1280, 720)).save(root/'meta'/'bootTvTex.tga', format='TGA')
+          make_boot((854, 480)).save(root/'meta'/'bootDrcTex.tga', format='TGA')
 
-          # Wii U boot logo is 170x42 RGBA. Keep proportions instead of stretching the square icon.
           logo = Image.new('RGBA', (170, 42), (0, 0, 0, 0))
           mini = icon.copy()
           mini.thumbnail((42, 42), resampling)
           logo.alpha_composite(mini, ((170-mini.width)//2, (42-mini.height)//2))
           logo.save(root/'meta'/'bootLogoTex.tga', format='TGA')
-
-          # Keep NUSspli's optional bootMovie/bootSound only for this hardware-compatibility build.
-          # They do not control the HOME Menu icon/name. Once the real game launch is confirmed,
-          # they can be replaced/removed without touching the working ticket/TMD/channel structure.
 
           assert ar.find('version').text == '1'
           assert cr.find('version').text == '1'
