@@ -214,6 +214,23 @@ jobs:
       - name: Build WUHB and RPX
         run: make -j2
 
+      - name: Build Cemu package
+        run: python3 tools/build_cemu_package.py --version v1.0
+
+      - name: Verify Cemu package
+        run: |
+          test -f dist/fnaf3-wiiu-v1.0-cemu.zip
+          test -f dist/fnaf3-wiiu-cemu/code/fnaf3-wiiu.rpx
+          test -f dist/fnaf3-wiiu-cemu/code/app.xml
+          test -f dist/fnaf3-wiiu-cemu/code/cos.xml
+          test -f dist/fnaf3-wiiu-cemu/content/channel.txt
+          test -f dist/fnaf3-wiiu-cemu/meta/meta.xml
+          test -f dist/fnaf3-wiiu-cemu/meta/iconTex.tga
+          test -f dist/fnaf3-wiiu-cemu/meta/bootTvTex.tga
+          test -f dist/fnaf3-wiiu-cemu/meta/bootDrcTex.tga
+          test -f dist/fnaf3-wiiu-cemu/CEMU-INSTALL.txt
+          unzip -l dist/fnaf3-wiiu-v1.0-cemu.zip
+
       - name: Build installable WUP channel
         if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}
         run: sh tools/build_wup_channel.sh
@@ -242,6 +259,13 @@ jobs:
             fnaf3-wiiu.elf
             fnaf3-wiiu.rpx
             fnaf3-wiiu.wuhb
+
+      - name: Upload Cemu build
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu-cemu
+          if-no-files-found: error
+          path: dist/fnaf3-wiiu-v1.0-cemu.zip
 
       - name: Upload installable WUP build
         if: ${{ env.WIIU_COMMON_KEY != '' && github.event_name != 'pull_request' }}

@@ -1,0 +1,96 @@
+name: Publish Cemu v1.0 package
+
+on:
+  workflow_run:
+    workflows:
+      - Build Wii U Homebrew
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish-cemu:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout exact successful main revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Check v1.0 release and Cemu asset
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view v1.0 >/dev/null
+          if gh release view v1.0 --json assets --jq '.assets[].name' | grep -Fxq 'fnaf3-wiiu-v1.0-cemu.zip'; then
+            echo 'publish=false' >> "$GITHUB_OUTPUT"
+            echo 'Cemu v1.0 asset already exists; nothing to publish.'
+          else
+            echo 'publish=true' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download Cemu artifact from successful build
+        if: steps.release.outputs.publish == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: fnaf3-wiiu-cemu
+          path: cemu-artifact
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify Cemu release package
+        if: steps.release.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f cemu-artifact/fnaf3-wiiu-v1.0-cemu.zip
+          unzip -l cemu-artifact/fnaf3-wiiu-v1.0-cemu.zip | tee /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/code/fnaf3-wiiu.rpx' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/code/app.xml' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/code/cos.xml' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/content/channel.txt' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/meta/meta.xml' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/meta/iconTex.tga' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/meta/bootTvTex.tga' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/meta/bootDrcTex.tga' /tmp/cemu-zip-list.txt
+          grep -Fq 'fnaf3-wiiu-cemu/CEMU-INSTALL.txt' /tmp/cemu-zip-list.txt
+          sha256sum cemu-artifact/fnaf3-wiiu-v1.0-cemu.zip | tee cemu-artifact/SHA256SUMS-CEMU.txt
+
+      - name: Add Cemu instructions to v1.0 notes
+        if: steps.release.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view v1.0 --json body --jq '.body' > /tmp/release-body.md
+          cat >> /tmp/release-body.md <<'EOF'
+
+          ## Cemu
+
+          A dedicated **Cemu package** is also available as `fnaf3-wiiu-v1.0-cemu.zip`.
+
+          Extract the ZIP, then in Cemu use **File -> Install game title, update or DLC** and select:
+
+          `fnaf3-wiiu-cemu/meta/meta.xml`
+
+          Direct RPX launch is also possible from `fnaf3-wiiu-cemu/code/fnaf3-wiiu.rpx`, but the installed-title route is recommended for the normal Wii U title/save context.
+          EOF
+          gh release edit v1.0 --notes-file /tmp/release-body.md
+
+      - name: Upload Cemu package to stable v1.0
+        if: steps.release.outputs.publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release upload v1.0 \
+            cemu-artifact/fnaf3-wiiu-v1.0-cemu.zip \
+            cemu-artifact/SHA256SUMS-CEMU.txt

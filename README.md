@@ -10,10 +10,11 @@ An unofficial **Five Nights at Freddy's 3** port made specifically for the **Nin
 
 ➡️ [Download Five Nights at Freddy's 3 — Wii U Edition v1.0](../../releases/tag/v1.0)
 
-The release provides both:
+The release provides:
 
-- an **Aroma / WUHB** package, recommended for most users;
-- an **installable WUP Channel** package generated and structurally validated by CI.
+- an **Aroma / WUHB** package, recommended for real Wii U homebrew users;
+- an **installable WUP Channel** package generated and structurally validated by CI;
+- a dedicated **Cemu** package in decrypted `code/content/meta` format.
 
 The final v1.0 publication build also passed the Springtrap, Phantom and final fidelity/stress validation suite before release.
 
@@ -100,9 +101,54 @@ The Channel build uses native Wii U save storage and includes migration support 
 
 The WUP package is generated and structurally validated by GitHub Actions. The Aroma/WUHB build remains the recommended fallback if a console-specific Channel installation issue is encountered.
 
+### Cemu
+
+The v1.0 release also provides:
+
+```text
+fnaf3-wiiu-v1.0-cemu.zip
+```
+
+This is a **decrypted Wii U title layout** made specifically for Cemu. After extraction it contains:
+
+```text
+fnaf3-wiiu-cemu/
+├── code/
+│   ├── fnaf3-wiiu.rpx
+│   ├── app.xml
+│   └── cos.xml
+├── content/
+└── meta/
+    ├── meta.xml
+    ├── iconTex.tga
+    ├── bootTvTex.tga
+    └── bootDrcTex.tga
+```
+
+Recommended installation:
+
+1. Extract `fnaf3-wiiu-v1.0-cemu.zip`.
+2. Open Cemu.
+3. Choose **File → Install game title, update or DLC**.
+4. Select:
+
+```text
+fnaf3-wiiu-cemu/meta/meta.xml
+```
+
+5. Launch **Five Nights at Freddy's 3 — Wii U Edition** from Cemu's game list.
+
+A direct RPX launch is also possible through **File → Load** and selecting:
+
+```text
+fnaf3-wiiu-cemu/code/fnaf3-wiiu.rpx
+```
+
+The installed-title method is recommended because it gives the port the normal Wii U title context and native save path inside Cemu's MLC. The Cemu package uses the same title ID as the Wii U Channel: `000500001337F3A3`.
+
 ### Release checksums
 
-The v1.0 release includes `SHA256SUMS.txt` so downloaded packages can be verified before installation.
+The v1.0 release includes `SHA256SUMS.txt` for the Wii U packages and `SHA256SUMS-CEMU.txt` for the dedicated Cemu package.
 
 ## Controls
 
@@ -150,11 +196,12 @@ The v1.0 release path includes automated checks for:
 - PC-only visual/audio routing
 - rare/random MFA-derived Phantom events
 - Wii U WUHB/RPX compilation
+- Cemu `code/content/meta` package generation and layout validation
 - installable WUP generation and structural validation
 
 The final host stress harness executes **4,147,200 synthetic 60 Hz state-transition frames across Nights 1–6** with AddressSanitizer and UndefinedBehaviorSanitizer enabled.
 
-Automated validation does not replace every possible physical-console scenario, so hardware-specific bug reports remain useful.
+Automated validation does not replace every possible physical-console or emulator scenario, so hardware- and Cemu-specific bug reports remain useful.
 
 ## How the port was created
 
@@ -178,7 +225,9 @@ The Wii U-specific codebase is built with the standard Wii U homebrew developmen
 
 **Five Nights at Freddy's 3 — Wii U Edition v1.0 is released and is the current stable version.**
 
-Future development can focus on bug fixes, hardware-specific improvements and optional post-v1.0 enhancements without reopening the completed core porting milestone.
+The stable release supports real Wii U through Aroma/WUHB or WUP Channel packaging and also provides a dedicated Cemu distribution.
+
+Future development can focus on bug fixes, hardware/emulator-specific improvements and optional post-v1.0 enhancements without reopening the completed core porting milestone.
 
 ## Disclaimer
 
