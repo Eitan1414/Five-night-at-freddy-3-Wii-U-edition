@@ -1,9 +1,20 @@
 static void follow_me_pc_update_hunt(void)
 {
-    if (sFollowMePc.purple_x < sFollowMePc.player_x) sFollowMePc.purple_x += 5;
-    else if (sFollowMePc.purple_x > sFollowMePc.player_x) sFollowMePc.purple_x -= 5;
-    if (sFollowMePc.purple_y < sFollowMePc.player_y) sFollowMePc.purple_y += 4;
-    else if (sFollowMePc.purple_y > sFollowMePc.player_y) sFollowMePc.purple_y -= 4;
+    /* MFA events 110..113: Purple Guy moves 30 PC pixels every 100 ms,
+     * independently on X and Y, toward the hit box.  Six 60-Hz updates are
+     * exactly 100 ms; scale the source step for the centered 640x480 Wii U
+     * viewport instead of moving five Wii U pixels every frame. */
+    if ((sFollowMePc.phase_frames % 6u) == 0u) {
+        const int step = follow_me_pc_grid_scale(30);
+        if (sFollowMePc.purple_x < sFollowMePc.player_x)
+            sFollowMePc.purple_x += step;
+        else if (sFollowMePc.purple_x > sFollowMePc.player_x)
+            sFollowMePc.purple_x -= step;
+        if (sFollowMePc.purple_y < sFollowMePc.player_y)
+            sFollowMePc.purple_y += step;
+        else if (sFollowMePc.purple_y > sFollowMePc.player_y)
+            sFollowMePc.purple_y -= step;
+    }
 
     if (follow_me_pc_near(sFollowMePc.player_x, sFollowMePc.player_y,
                           sFollowMePc.purple_x, sFollowMePc.purple_y, 27)) {
@@ -15,9 +26,6 @@ static void follow_me_pc_update_hunt(void)
 
 static void follow_me_pc_update_ghost_chase(void)
 {
-    /* Final Follow Me: the four released spirits block the exit while the
-     * fifth child chases Purple Guy around the safe room. Purple Guy follows
-     * a short panic path before committing to the Spring Bonnie suit. */
     static const int targets[6][2] = {
         {365, 245}, {535, 220}, {330, 320},
         {585, 330}, {625, 255}, {690, 220}
@@ -76,9 +84,6 @@ static void follow_me_pc_update_suit(void)
         return;
     }
 
-    /* Once inside the suit, hold on the intact Spring Bonnie frame for a
-     * readable beat before the springlocks fail. contact_cooldown is free at
-     * this point and acts as the suit-hold timer. */
     sFollowMePc.purple_x = suit_x;
     sFollowMePc.purple_y = suit_y;
     ++sFollowMePc.contact_cooldown;
@@ -130,16 +135,31 @@ static void follow_me_pc_update(Game *game, const InputState *input)
             follow_me_pc_move_player(input);
         else
             sFollowMePc.moving = false;
+
         if (sFollowMePc.phase == FOLLOW_PHASE_GUIDE) {
             follow_me_pc_update_shadow();
             follow_me_pc_update_room_transitions();
         } else if (sFollowMePc.phase == FOLLOW_PHASE_ERR) {
             ++sFollowMePc.phase_frames;
-            if (sFollowMePc.phase_frames >= 52u) {
+
+            /* Event 75 sets ERR value to 200. Events 76/77 keep it visible
+             * while the value is positive and subtract one per tick. Event
+             * 107 arms the trigger afterwards; event 108 creates `man 1` only
+             * when the hit box overlaps trigger 353 at source (501,387). */
+            if (sFollowMePc.phase_frames >= 200u &&
+                follow_me_pc_near(sFollowMePc.player_x,
+                                  sFollowMePc.player_y,
+                                  follow_me_pc_grid_x(501),
+                                  follow_me_pc_grid_y(387), 28)) {
                 sFollowMePc.phase = FOLLOW_PHASE_HUNT;
                 sFollowMePc.phase_frames = 0u;
-                sFollowMePc.purple_x = 500;
-                sFollowMePc.purple_y = 414;
+
+                /* Event 108 creates man1 relative to leave-top (499,-1) with
+                 * offset (+3,+15): exact source start (502,14). */
+                sFollowMePc.purple_x = follow_me_pc_grid_x(502);
+                sFollowMePc.purple_y = follow_me_pc_grid_y(14);
+                pc_minigame_sfx_play(PC_MINIGAME_SFX_CRAZY_GARBLE,
+                                     1.0f, false);
             }
         } else if (sFollowMePc.phase == FOLLOW_PHASE_HUNT) {
             ++sFollowMePc.phase_frames;
@@ -182,10 +202,6 @@ static void follow_me_pc_draw_sprite(FollowMePcSprite sprite, int x, int y,
     const TextureRle *texture = follow_me_pc_sprite(sprite);
     if (texture == NULL || scale <= 0) return;
 
-    /* The general asset renderer uses linear filtering for photographic FNaF
-     * material. Follow Me is integer-scaled pixel art, so draw each RLE run as
-     * exact pixel blocks here. This keeps the minigame crisp without changing
-     * the filter used by cameras, office panoramas or menus. */
     const int origin_x = x - ((int) texture->width * scale) / 2;
     const int origin_y = y - (int) texture->height * scale;
     for (uint32_t source_y = 0u; source_y < texture->height; ++source_y) {
