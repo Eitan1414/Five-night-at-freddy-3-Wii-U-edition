@@ -149,6 +149,12 @@ $(BUILD):
 	@python3 tools/verify_pc_only_visuals.py
 	@echo "Auditing final runtime audio routes for PC-only assets..."
 	@python3 tools/verify_pc_only_audio.py
+	@echo "Auditing PC audio behavior fidelity..."
+	@python3 tools/verify_pc_audio_fidelity.py
+	@echo "Auditing fine PC/MFA visual geometry..."
+	@python3 tools/verify_pc_visual_fidelity.py
+	@echo "Auditing rare PC/MFA event rules..."
+	@python3 tools/verify_pc_rare_events.py
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
