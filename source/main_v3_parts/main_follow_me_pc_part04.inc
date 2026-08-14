@@ -1,15 +1,25 @@
 static void follow_me_pc_draw_remains(void)
 {
-    if (sFollowMePc.room != FOLLOW_ROOM_SAFE_ENTRANCE) return;
-    static const FollowMePcSprite remains[4] = {
-        FOLLOW_ME_PC_WRECK_0, FOLLOW_ME_PC_WRECK_1,
-        FOLLOW_ME_PC_WRECK_2, FOLLOW_ME_PC_WRECK_3
-    };
-    static const int xs[4] = {165, 315, 465, 580};
-    const int count = sFollowMePc.chapter <= 4
-        ? sFollowMePc.chapter - 1 : 4;
-    for (int index = 0; index < count; ++index)
-        follow_me_pc_draw_sprite(remains[index], xs[index], 375, 2);
+    /* Events 120..123 recreate the previously dismantled suits in source cell
+     * (2,5).  These are the exact creation positions relative to leave-top. */
+    if (!follow_me_pc_mfa_cell(2, 5)) return;
+
+    if (sFollowMePc.chapter >= 2)
+        follow_me_pc_draw_sprite(FOLLOW_ME_PC_WRECK_0,
+                                 follow_me_pc_grid_x(444),
+                                 follow_me_pc_grid_y(572), 2);
+    if (sFollowMePc.chapter >= 3)
+        follow_me_pc_draw_sprite(FOLLOW_ME_PC_WRECK_1,
+                                 follow_me_pc_grid_x(648),
+                                 follow_me_pc_grid_y(214), 2);
+    if (sFollowMePc.chapter >= 4)
+        follow_me_pc_draw_sprite(FOLLOW_ME_PC_WRECK_2,
+                                 follow_me_pc_grid_x(342),
+                                 follow_me_pc_grid_y(302), 2);
+    if (sFollowMePc.chapter >= 5)
+        follow_me_pc_draw_sprite(FOLLOW_ME_PC_WRECK_3,
+                                 follow_me_pc_grid_x(640),
+                                 follow_me_pc_grid_y(454), 2);
 }
 
 static void follow_me_pc_draw_safe_room_ghosts(void)
@@ -61,7 +71,6 @@ static FollowMePcSprite follow_me_pc_spring_frame(void)
 
 static FollowMePcSprite follow_me_pc_mfa_shadow_sprite(void)
 {
-    /* Recovered two-frame pairs for handles 347/348/349. */
     int base = FOLLOW_ME_PC_SHADOW_0;
     if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_DOWN)
         base = FOLLOW_ME_PC_SHADOW_2;
@@ -76,12 +85,9 @@ static void follow_me_pc_draw(const Game *game)
     follow_me_pc_draw_remains();
     follow_me_pc_draw_rain(sFollowMePc.frames);
 
-    /* Event 8 places controls at source (502,158); event 63 hides at 5000 ms. */
     if (sFollowMePc.frames < 300u)
         follow_me_pc_draw_mfa(&gFollowMfaControls, 502, 158);
 
-    /* Shadow Freddy and Active 351 are independent Active objects; they keep
-     * updating if the player has already triggered the ERR overlay. */
     if (sFollowMePc.chapter < 5 &&
         sFollowMfaShadowKind != FOLLOW_MFA_SHADOW_NONE) {
         follow_me_pc_draw_sprite(follow_me_pc_mfa_shadow_sprite(),
@@ -93,8 +99,6 @@ static void follow_me_pc_draw(const Game *game)
     if (sFollowMePc.chapter < 5 && sFollowMfaFollowTextTicks > 0u)
         follow_me_pc_draw_mfa(&gFollowMfaFollowText, 10, 660);
 
-    /* Event 75 starts ERR at value 200; events 76/77 hide it at zero and
-     * subtract one every game tick. */
     if (sFollowMePc.phase == FOLLOW_PHASE_ERR &&
         sFollowMePc.phase_frames < 200u)
         follow_me_pc_draw_mfa(&gFollowMfaErr, 222, 618);
