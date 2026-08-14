@@ -7,8 +7,12 @@
 
 #define CONTROL_FILE_SIZE 8u
 #define CONTROL_VERSION 1u
+#define CONTROL_LANGUAGE_MASK 0x0Fu
+#define CONTROL_SUBTITLES_FLAG 0x80u
 
 static WiiUControlMode sMode = WIIU_CONTROL_TOUCH_GAMEPAD;
+static WiiULanguage sLanguage = WIIU_LANGUAGE_ENGLISH;
+static bool sSubtitlesEnabled = false;
 static const char *const kControlPath = "wiiu_controls.dat";
 
 static uint8_t control_checksum(const uint8_t *bytes)
@@ -23,11 +27,15 @@ static void write_controls(void)
 {
     if (!storage_is_ready()) return;
 
+    const uint8_t preferences =
+        ((uint8_t)sLanguage & CONTROL_LANGUAGE_MASK) |
+        (sSubtitlesEnabled ? CONTROL_SUBTITLES_FLAG : 0u);
+
     uint8_t bytes[CONTROL_FILE_SIZE] = {
         'F', '3', 'C', 'T',
         CONTROL_VERSION,
         (uint8_t)sMode,
-        0u,
+        preferences,
         0u,
     };
     bytes[7] = control_checksum(bytes);
@@ -37,6 +45,8 @@ static void write_controls(void)
 void wiiu_controls_init(void)
 {
     sMode = WIIU_CONTROL_TOUCH_GAMEPAD;
+    sLanguage = WIIU_LANGUAGE_ENGLISH;
+    sSubtitlesEnabled = false;
     if (!storage_is_ready()) return;
 
     uint8_t bytes[CONTROL_FILE_SIZE];
@@ -46,15 +56,19 @@ void wiiu_controls_init(void)
         return;
     }
 
+    const uint8_t stored_language = bytes[6] & CONTROL_LANGUAGE_MASK;
     if (bytes[0] != 'F' || bytes[1] != '3' ||
         bytes[2] != 'C' || bytes[3] != 'T' ||
         bytes[4] != CONTROL_VERSION ||
         bytes[7] != control_checksum(bytes) ||
-        bytes[5] >= (uint8_t)WIIU_CONTROL_MODE_COUNT) {
+        bytes[5] >= (uint8_t)WIIU_CONTROL_MODE_COUNT ||
+        stored_language >= (uint8_t)WIIU_LANGUAGE_COUNT) {
         return;
     }
 
     sMode = (WiiUControlMode)bytes[5];
+    sLanguage = (WiiULanguage)stored_language;
+    sSubtitlesEnabled = (bytes[6] & CONTROL_SUBTITLES_FLAG) != 0u;
 }
 
 WiiUControlMode wiiu_controls_mode(void)
@@ -81,4 +95,41 @@ const char *wiiu_controls_mode_name(WiiUControlMode mode)
         case WIIU_CONTROL_MIRROR: return "IDENTICAL";
         default: return "TOUCH GAMEPAD";
     }
+}
+
+WiiULanguage wiiu_controls_language(void)
+{
+    return sLanguage;
+}
+
+void wiiu_controls_set_language(WiiULanguage language)
+{
+    if (language < WIIU_LANGUAGE_ENGLISH ||
+        language >= WIIU_LANGUAGE_COUNT ||
+        language == sLanguage) {
+        return;
+    }
+    sLanguage = language;
+    write_controls();
+}
+
+const char *wiiu_controls_language_name(WiiULanguage language)
+{
+    switch (language) {
+        case WIIU_LANGUAGE_ENGLISH: return "ENGLISH";
+        case WIIU_LANGUAGE_FRENCH: return "FRANCAIS";
+        default: return "ENGLISH";
+    }
+}
+
+bool wiiu_controls_subtitles_enabled(void)
+{
+    return sSubtitlesEnabled;
+}
+
+void wiiu_controls_set_subtitles_enabled(bool enabled)
+{
+    if (enabled == sSubtitlesEnabled) return;
+    sSubtitlesEnabled = enabled;
+    write_controls();
 }
