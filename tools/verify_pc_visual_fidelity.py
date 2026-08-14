@@ -22,7 +22,7 @@ def require(text: str, marker: str, context: str) -> None:
 
 
 main = read("source/main.c")
-camera = read("source/main_v3_parts/main_pc_camera_fidelity.inc")
+camera = read("source/main_v3_parts/main_pc_camera_fidelity.inc") + "\n" + read("source/main_v3_parts/main_pc_camera_fidelity_base.inc")
 characters = read("source/main_v3_parts/main_pc_character_override.inc")
 title = read("source/main_v3_parts/main_complete_title.inc")
 
