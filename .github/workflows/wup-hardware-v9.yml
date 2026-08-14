@@ -39,6 +39,7 @@ jobs:
           mkdir -p /tmp/fnaf3-v9
           unzip -q /tmp/fnaf3-v9.zip -d /tmp/fnaf3-v9
           test -s /tmp/fnaf3-v9/fnaf3-wiiu.rpx
+          echo "Corrected RPX:"
           sha256sum /tmp/fnaf3-v9/fnaf3-wiiu.rpx
 
       - name: Prepare hardware-working channel tree
@@ -47,6 +48,16 @@ jobs:
           set -euo pipefail
           rm -rf /tmp/NUSspli build/wup-fnaf3-v9 dist/wup-fnaf3-v9
           git clone --depth 1 https://github.com/V10lator/NUSspli.git /tmp/NUSspli
+
+          # The Aug-04 optimization commit damaged the JPEG streams. Recover
+          # the original splash assets from the commit that first added them.
+          SPLASH_COMMIT=ccd0bfc082e39743b071b953106c4414535d5acd
+          curl -L --fail --retry 3 \
+            "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SPLASH_COMMIT}/boot-tv.jpg" \
+            -o /tmp/fnaf3-boot-tv.jpg
+          curl -L --fail --retry 3 \
+            "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SPLASH_COMMIT}/boot-drc.jpg" \
+            -o /tmp/fnaf3-boot-drc.jpg
 
           mkdir -p build/wup-fnaf3-v9/code build/wup-fnaf3-v9/content dist/wup-fnaf3-v9
           cp -a /tmp/NUSspli/meta/menu build/wup-fnaf3-v9/meta
@@ -58,12 +69,8 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image, ImageOps, ImageFile
-          from io import BytesIO
-          import base64
+          from PIL import Image, ImageOps
           import xml.etree.ElementTree as ET
-
-          ImageFile.LOAD_TRUNCATED_IMAGES = True
 
           root = Path('build/wup-fnaf3-v9')
           title_id = '000500001337F3A5'
@@ -102,72 +109,34 @@ jobs:
           meta.write(meta_path, encoding='utf-8', xml_declaration=True)
 
           try:
-              resampling = Image.Resampling.LANCZOS
+              rs = Image.Resampling.LANCZOS
           except AttributeError:
-              resampling = Image.LANCZOS
+              rs = Image.LANCZOS
 
-          def try_image(raw, label, depth):
-              print(f'{label}: decode depth {depth}, {len(raw)} bytes, head={raw[:12].hex()}')
-              try:
-                  im = Image.open(BytesIO(raw))
-                  im.load()
-                  print(f'{label}: image decoded at depth {depth}: {im.format} {im.size}')
-                  return im
-              except Exception as exc:
-                  print(f'{label}: image decode depth {depth} failed: {exc}')
-                  return None
-
-          def open_repo_image(path):
-              label = str(path)
-              raw = Path(path).read_bytes()
-              for depth in range(6):
-                  image = try_image(raw, label, depth)
-                  if image is not None:
-                      return image
-
-                  # A genuine JPEG signature means the repository file is an
-                  # image stream, not base64 text. Do not decode arbitrary JPEG
-                  # bytes into garbage; LOAD_TRUNCATED_IMAGES above handles the
-                  # non-standard/truncated project JPEGs.
-                  if raw.startswith(b'\xff\xd8\xff'):
-                      break
-
-                  compact = b''.join(raw.split())
-                  if b',' in compact[:128] and compact.lower().startswith(b'data:'):
-                      compact = compact.split(b',', 1)[1]
-                  try:
-                      decoded = base64.b64decode(compact, validate=False)
-                  except Exception:
-                      break
-                  if not decoded or decoded == raw:
-                      break
-                  raw = decoded
-              raise RuntimeError(f'{label}: no decodable image after image/base64 decoding')
-
-          icon = open_repo_image('icon.jpg').convert('RGBA')
-          icon = ImageOps.fit(icon, (128, 128), method=resampling)
+          icon = Image.open('icon.jpg').convert('RGBA')
+          icon = ImageOps.fit(icon, (128, 128), method=rs)
           icon.save(root/'meta'/'iconTex.tga', format='TGA')
 
-          tv = open_repo_image('boot-tv.jpg').convert('RGB')
-          tv = ImageOps.fit(tv, (1280, 720), method=resampling)
+          tv = Image.open('/tmp/fnaf3-boot-tv.jpg').convert('RGB')
+          print('Original TV splash:', tv.size)
+          tv = ImageOps.fit(tv, (1280, 720), method=rs)
           tv.save(root/'meta'/'bootTvTex.tga', format='TGA')
 
-          drc = open_repo_image('boot-drc.jpg').convert('RGB')
-          drc = ImageOps.fit(drc, (854, 480), method=resampling)
+          drc = Image.open('/tmp/fnaf3-boot-drc.jpg').convert('RGB')
+          print('Original DRC splash:', drc.size)
+          drc = ImageOps.fit(drc, (854, 480), method=rs)
           drc.save(root/'meta'/'bootDrcTex.tga', format='TGA')
 
           logo = Image.new('RGBA', (170, 42), (0, 0, 0, 0))
           mini = icon.copy()
-          mini.thumbnail((42, 42), resampling)
+          mini.thumbnail((42, 42), rs)
           logo.alpha_composite(mini, ((170-mini.width)//2, (42-mini.height)//2))
           logo.save(root/'meta'/'bootLogoTex.tga', format='TGA')
 
-          assert tv.size == (1280, 720)
-          assert drc.size == (854, 480)
           assert ar.find('version').text == '1'
           assert cr.find('version').text == '1'
           assert mr.find('version').text == '1'
-          print('FNAF3 V9 channel prepared with decoded project boot artwork')
+          print('FNAF3 V9 channel ready with original pre-optimization splash art')
           PY
 
       - name: Pack with NUSPacker
@@ -189,7 +158,6 @@ jobs:
           test -s dist/wup-fnaf3-v9/title.tmd
           test -s dist/wup-fnaf3-v9/title.tik
           test -s dist/wup-fnaf3-v9/title.cert
-          find dist/wup-fnaf3-v9 -maxdepth 1 -type f -printf '%f %s bytes\n' | sort
 
       - name: Upload corrected real-hardware WUP
         uses: actions/upload-artifact@v4
