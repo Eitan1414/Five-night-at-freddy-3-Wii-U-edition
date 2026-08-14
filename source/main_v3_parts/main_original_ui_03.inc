@@ -180,36 +180,32 @@ static void pc_warning_fidelity_render(Game *game)
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
-static const char *pc_night_intro_label(int night)
-{
-    static const char *const labels[6] = {
-        "1ST NIGHT", "2ND NIGHT", "3RD NIGHT",
-        "4TH NIGHT", "5TH NIGHT", "6TH NIGHT",
-    };
-    if (night < 1) night = 1;
-    if (night > 6) night = 6;
-    return labels[night - 1];
-}
+/* Generated from the exact PC General Sprites image bank. The MFA metadata for
+ * frame `what day` is authoritative for selection, transparency and placement. */
+const TextureRle *pc_night_intro_texture(int night);
 
 static void pc_night_intro_fidelity_render(Game *game)
 {
     if (game == NULL || !game->dirty) return;
     game->dirty = false;
 
-    /* Retail-PC observed presentation: 12:00 AM above an ordinal night label;
-     * Night 1 is green while subsequent nights use white. Nightmare is still
-     * introduced as `6TH NIGHT`. The raw MFA object coordinates/font metrics
-     * have not yet been re-extracted, so placement/scaling here remains an
-     * explicitly documented Wii U adaptation rather than a claimed MFA match. */
-    const uint32_t colour = game->night == 1
-        ? GRAPHICS_RGB(68, 190, 88) : COLOUR_WHITE;
+    const TextureRle *texture = pc_night_intro_texture(game->night);
+
+    /* fivenights3-94.mfa: frame `what day`, 1024x768. Active handle 55 is at
+     * (512,374), every frame is 201x104 with hotspot (100,52), hence source
+     * top-left (412,322). PC 4:3 presentation maps to the existing 640x480
+     * pillarboxed Wii U viewport at x=107. No text or positioning is guessed. */
+    const int source_x = 512 - 100;
+    const int source_y = 374 - 52;
+    const int x = 107 + (source_x * 640) / 1024;
+    const int y = (source_y * 480) / 768;
+    const int width = (201 * 640) / 1024;
+    const int height = (104 * 480) / 768;
 
     graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       329, 145, 4, "12:00 AM", colour);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH,
-                       278, 241, 5,
-                       pc_night_intro_label(game->night), colour);
+    if (texture != NULL)
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         x, y, width, height, texture);
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
