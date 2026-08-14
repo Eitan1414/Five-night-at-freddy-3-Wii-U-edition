@@ -122,6 +122,11 @@ $(BUILD):
 		"$(PC_GENERAL_SPRITES)" \
 		source/generated/follow_me_mfa_visuals.inc \
 		include/assets/follow_me_mfa_visuals.h
+	@echo "Generating exact Follow Me MFA collision masks..."
+	@python3 tools/convert_pc_follow_me_collision_masks.py \
+		"$(PC_GENERAL_SPRITES)" \
+		source/generated/follow_me_mfa_collisions.inc \
+		include/assets/follow_me_mfa_collisions.h
 	@if [ -d "$(PC_MINIGAME_SHEETS)" ] && \
 	    [ -f source/pc_finishing_visuals.c ] && \
 	    [ -f include/assets/pc_finishing_visuals.h ] && \
@@ -139,6 +144,7 @@ clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
 	@rm -f source/generated/follow_me_mfa_visuals.inc
+	@rm -f source/generated/follow_me_mfa_collisions.inc
 
 else
 
