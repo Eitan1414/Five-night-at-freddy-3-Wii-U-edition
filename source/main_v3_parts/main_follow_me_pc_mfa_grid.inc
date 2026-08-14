@@ -79,34 +79,28 @@ static bool follow_me_pc_mfa_guide_for_cell(int *kind, int *x, int *y)
 {
     if (sFollowMePc.chapter >= 5) return false;
 
-    /* Exact event 95. */
     if (sFollowMfaVertical == 2 && sFollowMfaHorizontal == 4) {
         *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
     }
-    /* Events 96,97: only when hit-box alterable value != 4. */
     if (((sFollowMfaVertical == 3 && sFollowMfaHorizontal == 3) ||
          (sFollowMfaVertical == 3 && sFollowMfaHorizontal == 2)) &&
         sFollowMfaEntryDirection != 4) {
         *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
     }
-    /* Exact event 98. */
     if (sFollowMfaVertical == 2 && sFollowMfaHorizontal == 5) {
         *kind = FOLLOW_MFA_SHADOW_UP; *x = 520; *y = 202; return true;
     }
-    /* Events 99..101: entry-direction condition != 3. */
     if (((sFollowMfaVertical == 3 && sFollowMfaHorizontal == 4) ||
          (sFollowMfaVertical == 4 && sFollowMfaHorizontal == 4) ||
          (sFollowMfaVertical == 5 && sFollowMfaHorizontal == 4)) &&
         sFollowMfaEntryDirection != 3) {
         *kind = FOLLOW_MFA_SHADOW_UP; *x = 520; *y = 202; return true;
     }
-    /* Events 102,103: entry-direction condition != 4. */
     if (((sFollowMfaVertical == 5 && sFollowMfaHorizontal == 3) ||
          (sFollowMfaVertical == 5 && sFollowMfaHorizontal == 2)) &&
         sFollowMfaEntryDirection != 4) {
         *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
     }
-    /* Event 104: entry-direction condition != 1. */
     if (sFollowMfaVertical == 4 && sFollowMfaHorizontal == 2 &&
         sFollowMfaEntryDirection != 1) {
         *kind = FOLLOW_MFA_SHADOW_DOWN; *x = 514; *y = 564; return true;
@@ -125,9 +119,6 @@ static void follow_me_pc_mfa_spawn_guide(void)
     sFollowMfaShadowSourceX = x;
     sFollowMfaShadowSourceY = y;
     sFollowMfaShadowMoveClock = 0u;
-
-    /* Events 95..104 set `follow me` alterable value to 200; events 105/106
-     * hide at zero and subtract one per game tick while it is visible. */
     sFollowMfaFollowTextTicks = 200u;
 }
 
@@ -138,9 +129,7 @@ static void follow_me_pc_mfa_step_guide(void)
 
     if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_NONE) return;
 
-    /* Event 88 moves the three guide objects by exactly 30 source pixels every
-     * 290 ms.  At 60 Hz, adding 1000 per frame against 290*60 preserves the
-     * original average period without using floating point. */
+    /* Event 88: 30 source pixels every 290 ms. */
     sFollowMfaShadowMoveClock += 1000u;
     while (sFollowMfaShadowMoveClock >= 17400u) {
         sFollowMfaShadowMoveClock -= 17400u;
@@ -164,7 +153,7 @@ static void follow_me_pc_reset(int chapter)
 
     sFollowMfaVertical = 2;
     sFollowMfaHorizontal = 3;
-    sFollowMfaEntryDirection = 2; /* Start-of-frame hit-box alterable value. */
+    sFollowMfaEntryDirection = 2;
     sFollowMfaShadowKind = FOLLOW_MFA_SHADOW_NONE;
     sFollowMfaShadowMoveClock = 0u;
     sFollowMfaFollowTextTicks = 0u;
@@ -189,9 +178,7 @@ static void follow_me_pc_reset(int chapter)
 
     sFollowMePc.player_x = follow_me_pc_grid_x(source_x);
     sFollowMePc.player_y = follow_me_pc_grid_y(source_y);
-    sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE; /* legacy storage only */
-
-    /* Chapter 4 starts directly in an event-97 guide cell. */
+    sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE;
     follow_me_pc_mfa_spawn_guide();
 }
 
@@ -201,8 +188,8 @@ static void follow_me_pc_move_player(const InputState *input)
     int dx = 0;
     int dy = 0;
 
-    if (sFollowMePc.phase == FOLLOW_PHASE_GUIDE)
-        follow_me_pc_mfa_step_guide();
+    /* These Active objects keep running while ERR is displayed. */
+    follow_me_pc_mfa_step_guide();
 
     if (input_is_held(input, GAME_BUTTON_LEFT)) dx -= speed;
     if (input_is_held(input, GAME_BUTTON_RIGHT)) dx += speed;
@@ -248,7 +235,20 @@ static void follow_me_pc_move_player(const InputState *input)
         }
     }
 
-    if (next_y <= top_edge) {
+    bool handled_top = false;
+    if (next_y <= top_edge &&
+        sFollowMfaVertical == 2 && sFollowMfaHorizontal == 5 &&
+        sFollowMePc.chapter < 5) {
+        /* Event 75: collision with the up barrier in (2,5) bounces the hit box
+         * down by 60 PC pixels and sets ERR alterable value to 200. It does
+         * not enter cell (1,5) during chapters 1..4. */
+        next_y = sFollowMePc.player_y + follow_me_pc_grid_scale(60);
+        sFollowMePc.phase = FOLLOW_PHASE_ERR;
+        sFollowMePc.phase_frames = 0u;
+        handled_top = true;
+    }
+
+    if (!handled_top && next_y <= top_edge) {
         if ((walls & FOLLOW_MFA_WALL_UP) == 0u) {
             --sFollowMfaVertical;
             sFollowMfaEntryDirection = 1;
