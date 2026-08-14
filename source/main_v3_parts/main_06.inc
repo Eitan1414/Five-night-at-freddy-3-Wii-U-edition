@@ -2,29 +2,24 @@
     graphics_draw_text(GRAPHICS_TARGET_BOTH, six ? 301 : 275, 145, 8,
                        six ? "6:00" : "5:59", six ? GRAPHICS_RGB(224, 222, 93) : COLOUR_WHITE);
     graphics_draw_text(GRAPHICS_TARGET_BOTH, 577, 193, 4, "AM", COLOUR_GREEN);
-    if (game->screen_frames >= 180u) {
-        char text[32]; snprintf(text, sizeof(text), "NIGHT %d COMPLETE", game->night);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 248, 305, 3, text, COLOUR_GREEN);
-        if (progress_save_write_attempted()) {
-            graphics_draw_text(GRAPHICS_TARGET_BOTH, 304, 346, 1,
-                               progress_save_write_status_text(),
-                               progress_save_last_write_ok() ? COLOUR_GREEN : COLOUR_RED);
-        }
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 236, 379, 2,
-                           game->night < NIGHT_COUNT ? "A: START NEXT NIGHT" : "A: RETURN TO TITLE",
-                           GRAPHICS_RGB(104, 151, 101));
-    }
+    /* Retail PC owns this screen entirely with the 5:59 -> 6:00 animation.
+     * The old Wii U prototype appended `NIGHT n COMPLETE`, save diagnostics and
+     * an A-button prompt after 180 frames. Inter-night progression is handled
+     * by the finishing layer, so none of that platform/debug UI belongs here. */
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
 static void draw_game_over(const Game *game)
 {
-    const uint32_t pulse = ((game->screen_frames / 5u) & 1u) ? COLOUR_RED : GRAPHICS_RGB(93, 10, 7);
-    graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(4, 0, 0));
-    for (int y = 0; y < 480; y += 9) graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, y, 854, 2, pulse);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 183, 135, 7, "GAME OVER", pulse);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 227, 269, 3, "SPRINGTRAP GOT YOU", GRAPHICS_RGB(213, 170, 155));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 257, 370, 2, "A: RETRY   B: MENU", GRAPHICS_RGB(169, 118, 108));
+    /* Retail PC FNaF 3 deliberately drops to an almost empty death screen:
+     * black background and red `Game Over` text.  The previous Wii U prototype
+     * added a red scanline field, `SPRINGTRAP GOT YOU`, and visible retry/menu
+     * prompts.  Keep the existing controller input behavior, but do not alter
+     * the source presentation to advertise those platform bindings. */
+    (void)game;
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 247, 218, 5,
+                       "Game Over", GRAPHICS_RGB(160, 0, 0));
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 

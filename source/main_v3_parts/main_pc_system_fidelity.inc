@@ -1,19 +1,20 @@
 /*
  * Original PC maintenance-system timing pass.
  *
- * The first Wii U gameplay layer used deterministic night-frame failures and
- * a ten-second idle -> ventilation-error shortcut. Those were scaffolding,
- * not Clickteam mechanics. Keep the old fields only for ABI/source stability
- * and drive the actual system failures here from the retail PC counters.
+ * System health is reconstructed directly from fivenights3-94.mfa rather than
+ * from fixed failure times. Audio and camera health lose AI points at their
+ * source events, ventilation loses one point on its own night-dependent timer
+ * plus the independent no-screen pressure event, and all three fail at -10.
  */
 
 typedef struct PcSystemFidelityState {
     int night;
-    uint32_t camera_usage_frames;
-    uint32_t audio_uses;
-    bool audio_failure_pending;
+    int audio_health;
+    int camera_health;
+    uint32_t camera_seconds;
     int ventilation_health;
-    uint32_t ventilation_health_frames;
+    uint32_t repair_progress;
+    int repair_target;
     uint32_t hallucination_rng;
 } PcSystemFidelityState;
 
@@ -38,39 +39,11 @@ static int pc_systems_ai_level(int night)
     return 7;
 }
 
-static uint32_t pc_camera_limit_frames(int night)
-{
-    /* Retail PC camera-use limits: N2 60s, N3 48s, N4 36s,
-     * N5 24s, N6 17s. Night 1 cannot naturally fail. */
-    switch (night) {
-        case 2: return 60u * 60u;
-        case 3: return 48u * 60u;
-        case 4: return 36u * 60u;
-        case 5: return 24u * 60u;
-        case 6: return 17u * 60u;
-        default: return UINT32_MAX;
-    }
-}
-
-static uint32_t pc_audio_use_limit(int night)
-{
-    /* Observed retail-PC limits used by the speedrun community. */
-    switch (night) {
-        case 2: return 10u;
-        case 3: return 4u;
-        case 4: return 3u;
-        case 5:
-        case 6: return 2u;
-        default: return UINT32_MAX;
-    }
-}
-
 static uint32_t pc_ventilation_health_interval(int night)
 {
-    /* fivenights3-94.mfa ventilation-health drain. The value starts at 0 and
-     * loses one point until -10. The retail Night-6 AI is 7, while the source
-     * drain branch only covers the lower AI values, so N6 has no natural
-     * ventilation failure (Phantoms can still cause one). */
+    /* MFA groups 330-334. AI 6 has a 6000 ms branch, but the retail six-night
+     * configuration jumps from AI 5 on Night 5 to AI 7 on Nightmare, so Night
+     * 6 has no natural timer drain. Phantom/no-screen damage still applies. */
     switch (night) {
         case 2: return 12u * 60u;
         case 3: return 10u * 60u;
@@ -84,61 +57,147 @@ static void pc_systems_reset_for_night(int night)
 {
     memset(&sPcSystems, 0, sizeof(sPcSystems));
     sPcSystems.night = night;
-    sPcSystems.ventilation_health = 0;
+    sPcSystems.repair_target = -1;
     sPcSystems.hallucination_rng =
         0xA341316Cu ^ ((uint32_t)night * 0x9E3779B9u);
     sPcHallucinationCameraMask = 0u;
     sPcHallucinationFrames = 0u;
 }
 
-static void pc_systems_reset_camera(void)
+static void pc_systems_reset_camera(bool reset_subcounter)
 {
-    sPcSystems.camera_usage_frames = 0u;
+    /* MFA group 312 repairs camera health only. Reboot All (group 314) also
+     * clears camera alterable value F, the twelve-second subcounter. */
+    sPcSystems.camera_health = 0;
+    if (reset_subcounter)
+        sPcSystems.camera_seconds = 0u;
 }
 
 static void pc_systems_reset_audio(void)
 {
-    sPcSystems.audio_uses = 0u;
-    sPcSystems.audio_failure_pending = false;
+    sPcSystems.audio_health = 0;
 }
 
 static void pc_systems_reset_ventilation(void)
 {
     sPcSystems.ventilation_health = 0;
-    sPcSystems.ventilation_health_frames = 0u;
-    /* The PC hallucination counter continues after the ventilation repair.
-     * Do not clear sPcHallucinationFrames here. */
+    /* Clickteam Every timers are global event timers. A repair restores health
+     * but does not restart their phase, so there is no local vent timer reset. */
 }
 
 static void pc_systems_apply_completed_repair(const Game *game,
                                               int repaired_target)
 {
     (void) game;
-    if (repaired_target == MAINT_CAMERA ||
-        repaired_target == MAINT_REBOOT_ALL) {
-        pc_systems_reset_camera();
-    }
+    if (repaired_target == MAINT_CAMERA)
+        pc_systems_reset_camera(false);
+    else if (repaired_target == MAINT_REBOOT_ALL)
+        pc_systems_reset_camera(true);
+
     if (repaired_target == MAINT_AUDIO ||
-        repaired_target == MAINT_REBOOT_ALL) {
+        repaired_target == MAINT_REBOOT_ALL)
         pc_systems_reset_audio();
-    }
+
     if (repaired_target == MAINT_VENTILATION ||
-        repaired_target == MAINT_REBOOT_ALL) {
+        repaired_target == MAINT_REBOOT_ALL)
         pc_systems_reset_ventilation();
+
+    sPcSystems.repair_progress = 0u;
+    sPcSystems.repair_target = -1;
+}
+
+static uint32_t pc_systems_repair_interval(int target)
+{
+    /* MFA groups 309/310: single-system repairs advance every 1000 ms;
+     * Reboot All advances every 2000 ms. */
+    return target == MAINT_REBOOT_ALL ? 120u : 60u;
+}
+
+static void pc_systems_map_repair_progress(Game *game)
+{
+    const uint32_t duration = repair_duration(game);
+    if (duration == 0u) return;
+
+    if (sPcSystems.repair_progress >= 10u) {
+        /* Let the legacy completion path fire in this same update so all of its
+         * normal state/audio/UI hooks remain intact. */
+        game->repair_frames = duration - 1u;
+        return;
     }
+
+    uint32_t mapped =
+        (duration * sPcSystems.repair_progress) / 10u;
+    if (mapped >= duration)
+        mapped = duration - 1u;
+    game->repair_frames = mapped;
+}
+
+static void pc_systems_prepare_existing_repair(Game *game)
+{
+    if (!game->repairing) return;
+
+    if (sPcSystems.repair_target != game->repair_target) {
+        sPcSystems.repair_target = game->repair_target;
+        sPcSystems.repair_progress = 0u;
+    }
+
+    /* Clickteam Every timers are tied to the event sheet, not restarted by a
+     * click. The nested legacy update increments night_frames once this turn,
+     * so inspect that upcoming frame to preserve the source phase. */
+    const uint32_t next_frame = game->night_frames + 1u;
+    const uint32_t interval =
+        pc_systems_repair_interval(game->repair_target);
+    if (interval != 0u && (next_frame % interval) == 0u) {
+        sPcSystems.repair_progress +=
+            1u + (pc_systems_random() % 2u);
+        if (sPcSystems.repair_progress > 10u)
+            sPcSystems.repair_progress = 10u;
+    }
+
+    pc_systems_map_repair_progress(game);
+}
+
+static void pc_systems_capture_new_repair(Game *game)
+{
+    if (!game->repairing) return;
+
+    sPcSystems.repair_target = game->repair_target;
+    sPcSystems.repair_progress = 0u;
+
+    /* Groups 304-307 occur before 309/310. If the click itself lands on an
+     * Every boundary, the first +1/+2 progress tick happens immediately later
+     * in the same Clickteam event loop. */
+    const uint32_t interval =
+        pc_systems_repair_interval(game->repair_target);
+    if (interval != 0u &&
+        game->night_frames != 0u &&
+        (game->night_frames % interval) == 0u) {
+        sPcSystems.repair_progress =
+            1u + (pc_systems_random() % 2u);
+    }
+
+    pc_systems_map_repair_progress(game);
 }
 
 static void pc_systems_update_camera(Game *game)
 {
     if (game->camera_failed || !game->camera_open) return;
 
-    const uint32_t limit = pc_camera_limit_frames(game->night);
-    if (limit == UINT32_MAX) return;
+    /* MFA group 637: every 1000 ms while the camera screen is viewed, camera
+     * alterable F gains one. Group 638: at F >= 12, health -= AI and F = 0. */
+    if ((game->night_frames % 60u) != 0u) return;
 
-    if (sPcSystems.camera_usage_frames < limit)
-        ++sPcSystems.camera_usage_frames;
+    if (sPcSystems.camera_seconds < 12u)
+        ++sPcSystems.camera_seconds;
+    if (sPcSystems.camera_seconds < 12u) return;
+    sPcSystems.camera_seconds = 0u;
 
-    if (sPcSystems.camera_usage_frames >= limit) {
+    const int ai = pc_systems_ai_level(game->night);
+    if (ai <= 0) return;
+
+    sPcSystems.camera_health -= ai;
+    if (sPcSystems.camera_health <= -10) {
+        sPcSystems.camera_health = -10;
         game->camera_failed = true;
         game->dirty = true;
     }
@@ -148,45 +207,58 @@ static void pc_systems_note_audio_use(Game *game)
 {
     if (game->audio_failed) return;
 
-    const uint32_t limit = pc_audio_use_limit(game->night);
-    if (limit == UINT32_MAX) return;
+    /* MFA group 225: every accepted Play Audio press subtracts AI directly
+     * from audio health. Groups 282/288 expose/clamp the error at <= -10.
+     * This yields exact use counts N2..N6 = 5,4,3,2,2. */
+    const int ai = pc_systems_ai_level(game->night);
+    if (ai <= 0) return;
 
-    if (sPcSystems.audio_uses < limit)
-        ++sPcSystems.audio_uses;
-
-    /* The final allowed lure is still played. The error is raised when that
-     * playback resolves, matching the PC behaviour instead of cancelling the
-     * last usable lure at button-press time. */
-    if (sPcSystems.audio_uses >= limit)
-        sPcSystems.audio_failure_pending = true;
+    sPcSystems.audio_health -= ai;
+    if (sPcSystems.audio_health <= -10) {
+        sPcSystems.audio_health = -10;
+        /* The lure created by group 225 is still allowed to resolve in the same
+         * Clickteam event loop; mark the system failed without cancelling it. */
+        game->audio_failed = true;
+        set_message(game, MESSAGE_AUDIO_FAILED);
+        game->dirty = true;
+    }
 }
 
-static void pc_systems_finish_pending_audio_failure(Game *game)
+static void pc_systems_damage_ventilation(Game *game)
 {
-    if (!sPcSystems.audio_failure_pending || game->audio_failed) return;
+    if (sPcSystems.ventilation_health > -10)
+        --sPcSystems.ventilation_health;
 
-    sPcSystems.audio_failure_pending = false;
-    game->audio_failed = true;
-    stop_lure_audio();
-    set_message(game, MESSAGE_AUDIO_FAILED);
-    game->dirty = true;
+    if (sPcSystems.ventilation_health <= -10) {
+        sPcSystems.ventilation_health = -10;
+        set_ventilation_failure(game);
+    }
 }
 
 static void pc_systems_update_ventilation_health(Game *game)
 {
     if (game->ventilation_failed) return;
 
+    /* MFA groups 330-334 use global Every timers, so night_frames supplies the
+     * phase and a repair does not grant a fresh full interval. */
     const uint32_t interval = pc_ventilation_health_interval(game->night);
-    if (interval == UINT32_MAX) return;
+    if (interval != UINT32_MAX &&
+        game->night_frames != 0u &&
+        (game->night_frames % interval) == 0u) {
+        pc_systems_damage_ventilation(game);
+        if (game->ventilation_failed) return;
+    }
 
-    if (++sPcSystems.ventilation_health_frames < interval) return;
-    sPcSystems.ventilation_health_frames = 0u;
-
-    if (sPcSystems.ventilation_health > -10)
-        --sPcSystems.ventilation_health;
-
-    if (sPcSystems.ventilation_health <= -10)
-        set_ventilation_failure(game);
+    /* MFA groups 746-749 are a second, independent drain path. The same exact
+     * no-screen counter is maintained inside Springtrap AI: it becomes >10 on
+     * the eleventh one-second tick, then ventilation health loses one each
+     * second. Night 1 is explicitly excluded by group 748. */
+    const uint32_t no_screen_frames = game->springtrap.office_idle_frames;
+    if (game->night > 1 &&
+        no_screen_frames >= 11u * 60u &&
+        (no_screen_frames % 60u) == 0u) {
+        pc_systems_damage_ventilation(game);
+    }
 }
 
 static void pc_systems_begin_hallucination(Game *game)
@@ -256,15 +328,103 @@ static void pc_systems_enforce_ventilation_error(Game *game)
     }
 }
 
+static int pc_title_item_count(void)
+{
+    /* Completing Night 5 reveals Nightmare and Extra as two independent rows. */
+    return progress_save_extras_unlocked() ? 4 : 2;
+}
+
+static void pc_systems_update_title(Game *game, const InputState *input)
+{
+    ++game->screen_frames;
+    if (sFinishing.title_notice_frames > 0u)
+        --sFinishing.title_notice_frames;
+
+    const int item_count = pc_title_item_count();
+    if (game->title_selection < 0 || game->title_selection >= item_count)
+        game->title_selection = 0;
+
+    if (input_was_pressed(input, GAME_BUTTON_UP)) {
+        game->title_selection =
+            (game->title_selection + item_count - 1) % item_count;
+        game->dirty = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
+        game->title_selection = (game->title_selection + 1) % item_count;
+        game->dirty = true;
+    }
+
+    if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+        input_was_pressed(input, GAME_BUTTON_START)) {
+        switch (game->title_selection) {
+            case 0:
+                /* New Game resets only the five-night Continue chain. PC bonus
+                 * unlocks, stars, Nightmare and Extras remain unlocked. */
+                progress_save_start_new_game();
+                sFinishing.mode = FINISHING_NONE;
+                finishing_stop_phone();
+                reset_night(game, 1);
+                return;
+
+            case 1:
+                sFinishing.mode = FINISHING_NONE;
+                finishing_stop_phone();
+                reset_night(game, progress_save_continue_night());
+                return;
+
+            case 2:
+                if (progress_save_extras_unlocked()) {
+                    sFinishing.mode = FINISHING_NONE;
+                    finishing_stop_phone();
+                    reset_night(game, 6);
+                    return;
+                }
+                break;
+
+            case 3:
+                if (progress_save_extras_unlocked()) {
+                    finishing_open_extras(game);
+                    return;
+                }
+                break;
+
+            default:
+                break;
+        }
+
+        sFinishing.title_notice_frames = 180u;
+        game->dirty = true;
+    }
+
+    if ((game->screen_frames % 9u) == 0u ||
+        sFinishing.title_notice_frames > 0u) {
+        game->dirty = true;
+    }
+}
+
 static void pc_system_fidelity_update_game(Game *game,
                                            const InputState *input)
 {
-    const bool lure_was_active = game->audio_lure_active;
+    /* Final title routing lives here so the old three-item compatibility menu
+     * cannot swallow Nightmare into Extra. */
+    if (game->screen == SCREEN_TITLE) {
+        pc_systems_update_title(game, input);
+        return;
+    }
+
+    const uint32_t lure_cooldown_before = game->audio_lure_cooldown;
     const bool repair_was_active = game->repairing;
     const int repair_target = game->repair_target;
     const bool ventilation_was_failed = game->ventilation_failed;
     const PhantomId phantom_before =
         phantoms_active_jumpscare(&game->phantoms);
+
+    /* If a repair was already running when this update began, advance the
+     * source cursor on the upcoming global Every boundary and map its 0..10
+     * progress onto the legacy repair_frames bar. At 10 the legacy completion
+     * path is primed to finish later in this same update. */
+    if (repair_was_active)
+        pc_systems_prepare_existing_repair(game);
 
     /* Disable the old deterministic frame-based system failures. The legacy
      * update still owns the normal gameplay ordering, but these three flags
@@ -277,6 +437,9 @@ static void pc_system_fidelity_update_game(Game *game,
 
     if (sPcSystems.night != game->night)
         pc_systems_reset_for_night(game->night);
+
+    if (!repair_was_active && game->repairing)
+        pc_systems_capture_new_repair(game);
 
     /* PC Phantom jumpscares enter the ventilation fade immediately. Natural
      * health depletion begins at B=0 and therefore keeps the short alarm/red
@@ -304,14 +467,11 @@ static void pc_system_fidelity_update_game(Game *game,
     if (repair_was_active && !game->repairing)
         pc_systems_apply_completed_repair(game, repair_target);
 
-    if (!lure_was_active && game->audio_lure_active)
+    /* A successful Play Audio press moves cooldown from zero to a positive
+     * value. This detects the use even when the MFA lure is resolved and
+     * destroyed in the same gameplay frame. */
+    if (lure_cooldown_before == 0u && game->audio_lure_cooldown > 0u)
         pc_systems_note_audio_use(game);
-
-    if (lure_was_active && !game->audio_lure_active)
-        pc_systems_finish_pending_audio_failure(game);
-
-    if (game->audio_failed)
-        sPcSystems.audio_failure_pending = false;
 
     pc_systems_update_camera(game);
     pc_systems_update_ventilation_health(game);

@@ -76,7 +76,7 @@ static bool complete_try_mangle_trigger(Game *game,
                                         InputState *filtered)
 {
     if (!game->camera_open || game->vent_map_open ||
-        game->selected_camera != 6 || game->night < 2 ||
+        game->selected_camera != 6 || game->night != 2 ||
         !input_is_held(input, GAME_BUTTON_PANEL)) {
         sSecretTriggers.mangle_step = 0u;
         return false;
@@ -125,13 +125,15 @@ static bool complete_try_camera_trigger(Game *game,
         return true;
     }
 
+    /* Unlike the other hidden minigames, Happiest Day is not night-specific.
+     * CAM03 + the Puppet drawing may enter it on any playable night. */
     if (game->selected_camera == 2 && mode_held) {
         complete_consume(filtered, GAME_BUTTON_CONFIRM | GAME_BUTTON_MODE);
         complete_start_hidden_minigame(game, SECRET_MINIGAME_HAPPIEST_DAY);
         return true;
     }
 
-    if (game->night >= 3 && seal_held) {
+    if (game->night == 3 && seal_held) {
         static const int cupcake_cameras[4] = {1, 2, 3, 5};
         for (int index = 0; index < 4; ++index) {
             if (game->selected_camera != cupcake_cameras[index]) continue;
@@ -156,7 +158,7 @@ static bool complete_try_stage01_trigger(Game *game,
                                          const InputState *input,
                                          InputState *filtered)
 {
-    if (game->camera_open || game->maintenance_open || game->night < 4 ||
+    if (game->camera_open || game->maintenance_open || game->night != 4 ||
         game->office_pan > -80 ||
         !input_is_held(input, GAME_BUTTON_SEAL) ||
         !input_was_pressed(input, GAME_BUTTON_CONFIRM)) {
@@ -192,7 +194,7 @@ static bool complete_try_shadow_trigger(Game *game,
                                         const InputState *input,
                                         InputState *filtered)
 {
-    if (game->camera_open || game->maintenance_open || game->night < 5 ||
+    if (game->camera_open || game->maintenance_open || game->night != 5 ||
         game->office_pan < 90 ||
         !input_is_held(input, GAME_BUTTON_SEAL) ||
         !input_was_pressed(input, GAME_BUTTON_CONFIRM)) {

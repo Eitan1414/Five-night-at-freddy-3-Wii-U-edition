@@ -6,6 +6,7 @@
 #include "platform/storage.h"
 
 #define PROGRESS_NIGHT_COUNT 6
+#define PROGRESS_STORY_NIGHT_COUNT 5
 #define PROGRESS_SECRET_MINIGAME_COUNT 6
 #define PROGRESS_SECRET_COMPLETE_MASK 0x3Fu
 #define PROGRESS_ACHIEVEMENT_AGGRESSIVE 0x01u
@@ -17,6 +18,7 @@ static uint8_t s_secret_minigames_mask = 0u;
 static uint8_t s_achievement_flags = 0u;
 static uint16_t s_achievements_mask = 0u;
 static int s_highest_unlocked_night = 1;
+static int s_continue_night = 1;
 static SaveLoadResult s_load_result = SAVE_LOAD_EMPTY;
 static bool s_write_attempted = false;
 static bool s_last_write_ok = false;
@@ -25,6 +27,13 @@ static int clamp_night(int night)
 {
     if (night < 1) return 1;
     if (night > PROGRESS_NIGHT_COUNT) return PROGRESS_NIGHT_COUNT;
+    return night;
+}
+
+static int clamp_story_night(int night)
+{
+    if (night < 1) return 1;
+    if (night > PROGRESS_STORY_NIGHT_COUNT) return PROGRESS_STORY_NIGHT_COUNT;
     return night;
 }
 
@@ -59,6 +68,7 @@ static void write_current_progress(void)
 {
     const SaveData data = {
         .unlocked_night = (uint8_t) s_highest_unlocked_night,
+        .continue_night = (uint8_t) s_continue_night,
         .completed_nights_mask = s_completed_nights_mask,
         .secret_minigames_mask = s_secret_minigames_mask,
         .achievement_flags = s_achievement_flags,
@@ -77,6 +87,7 @@ void progress_save_init(int *unlocked_night)
     s_achievements_mask = 0u;
     s_highest_unlocked_night = unlocked_night != NULL
         ? clamp_night(*unlocked_night) : 1;
+    s_continue_night = clamp_story_night(s_highest_unlocked_night);
     s_load_result = SAVE_LOAD_EMPTY;
     s_write_attempted = false;
     s_last_write_ok = false;
@@ -90,6 +101,7 @@ void progress_save_init(int *unlocked_night)
 
     SaveData data = {
         .unlocked_night = 1u,
+        .continue_night = 1u,
         .completed_nights_mask = 0u,
         .secret_minigames_mask = 0u,
         .achievement_flags = 0u,
@@ -99,6 +111,7 @@ void progress_save_init(int *unlocked_night)
     if (s_load_result == SAVE_LOAD_OK ||
         s_load_result == SAVE_LOAD_RECOVERED) {
         s_highest_unlocked_night = clamp_night(data.unlocked_night);
+        s_continue_night = clamp_story_night(data.continue_night);
         s_completed_nights_mask = data.completed_nights_mask;
         s_secret_minigames_mask = data.secret_minigames_mask;
         s_achievement_flags = data.achievement_flags;
@@ -115,6 +128,14 @@ void progress_save_shutdown(void)
     storage_shutdown();
 }
 
+void progress_save_start_new_game(void)
+{
+    /* PC New Game restarts only the five-night story Continue chain. Bonus
+       unlocks, stars, Extras, secret minigames and Nightmare remain intact. */
+    s_continue_night = 1;
+    write_current_progress();
+}
+
 void progress_save_complete_night(int completed_night,
                                   int *unlocked_night)
 {
@@ -124,6 +145,13 @@ void progress_save_complete_night(int completed_night,
     int next_unlocked = night < PROGRESS_NIGHT_COUNT ? night + 1 : night;
     if (next_unlocked > s_highest_unlocked_night)
         s_highest_unlocked_night = next_unlocked;
+
+    /* Nights 1-5 form the story Continue chain. Night 6/Nightmare is a
+       separate menu item and must never replace Continue. */
+    if (night < PROGRESS_STORY_NIGHT_COUNT)
+        s_continue_night = night + 1;
+    else if (night == PROGRESS_STORY_NIGHT_COUNT)
+        s_continue_night = PROGRESS_STORY_NIGHT_COUNT;
 
     if (unlocked_night != NULL)
         *unlocked_night = s_highest_unlocked_night;
@@ -150,6 +178,11 @@ void progress_save_complete_aggressive_nightmare(void)
 int progress_save_highest_unlocked_night(void)
 {
     return s_highest_unlocked_night;
+}
+
+int progress_save_continue_night(void)
+{
+    return s_continue_night;
 }
 
 bool progress_save_is_night_completed(int night)

@@ -2,7 +2,7 @@
 """Generate verified PC Springtrap/Phantom gameplay visuals.
 
 The Phantom animation image lists below are taken directly from the object
-animation records in fivenights3-94.mfa.  Do not replace them with sampled
+animation records in fivenights3-94.mfa. Do not replace them with sampled
 frames: the non-contiguous IDs are intentional because Clickteam's global
 image bank interleaves unrelated objects.
 """
@@ -44,7 +44,7 @@ SPRITES = (
 
 # fivenights3-94.mfa object "fwalk": the first animation is the walk cycle,
 # the second is the complete duck/crouch cycle used when Freddy passes the
-# office window.  Both are kept separate so gameplay can select the correct
+# office window. Both are kept separate so gameplay can select the correct
 # Clickteam animation rather than ping-ponging a hand-picked subset.
 ANIMATION_SEQUENCES = (
     ("PhantomFreddyWalk",
@@ -52,6 +52,13 @@ ANIMATION_SEQUENCES = (
     ("PhantomFreddyDuck",
      (662, 635, 664, 639, 640, 654, 656, 657, 658, 659, 660), 4),
 )
+
+# fwalk frames are 310x413 in the General Sprites bank. The retail office
+# panorama is 2000x768 and is rendered as 1120x430 on Wii U, a 0.56 scale.
+# 174x231 is the same transform rounded to integral pixels and therefore keeps
+# Freddy's body proportions instead of packing him into the generic 320x180
+# jumpscare canvas used by the previous converter.
+FREDDY_SEQUENCE_SIZE = (174, 231)
 
 # Exact image lists recovered from the PC MFA object animation records:
 #   fscare   -> Phantom Freddy attack
@@ -254,8 +261,9 @@ def build_sequence_frames(root: Path, ids: tuple[int, ...],
 
 
 def emit_sequence(source: list[str], header: list[str], root: Path,
-                  name: str, ids: tuple[int, ...], ticks: int) -> None:
-    frames = build_sequence_frames(root, ids)
+                  name: str, ids: tuple[int, ...], ticks: int,
+                  output_size: tuple[int, int] = (320, 180)) -> None:
+    frames = build_sequence_frames(root, ids, output_size)
     symbols = []
     for index, (sprite_id, frame) in enumerate(zip(ids, frames), start=1):
         symbol = f"kPc{name}Frame{index:02d}"
@@ -325,7 +333,10 @@ def main() -> None:
                                      Image.Resampling.LANCZOS)
         header.append(f"extern const TextureRle {symbol};\n")
 
-    for name, ids, ticks in ANIMATION_SEQUENCES + JUMPSCARE_SEQUENCES:
+    for name, ids, ticks in ANIMATION_SEQUENCES:
+        emit_sequence(source, header, root, name, ids, ticks,
+                      FREDDY_SEQUENCE_SIZE)
+    for name, ids, ticks in JUMPSCARE_SEQUENCES:
         emit_sequence(source, header, root, name, ids, ticks)
 
     source.append("const PcTiledTexture *pc_springtrap_camera_texture(int camera_index)\n{\n")

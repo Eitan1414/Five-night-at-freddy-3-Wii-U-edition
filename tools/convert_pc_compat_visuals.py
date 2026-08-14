@@ -19,8 +19,35 @@ TRANSPARENT_INDEX = 255
 CAMERA_IDS = (106, 97, 104, 105, 109, 98, 100, 112, 115, 116)
 SPRINGTRAP_CAMERA_IDS = (295, 146, 121, 122, 119, 117, 126, 127, 130, 140)
 
-# The five images used by the PC title frame's MFA object "Active 2".
+# Shadow Cupcake actives recovered from fivenights3-94.mfa. The create actions
+# place cupcake 1/2/3/4 on CAM03/CAM06/CAM02/CAM04 respectively. Cupcakes 1
+# and 2 share image 999; 3 uses 959 and 4 uses 1000.
+SHADOW_CUPCAKES = (
+    ("gPcCompatShadowCupcakeLargeTexture", 999),
+    ("gPcCompatShadowCupcakeSmallTexture", 959),
+    ("gPcCompatShadowCupcakeMediumTexture", 1000),
+)
+
+# The five full 1024x768 images used by the PC title frame's MFA object
+# "Active 2". They are backgrounds, not Springtrap cut-outs.
 TITLE_IDS = (862, 855, 864, 859, 861)
+
+# Exact title/menu image-bank objects from the supplied PC MFA / General Sprites.
+TITLE_UI_ASSETS = (
+    ("gPcCompatTitleLogoTexture", 155, 240),
+    ("gPcCompatTitleNewGameTexture", 592, 300),
+    ("gPcCompatTitleLoadGameTexture", 301, 300),
+    ("gPcCompatTitleNightmareTexture", 625, 300),
+    ("gPcCompatTitleExtraTexture", 826, 220),
+    ("gPcCompatTitleStarTexture", 840, 80),
+    ("gPcCompatTitleCursorTexture", 833, 80),
+    ("gPcCompatTitleCopyrightTexture", 849, 220),
+    ("gPcCompatTitleResetTexture", 1021, 300),
+    ("gPcCompatTitleVersionTexture", 289, 120),
+)
+
+# Transparent horizontal/glitch-line animation frames used by the PC title.
+TITLE_LINE_IDS = (863, 865, 866, 867, 868, 869, 871)
 
 # symbol, PC General Sprites id, maximum output dimension
 PHANTOMS = (
@@ -31,6 +58,21 @@ PHANTOMS = (
     ("gPcCompatPhantomPuppetTexture", 320, 230),
     ("gPcCompatPhantomBBTexture", 70, 230),
 )
+
+# Exact full-camera composites recovered from fivenights3-94.mfa. These are
+# deliberately generated as compact single-RLE textures for real Wii U hardware
+# instead of falling back to unrelated office sprites when the tiled path is
+# disabled for stability.
+PHANTOM_CAMERA_COMPOSITES = (
+    ("gPcCompatPhantomMangleCameraTexture", 38),
+    ("gPcCompatPhantomChicaCameraTexture", 387),
+    ("gPcCompatPhantomPuppetCameraTexture", 298),
+)
+
+# 825x650 PC source aspect, reduced enough that every tested compact RLE remains
+# below the uint16 row-offset limit while retaining substantially more vertical
+# detail than the old 266x148 stretched compatibility frames.
+COMPACT_CAMERA_SIZE = (240, 189)
 
 
 def fmt(values, pattern: str, per_line: int) -> str:
@@ -162,8 +204,12 @@ def main() -> None:
     args = parser.parse_args()
     root = args.sprite_root
 
-    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS}
+    required = {203, *CAMERA_IDS, *SPRINGTRAP_CAMERA_IDS, *TITLE_IDS,
+                *TITLE_LINE_IDS}
+    required.update(sprite_id for _, sprite_id in SHADOW_CUPCAKES)
     required.update(sprite_id for _, sprite_id, _ in PHANTOMS)
+    required.update(sprite_id for _, sprite_id in PHANTOM_CAMERA_COMPOSITES)
+    required.update(sprite_id for _, sprite_id, _ in TITLE_UI_ASSETS)
     missing = sorted(sprite_id for sprite_id in required
                      if not (root / f"{sprite_id}.png").is_file())
     if missing:
@@ -194,15 +240,30 @@ def main() -> None:
         symbol = f"gPcCompatTitleSpringtrap{index}Texture"
         emit_texture(source, symbol,
                      fit(load(root, sprite_id), max_dimension=384),
-                     f"PC title Active 2 image ID {sprite_id} from fivenights3-94.mfa")
+                     f"PC full title background image ID {sprite_id} from fivenights3-94.mfa")
         header.append(f"extern const TextureRle {symbol};\n")
         title_symbols.append(symbol)
+
+    for symbol, sprite_id, max_dimension in TITLE_UI_ASSETS:
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_dimension=max_dimension),
+                     f"PC title UI image ID {sprite_id} from fivenights3-94.mfa")
+        header.append(f"extern const TextureRle {symbol};\n")
+
+    title_line_symbols = []
+    for index, sprite_id in enumerate(TITLE_LINE_IDS):
+        symbol = f"gPcCompatTitleLines{index}Texture"
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_size=(384, 288)),
+                     f"PC title scan/glitch line image ID {sprite_id}")
+        header.append(f"extern const TextureRle {symbol};\n")
+        title_line_symbols.append(symbol)
 
     camera_symbols = []
     for index, sprite_id in enumerate(CAMERA_IDS, start=1):
         symbol = f"gPcCompatCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         camera_symbols.append(symbol)
@@ -211,16 +272,34 @@ def main() -> None:
     for index, sprite_id in enumerate(SPRINGTRAP_CAMERA_IDS, start=1):
         symbol = f"gPcCompatSpringtrapCamera{index:02d}Texture"
         emit_texture(source, symbol,
-                     fit(load(root, sprite_id), max_size=(266, 148)),
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
         springtrap_symbols.append(symbol)
+
+    # Keep Shadow Cupcake source art at native PC dimensions. The camera
+    # renderer scales its source-space rectangle with the same 825x650 ->
+    # 432x340 transform as the PC feed, preserving the MFA create coordinates.
+    for symbol, sprite_id in SHADOW_CUPCAKES:
+        emit_texture(source, symbol, load(root, sprite_id).convert("RGBA"),
+                     f"PC Shadow Cupcake image ID {sprite_id} from fivenights3-94.mfa")
+        header.append(f"extern const TextureRle {symbol};\n")
 
     for symbol, sprite_id, max_dimension in PHANTOMS:
         emit_texture(source, symbol,
                      fit(load(root, sprite_id), max_dimension=max_dimension),
                      f"PC General Sprites ID {sprite_id}")
         header.append(f"extern const TextureRle {symbol};\n")
+
+    for symbol, sprite_id in PHANTOM_CAMERA_COMPOSITES:
+        emit_texture(source, symbol,
+                     fit(load(root, sprite_id), max_size=COMPACT_CAMERA_SIZE),
+                     f"PC MFA full-camera composite, General Sprites ID {sprite_id}")
+        header.append(f"extern const TextureRle {symbol};\n")
+
+    source.append("const TextureRle *const gPcCompatTitleLineTextures[7] = {\n")
+    source.extend(f"    &{symbol},\n" for symbol in title_line_symbols)
+    source.append("};\n\n")
 
     source.append("const TextureRle *const gPcCompatCameraTextures[10] = {\n")
     source.extend(f"    &{symbol},\n" for symbol in camera_symbols)
@@ -238,7 +317,8 @@ def main() -> None:
     )
 
     header.extend([
-        "\nextern const TextureRle *const gPcCompatCameraTextures[10];\n",
+        "\nextern const TextureRle *const gPcCompatTitleLineTextures[7];\n",
+        "extern const TextureRle *const gPcCompatCameraTextures[10];\n",
         "extern const TextureRle *const gPcCompatSpringtrapCameraTextures[10];\n",
         "extern const JumpscareSequence gPcCompatPhantomPuppetAnimation;\n\n",
         "/* Historical renderer names now resolve to PC-derived objects. */\n",
@@ -267,9 +347,9 @@ def main() -> None:
         "#define gPhantomPuppetOfficeTexture gPcCompatPhantomPuppetTexture\n",
         "#define gPhantomBBCameraTexture gPcCompatPhantomBBTexture\n",
         "#define gPhantomBBOfficeTexture gPcCompatPhantomBBTexture\n",
-        "#define gPhantomChicaCameraTexture gPcCompatPhantomChicaOfficeTexture\n",
-        "#define gPhantomMangleCameraTexture gPcCompatPhantomMangleOfficeTexture\n",
-        "#define gPhantomPuppetCameraTexture gPcCompatPhantomPuppetTexture\n",
+        "#define gPhantomChicaCameraTexture gPcCompatPhantomChicaCameraTexture\n",
+        "#define gPhantomMangleCameraTexture gPcCompatPhantomMangleCameraTexture\n",
+        "#define gPhantomPuppetCameraTexture gPcCompatPhantomPuppetCameraTexture\n",
         "#define gPhantomPuppetRealAnimation gPcCompatPhantomPuppetAnimation\n",
     ])
 

@@ -41,16 +41,16 @@ static void original_ui_draw_maintenance_sprite(OriginalUiTextureId id,
         height = (int)(((uint32_t)texture->height * (uint32_t)width) /
                        (uint32_t)texture->width);
     }
-    texture_draw_rle(GRAPHICS_TARGET_GAMEPAD,
+    texture_draw_rle(sOriginalUiPanelTargets,
                      x, y, width, height, texture);
 }
 
-static void original_ui_draw_maintenance_cursor(int y)
+static void original_ui_draw_maintenance_cursor(int x, int y)
 {
     const uint32_t colour = GRAPHICS_RGB(224, 238, 219);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 66, y + 13, 18, 3, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 78, y + 8, 3, 13, colour);
-    graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD, 81, y + 11, 3, 7, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x, y + 13, 18, 3, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x + 12, y + 8, 3, 13, colour);
+    graphics_draw_rect(sOriginalUiPanelTargets, x + 15, y + 11, 3, 7, colour);
 }
 
 static void original_ui_draw_maintenance(const Game *game)
@@ -63,23 +63,31 @@ static void original_ui_draw_maintenance(const Game *game)
         MAINT_EXIT,
     };
 
-    graphics_clear(GRAPHICS_TARGET_GAMEPAD, GRAPHICS_RGB(0, 2, 1));
+    /* TV already has the PC office. In mirrored mode only, copy the same office
+     * to the GamePad before drawing the System Restart overlay on both. */
+    if ((sOriginalUiPanelTargets & GRAPHICS_TARGET_GAMEPAD) != 0u)
+        pc_draw_gamepad_office_background(game);
 
-    /* ORIGINAL_UI_MAINT_MENU is the extracted PC "System Restart" heading;
-     * the previous Wii U pass incorrectly reused it as the EXIT row. */
+    graphics_draw_rect(sOriginalUiPanelTargets,
+                       214, 48, 604, 390,
+                       GRAPHICS_RGB(0, 1, 0));
+    graphics_draw_frame(sOriginalUiPanelTargets,
+                        214, 48, 604, 390, 2,
+                        GRAPHICS_RGB(48, 67, 48));
+
     original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_MENU,
-                                        119, 39, 640, 58);
+                                        275, 67, 485, 50);
 
     for (int row = 0; row < MAINTENANCE_ITEM_COUNT; ++row) {
         const int item = display_order[row];
-        const int y = 116 + row * 55;
+        const int y = 127 + row * 50;
         const bool selected = item == game->maintenance_selection;
 
-        if (selected) original_ui_draw_maintenance_cursor(y);
+        if (selected) original_ui_draw_maintenance_cursor(252, y);
 
         if (item == MAINT_EXIT) {
-            graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
-                               104, y + 8, 3, "EXIT",
+            graphics_draw_text(sOriginalUiPanelTargets,
+                               291, y + 8, 3, "EXIT",
                                selected ? COLOUR_WHITE
                                         : GRAPHICS_RGB(153, 171, 151));
             continue;
@@ -87,29 +95,21 @@ static void original_ui_draw_maintenance(const Game *game)
 
         original_ui_draw_maintenance_sprite(
             original_ui_maintenance_texture(game, item),
-            104, y, 620, 38);
+            291, y, 470, 34);
     }
 
     if (game->repairing) {
         original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_RESTART,
-                                            245, 399, 365, 34);
-
-        /* Clickteam's restart indicator advances as a small repeating dot
-         * animation; do not expose the artificial Wii U percentage bar. */
+                                            352, 376, 330, 31);
         const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
         for (int dot = 0; dot < dots; ++dot) {
-            graphics_draw_rect(GRAPHICS_TARGET_GAMEPAD,
-                               562 + dot * 13, 419, 6, 6,
+            graphics_draw_rect(sOriginalUiPanelTargets,
+                               640 + dot * 13, 395, 6, 6,
                                COLOUR_WHITE);
         }
-    } else {
-        /* Controller legend is the only Wii U-specific addition retained on
-         * this screen; all game-owned labels above come from the PC asset bank. */
-        graphics_draw_text(GRAPHICS_TARGET_GAMEPAD,
-                           250, 452, 1,
-                           "UP/DOWN SELECT   A REBOOT   B CLOSE",
-                           GRAPHICS_RGB(105, 125, 103));
     }
+    /* Physical/touch bindings remain active, but the PC System Restart panel
+     * no longer carries the Wii U-only `UP/DOWN A REBOOT B CLOSE` legend. */
 }
 
 static void original_ui_draw_transition(void)
@@ -127,13 +127,16 @@ static void original_ui_draw_transition(void)
     }
     const OriginalUiTextureId id = (OriginalUiTextureId)
         (ORIGINAL_UI_TRANSITION_0 + sOriginalUi.transition_frame);
-    original_ui_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
-                             0, 0, 854, 480);
+    original_ui_draw_texture(id, sOriginalUiPanelTargets,
+                             174, 76, 674, 379);
 }
 
 static void original_ui_draw_office(Game *game)
 {
     game->dirty = false;
+    sOriginalUiPanelTargets = wiiu_control_panel_targets();
+
+    /* The television always owns the main game presentation. */
     draw_office_tv(game);
 
     if (game->maintenance_open)
@@ -143,8 +146,9 @@ static void original_ui_draw_office(Game *game)
             original_ui_draw_vent_map(game);
         else
             original_ui_draw_camera_feed(game);
-    } else {
-        draw_office_gamepad(game);
+    } else if (wiiu_controls_mode() == WIIU_CONTROL_MIRROR) {
+        /* Identical mode keeps the office itself on both displays too. */
+        pc_draw_gamepad_office_background(game);
     }
 
     draw_ventilation_overlay(game);
@@ -152,11 +156,76 @@ static void original_ui_draw_office(Game *game)
     if (phantoms_active_jumpscare(&game->phantoms) == PHANTOM_NONE)
         original_ui_draw_transition();
     finishing_draw_phone_overlay();
+
+    /* Last GamePad pass is deliberate: in TOUCH/TV modes it erases any shared
+     * overlays and leaves exactly the requested black/contextual DRC image. */
+    wiiu_control_draw_gamepad(game);
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
+static void pc_warning_fidelity_render(Game *game)
+{
+    if (game == NULL || !game->dirty) return;
+    game->dirty = false;
+
+    /* The supplied PC MFA stores the warning wording as text. gWarningTexture
+     * is the PC-only rasterization of that exact wording. The recovery renderer
+     * added a flashing red frame and visible `A: SKIP` prompt; those are Wii U
+     * prototype presentation and are intentionally omitted here.  Confirm/Start
+     * may still skip the warning as an invisible platform convenience. */
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     67, 174, 720, 138,
+                     &gWarningTexture);
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
+/* Generated from the exact PC General Sprites image bank. The MFA metadata for
+ * frame `what day` is authoritative for selection, transparency and placement. */
+const TextureRle *pc_night_intro_texture(int night);
+
+static void pc_night_intro_fidelity_render(Game *game)
+{
+    if (game == NULL || !game->dirty) return;
+    game->dirty = false;
+
+    const TextureRle *texture = pc_night_intro_texture(game->night);
+
+    /* fivenights3-94.mfa: frame `what day`, 1024x768. Active handle 55 is at
+     * (512,374), every frame is 201x104 with hotspot (100,52), hence source
+     * top-left (412,322). PC 4:3 presentation maps to the existing 640x480
+     * pillarboxed Wii U viewport at x=107. No text or positioning is guessed. */
+    const int source_x = 512 - 100;
+    const int source_y = 374 - 52;
+    const int x = 107 + (source_x * 640) / 1024;
+    const int y = (source_y * 480) / 768;
+    const int width = (201 * 640) / 1024;
+    const int height = (104 * 480) / 768;
+
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    if (texture != NULL)
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         x, y, width, height, texture);
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 
 static void render_game(Game *game)
 {
+    if (sWiiUOptionsOpen) {
+        game->dirty = false;
+        wiiu_draw_options(game);
+        return;
+    }
+
+    if (game->screen == SCREEN_WARNING) {
+        pc_warning_fidelity_render(game);
+        return;
+    }
+    if (game->screen == SCREEN_NIGHT_INTRO) {
+        pc_night_intro_fidelity_render(game);
+        return;
+    }
+
     if (!sOriginalUi.assets_ready || game->screen != SCREEN_OFFICE) {
         fnaf3_full_audio_render_game(game);
         return;
@@ -189,6 +258,9 @@ int main(int argc, char **argv)
 
     Game game;
     game_init(&game);
+    /* game_init mounts storage through progress_save_init; load the separate
+     * Wii U control preference only after that mount exists. */
+    wiiu_controls_init();
     (void) audio_init();
 
     render_game(&game);

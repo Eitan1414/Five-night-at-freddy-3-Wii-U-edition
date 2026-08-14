@@ -39,8 +39,12 @@
 #define VENT_BLACKOUT_CYCLE_FRAMES 600u
 #define VENT_DIM_START_FRAMES 180u
 #define VENT_BLACK_START_FRAMES 360u
-#define AUDIO_LURE_TRAVEL_FRAMES 90u
-#define AUDIO_LURE_COOLDOWN_FRAMES 300u
+/* MFA group 225 creates the lure object; groups 231-255 consume it later in
+ * the same Clickteam event loop. One Wii U update tick reproduces that order. */
+#define AUDIO_LURE_TRAVEL_FRAMES 1u
+/* MFA groups 220-225: Play Audio resets its counter to zero and restores one
+ * point every 1500 ms until seven points are available again. */
+#define AUDIO_LURE_COOLDOWN_FRAMES 630u
 #define MESSAGE_FRAMES 150u
 #define REPAIR_SINGLE_FRAMES 120u
 #define REPAIR_ALL_FRAMES 240u

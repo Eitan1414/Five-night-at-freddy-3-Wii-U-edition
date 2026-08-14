@@ -23,6 +23,16 @@ typedef struct InputState {
     uint32_t pressed;
     uint32_t released;
     bool connected;
+
+    /* Calibrated Wii U GamePad touchscreen coordinates in the same 854x480
+     * logical space used by the renderer. touch_pressed/released are edges,
+     * while touched remains true for the duration of the stylus/finger press. */
+    int touch_x;
+    int touch_y;
+    bool touch_valid;
+    bool touched;
+    bool touch_pressed;
+    bool touch_released;
 } InputState;
 
 void input_init(void);

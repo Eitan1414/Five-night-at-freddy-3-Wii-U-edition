@@ -1,0 +1,35 @@
+name: Phantom AI Fidelity Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'source/game/phantom_ai.c'
+      - 'source/game/phantom_ai_parts/**'
+      - 'include/game/phantom_ai.h'
+      - 'tests/phantom_ai_test.c'
+      - '.github/workflows/phantom-ai.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phantom-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile Phantom state machine tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O2 \
+            -Iinclude \
+            source/game/phantom_ai.c \
+            tests/phantom_ai_test.c \
+            -o /tmp/phantom-ai-test
+
+      - name: Run Phantom state machine tests
+        run: /tmp/phantom-ai-test

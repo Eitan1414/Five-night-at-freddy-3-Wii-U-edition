@@ -1,72 +1,129 @@
 static void complete_draw_title(const Game *game)
 {
-    static const char *const items[TITLE_ITEM_COUNT] = {
-        "NEW GAME", "LOAD GAME", "EXTRAS"
-    };
     const int frame = title_frame_index(game);
-    const int glitch = frame == 0
-        ? (int) ((game->seed >> 8) % 7u) - 3
-        : (frame - 2) * 3;
+    const int content_x = (GRAPHICS_LOGICAL_WIDTH - 640) / 2;
 
-    graphics_clear(GRAPHICS_TARGET_BOTH, GRAPHICS_RGB(1, 4, 2));
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 0, 0, 410, 480,
-                       GRAPHICS_RGB(2, 7, 4));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 47, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 119, 7, "N", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 191, 7, "A", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 263, 7, "F", COLOUR_WHITE);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 39, 349, 8, "3", COLOUR_GREEN);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 120, 72, 2,
-                       "FIVE NIGHTS AT FREDDYS 3", COLOUR_GREEN);
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
 
-    char continue_text[32];
-    snprintf(continue_text, sizeof(continue_text),
-             "CURRENT NIGHT: %d", game->unlocked_night);
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 119, 1,
-                       continue_text, GRAPHICS_RGB(74, 111, 73));
-    graphics_draw_text(GRAPHICS_TARGET_BOTH, 121, 145, 1,
-                       progress_save_load_status_text(),
-                       progress_save_load_status_is_error()
-                           ? COLOUR_RED : GRAPHICS_RGB(74, 111, 73));
+    /* The five MFA title images are complete 1024x768 PC frames, not isolated
+     * Springtrap cut-outs. Preserve their original 4:3 composition. */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x, 0, 640, 480,
+                     kTitleFrames[frame]);
 
-    const uint32_t star = GRAPHICS_RGB(225, 219, 103);
-    if (progress_save_is_night_completed(5))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 288, 40, 4, "*", star);
-    if (progress_save_is_night_completed(6))
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 320, 40, 4, "*", star);
-    if (progress_save_good_ending_unlocked())
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 352, 40, 4, "*", star);
-    if (progress_save_aggressive_nightmare_completed())
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 384, 40, 4, "*", star);
+    /* The PC title spends most of its time on thin horizontal interference and
+     * only enters the heavier glitch-line frames during the short title burst. */
+    const uint32_t phase = game->screen_frames % 180u;
+    const int line_frame = phase < 144u
+        ? 3
+        : (int)(((phase - 144u) / 6u) % 7u);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x, 0, 640, 480,
+                     gPcCompatTitleLineTextures[line_frame]);
 
-    for (int item = 0; item < TITLE_ITEM_COUNT; ++item) {
-        const int y = 284 + item * 48;
-        if (item == game->title_selection) {
-            graphics_draw_rect(GRAPHICS_TARGET_BOTH, 106, y - 10, 262, 36,
-                               GRAPHICS_RGB(31, 72, 37));
-            graphics_draw_rect(GRAPHICS_TARGET_BOTH, 106, y - 10, 5, 36,
-                               GRAPHICS_RGB(129, 207, 121));
-        }
-        uint32_t colour = item == game->title_selection
-            ? COLOUR_WHITE : GRAPHICS_RGB(112, 139, 113);
-        if (item == 2 && !progress_save_extras_unlocked())
-            colour = GRAPHICS_RGB(70, 78, 70);
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 124, y, 3,
-                           items[item], colour);
-        if (item == 2 && !progress_save_extras_unlocked())
-            graphics_draw_text(GRAPHICS_TARGET_BOTH, 300, y + 5, 1,
-                               "LOCKED", GRAPHICS_RGB(91, 67, 62));
+    /* Original PC image-bank UI. */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 66, 29, 21, 141,
+                     &gPcCompatTitleLogoTexture);
+
+    const int new_y = 284;
+    const int load_y = 330;
+    const int nightmare_y = 376;
+    const int extra_y = 422;
+    const int credits_text_y = 454;
+    const int credits_cursor_y = 448;
+    const bool bonus_rows = progress_save_is_night_completed(5);
+
+    /* Exact PC NEW GAME object (General Sprites image 592). */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 67, new_y, 152, 31,
+                     &gPcCompatTitleNewGameTexture);
+
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 67, load_y, 152, 31,
+                     &gPcCompatTitleLoadGameTexture);
+
+    if (bonus_rows) {
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         content_x + 67, nightmare_y, 161, 31,
+                         &gPcCompatTitleNightmareTexture);
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         content_x + 67, extra_y, 91, 31,
+                         &gPcCompatTitleExtraTexture);
     }
 
-    if (sFinishing.title_notice_frames > 0u)
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 112, 445, 1,
-                           "COMPLETE NIGHT 5 TO UNLOCK EXTRAS", COLOUR_RED);
+    /* Credits is Wii U-specific navigation, so there is no retail PC title
+     * sprite to rip for it. Draw it with the project's PC-title-matched pixel
+     * alphabet instead of borrowing any PSX menu art. It remains available
+     * before and after the Night 5 bonus rows unlock. */
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  content_x + 67, credits_text_y, 1,
+                                  "CREDITS", COLOUR_WHITE);
 
-    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 410, 0, 444, 480, COLOUR_BLACK);
-    texture_draw_rle(GRAPHICS_TARGET_BOTH, 410 + glitch, 16, 444, 448,
-                     kTitleFrames[frame]);
-    draw_scanlines(GRAPHICS_TARGET_BOTH,
-                   game->seed + game->screen_frames);
+    /* The LOAD GAME night value is still rendered through the compatibility
+     * bitmap font. Do not claim an MFA counter match until the title-frame
+     * counter object is positively identified. */
+    char night_number[8];
+    snprintf(night_number, sizeof(night_number), "%d",
+             progress_save_continue_night());
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       content_x + 226, load_y + 9, 2,
+                       night_number, COLOUR_WHITE);
+
+    /* Exact glowing PC cursor block (image 833). Nightmare and Extra remain
+     * separate PC rows; the final position selects the Wii U Credits row. */
+    int marker_y = new_y;
+    if (game->title_selection == 1) {
+        marker_y = load_y;
+    } else if (bonus_rows && game->title_selection == 2) {
+        marker_y = nightmare_y;
+    } else if (bonus_rows && game->title_selection == 3) {
+        marker_y = extra_y;
+    } else if ((!bonus_rows && game->title_selection == 2) ||
+               (bonus_rows && game->title_selection == 4)) {
+        marker_y = credits_cursor_y;
+    }
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 36, marker_y, 21, 31,
+                     &gPcCompatTitleCursorTexture);
+
+    /* Exact PC star sprite. */
+    int sx = content_x + 112;
+    if (progress_save_is_night_completed(5)) {
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         sx, 30, 35, 33,
+                         &gPcCompatTitleStarTexture);
+        sx += 47;
+    }
+    if (progress_save_is_night_completed(6)) {
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         sx, 30, 35, 33,
+                         &gPcCompatTitleStarTexture);
+    }
+    if (progress_save_good_ending_unlocked()) {
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         content_x + 159, 70, 35, 33,
+                         &gPcCompatTitleStarTexture);
+    }
+    if (progress_save_aggressive_nightmare_completed()) {
+        texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                         content_x + 206, 70, 35, 33,
+                         &gPcCompatTitleStarTexture);
+    }
+
+    /* Wii U options remain bound to the platform input layer but no longer
+     * advertise themselves over the retail-PC title composition. Likewise the
+     * prototype `EXTRA LOCKED` notice is intentionally presentation-silent. */
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 456, 456, 114, 13,
+                     &gPcCompatTitleCopyrightTexture);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 385, 469, 161, 8,
+                     &gPcCompatTitleResetTexture);
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     content_x + 574, 468, 47, 9,
+                     &gPcCompatTitleVersionTexture);
+
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
 

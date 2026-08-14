@@ -55,7 +55,7 @@ static void game_init(Game *game)
 {
     memset(game, 0, sizeof(*game));
     game->screen = SCREEN_WARNING;
-    game->seed = 0xF3A30A10u;
+    game->seed = runtime_seed_now();
     game->unlocked_night = 1;
     game->night = 1;
     game->selected_camera = 2;
@@ -192,10 +192,9 @@ static void play_random_lure(Game *game)
 
 static void trigger_audio_lure(Game *game)
 {
-    if (!night_config(game->night)->springtrap_enabled) {
-        set_message(game, MESSAGE_AUDIO_NO_TARGET);
-        return;
-    }
+    /* MFA group 225 does not exclude Night 1. With AI=0 the audio system takes
+     * no health damage and there is no Springtrap target, but the sound still
+     * plays and the seven-step recharge counter is consumed. */
     if (game->audio_failed) {
         set_message(game, MESSAGE_AUDIO_FAILED);
         return;
@@ -235,7 +234,9 @@ static int camera_in_direction(int current, int horizontal, int vertical)
 
 static void restart_camera_static(void)
 {
-    audio_restart(AUDIO_CUE_STATIC, 0.28f, true);
+    /* The PC monitor uses short static bursts on open/switch. Do not keep the
+       sample looping for the entire time the monitor is raised. */
+    audio_restart(AUDIO_CUE_STATIC, 0.28f, false);
 }
 
 static void open_cameras(Game *game)

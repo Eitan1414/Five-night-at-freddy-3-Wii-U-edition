@@ -1,15 +1,16 @@
 #include "game/progress_save.h"
+#include "game/wiiu_controls.h"
 #include "assets/ending_assets.h"
 #include "assets/original_ui_assets.h"
 #include "assets/monitor_v2_assets.h"
 #include "assets/office_assets.h"
 #include "assets/achievement_assets.h"
-#include "assets/phantom_chica_user_jumpscare.h"
 #include "assets/pc_core_visuals.h"
 #include "assets/pc_compat_visuals.h"
 #include "assets/pc_character_visuals.h"
 #include "assets/pc_finishing_visuals.h"
 #include "platform/pc_minigame_sfx.h"
+#include "platform/runtime_seed.h"
 
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
@@ -22,7 +23,8 @@
 
 /* Retail PC restart timing is six seconds for one system and twelve seconds
  * for Reboot All. Override the old fast Wii U scaffolding before the function
- * that consumes these constants is compiled. */
+ * that consumes these constants is compiled. The final MFA system layer later
+ * maps its randomized 0..10 progress onto these compatibility durations. */
 #undef REPAIR_SINGLE_FRAMES
 #undef REPAIR_ALL_FRAMES
 #define REPAIR_SINGLE_FRAMES (6u * 60u)
@@ -37,9 +39,8 @@
 #include "main_v3_parts/main_phantom_visuals.inc"
 
 /* The legacy layer used ten seconds without player input as a ventilation
- * failure. In the PC game ten seconds idle instead contributes to Springtrap's
- * aggression. Let the idle counter continue and disable that old shortcut;
- * the real ventilation-health failure is applied by main_pc_system_fidelity. */
+ * failure. In the PC game the independent no-screen counter instead degrades
+ * ventilation health and contributes to Springtrap aggression. */
 #undef IDLE_VENT_FAILURE_FRAMES
 #define IDLE_VENT_FAILURE_FRAMES UINT32_MAX
 #include "main_v3_parts/main_02.inc"
@@ -133,6 +134,14 @@
 #undef update_game
 #undef texture_draw_rle
 
+/* main_original_ui_02 renders the sealing progress before the final system
+ * wrapper is defined below. Forward declarations keep that presentation layer
+ * independent from the implementation order of the compatibility state. */
+static bool pc_vent_seal_is_active(void);
+static SpringtrapVent pc_vent_seal_target(void);
+static uint32_t pc_vent_seal_progress_frames(void);
+static uint32_t pc_vent_seal_duration_frames(void);
+
 #define original_ui_draw_vent_map original_ui_draw_vent_map_v1
 #include "main_v3_parts/main_original_ui_02.inc"
 #undef original_ui_draw_vent_map
@@ -182,10 +191,20 @@
  * non-final 200-count cake sequence after V7 sets its completion flag. */
 #include "main_v3_parts/main_pc_mfa_minigames_v8_render.inc"
 #include "main_v3_parts/main_pc_mfa_minigames_v8_update.inc"
+/* V9 keeps the extracted renderer active through the full Happiest Day finale
+ * and removes the last generic Wii U presentation overlays. */
+#include "main_v3_parts/main_pc_mfa_minigames_v9_render.inc"
+/* V10 keeps the MFA update alive after goodend and removes the Wii U-only
+ * confirmation prompt when a hidden night minigame finishes. */
+#include "main_v3_parts/main_pc_mfa_minigames_v10_update.inc"
+/* V11 keeps Happiest Day as a hidden sixth scene but matches the retail PC
+ * Extras page by exposing only the five replayable secret minigames. */
+#include "main_v3_parts/main_pc_mfa_minigames_v11_extras.inc"
 
 static void pc_finishing_fallback_render_game(Game *game)
 {
-    if (pc_mfa_v8_secret_render_override(game)) return;
+    if (pc_mfa_v11_extras_render_override(game)) return;
+    if (pc_mfa_v9_secret_render_override(game)) return;
     if (pc_finishing_render_override(game)) return;
     fnaf3_full_audio_render_game(game);
 }
@@ -199,10 +218,30 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 /* Final retail-PC maintenance/system counters. This wrapper deliberately sits
  * after the minigame/cheat layers so it can preserve those features while
  * replacing only the old deterministic night-system failures. */
+#define pc_mfa_v8_exact_update_game pc_mfa_v11_exact_update_game
 #include "main_v3_parts/main_pc_system_fidelity.inc"
+#undef pc_mfa_v8_exact_update_game
 
-#define update_game pc_system_fidelity_update_game
-#define fnaf3_full_audio_render_game pc_finishing_fallback_render_game
+/* Keep delayed vent closure outside the decoded AI/system counters. Its input
+ * wrapper consumes only the legacy instant-seal action, then delegates every
+ * gameplay frame through pc_system_fidelity_update_game. */
+#include "main_v3_parts/main_pc_vent_seal_fidelity.inc"
+
+/* Wii U-only presentation/control choices are layered last. They never alter
+ * the PC AI/state model; they only route the panel displays and translate DRC
+ * touch presses into the same gameplay actions. Remap their system call through
+ * the vent-seal compatibility wrapper so physical and touch input share it. */
+#define pc_system_fidelity_update_game pc_vent_seal_update_game
+#include "main_v3_parts/main_wiiu_controls.inc"
+#include "main_v3_parts/main_wiiu_controls_v2.inc"
+#include "main_v3_parts/main_wiiu_controls_v3.inc"
+#include "main_v3_parts/main_wiiu_controls_v4.inc"
+#include "main_v3_parts/main_wiiu_controls_v5.inc"
+#include "main_v3_parts/main_wiiu_controls_v6.inc"
+#undef pc_system_fidelity_update_game
+
+#define update_game wiiu_control_update_game_v6
+#define fnaf3_full_audio_render_game wiiu_control_nonoffice_render
 #define draw_office_tv draw_authentic_office_tv
 #define draw_ventilation_overlay pc_draw_ventilation_overlay
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx

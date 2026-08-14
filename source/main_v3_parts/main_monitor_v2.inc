@@ -58,6 +58,24 @@ static void monitor_v2_update_transition(Game *game)
     game->dirty = true;
 }
 
+static void monitor_v2_play_panel_sounds(bool before_camera,
+                                         bool before_maintenance,
+                                         const Game *game)
+{
+    if (before_camera != game->camera_open) {
+        audio_play(game->camera_open
+                       ? AUDIO_CUE_CAMERA_OPEN
+                       : AUDIO_CUE_CAMERA_CLOSE,
+                   0.82f, false);
+    }
+    if (before_maintenance != game->maintenance_open) {
+        audio_play(game->maintenance_open
+                       ? AUDIO_CUE_MAINTENANCE_OPEN
+                       : AUDIO_CUE_MAINTENANCE_CLOSE,
+                   0.82f, false);
+    }
+}
+
 static void update_game(Game *game, const InputState *input)
 {
     const GameScreen before_screen = game->screen;
@@ -65,6 +83,9 @@ static void update_game(Game *game, const InputState *input)
     const bool before_maintenance = game->maintenance_open;
 
     original_ui_update_game_v1(game, input);
+
+    if (before_screen == SCREEN_OFFICE && game->screen == SCREEN_OFFICE)
+        monitor_v2_play_panel_sounds(before_camera, before_maintenance, game);
 
     if (sMonitorV2.assets_ready &&
         before_screen == SCREEN_OFFICE && game->screen == SCREEN_OFFICE &&
@@ -80,30 +101,46 @@ static void update_game(Game *game, const InputState *input)
     monitor_v2_update_transition(game);
 }
 
+static void monitor_v2_draw_camera_controls(void)
+{
+    if (!sMonitorV2.assets_ready) return;
+
+    /* PC layout: the two square controls are stacked below the camera image,
+     * immediately left of the floor map. */
+    monitor_v2_draw_texture(MONITOR_V2_PLAY_AUDIO,
+                            sOriginalUiPanelTargets,
+                            360, 312, 118, 64);
+    monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
+                            sOriginalUiPanelTargets,
+                            349, 382, 140, 70);
+}
+
+static void monitor_v2_draw_vent_controls(void)
+{
+    if (!sMonitorV2.assets_ready) return;
+
+    /* The ventilation map uses the map-toggle control, not Play Audio. */
+    monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
+                            sOriginalUiPanelTargets,
+                            349, 382, 140, 70);
+}
+
+/* Keep the historical helper name for the final camera fidelity layer. */
 static void monitor_v2_draw_controls(void)
 {
-    if (!sMonitorV2.assets_ready || sOriginalUi.static_flash_frames > 0u)
-        return;
-
-    /* Exact PC sprites over the established, fully functional toolbar. */
-    monitor_v2_draw_texture(MONITOR_V2_PLAY_AUDIO,
-                            GRAPHICS_TARGET_GAMEPAD,
-                            555, 9, 118, 64);
-    monitor_v2_draw_texture(MONITOR_V2_MAP_TOGGLE,
-                            GRAPHICS_TARGET_GAMEPAD,
-                            699, 7, 140, 70);
+    monitor_v2_draw_camera_controls();
 }
 
 static void original_ui_draw_camera_feed(const Game *game)
 {
     original_ui_draw_camera_feed_v1(game);
-    monitor_v2_draw_controls();
+    monitor_v2_draw_camera_controls();
 }
 
 static void original_ui_draw_vent_map(const Game *game)
 {
     original_ui_draw_vent_map_v1(game);
-    monitor_v2_draw_controls();
+    monitor_v2_draw_vent_controls();
 }
 
 static void monitor_v2_draw_transition(void)
@@ -116,6 +153,9 @@ static void monitor_v2_draw_transition(void)
 
     const MonitorV2TextureId id = (MonitorV2TextureId)
         (MONITOR_V2_TRANSITION_0 + sMonitorV2.transition_frame);
-    monitor_v2_draw_texture(id, GRAPHICS_TARGET_GAMEPAD,
-                            0, 0, 854, 480);
+
+    /* Preserve the original panel animation on whichever Wii U display(s)
+     * currently own the PC monitor presentation. */
+    monitor_v2_draw_texture(id, sOriginalUiPanelTargets,
+                            174, 76, 674, 379);
 }

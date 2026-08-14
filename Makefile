@@ -8,6 +8,7 @@ endif
 
 TOPDIR ?= $(CURDIR)
 PC_MINIGAME_SHEETS ?= /tmp/fnaf3-pc-minigames
+PC_GENERAL_SPRITES ?= /tmp/fnaf3-pc-general/DataDump3
 
 APP_NAME      := Five Nights at Freddy's 3 - Wii U Edition
 APP_SHORTNAME := FNaF3 Wii U
@@ -110,6 +111,30 @@ endif
 all: $(BUILD)
 
 $(BUILD):
+	@if [ ! -d "$(PC_GENERAL_SPRITES)" ]; then \
+		echo "Missing verified PC General Sprites at $(PC_GENERAL_SPRITES)" >&2; \
+		echo "Set PC_GENERAL_SPRITES to the extracted DataDump3 directory." >&2; \
+		exit 1; \
+	fi
+	@echo "Generating exact PC night-intro visuals..."
+	@python3 tools/convert_pc_night_intro_visuals.py \
+		"$(PC_GENERAL_SPRITES)" source/pc_night_intro_visuals.c
+	@echo "Generating exact Follow Me MFA visuals from PC image-bank assets..."
+	@mkdir -p source/generated
+	@python3 tools/convert_pc_follow_me_mfa_visuals.py \
+		"$(PC_GENERAL_SPRITES)" \
+		source/generated/follow_me_mfa_visuals.inc \
+		include/assets/follow_me_mfa_visuals.h
+	@echo "Generating exact Follow Me MFA collision masks..."
+	@python3 tools/convert_pc_follow_me_collision_masks.py \
+		"$(PC_GENERAL_SPRITES)" \
+		source/generated/follow_me_mfa_collisions.inc \
+		include/assets/follow_me_mfa_collisions.h
+	@echo "Generating exact Follow Me MFA take-apart animation..."
+	@python3 tools/convert_pc_follow_me_takeapart.py \
+		"$(PC_GENERAL_SPRITES)" \
+		source/generated/follow_me_mfa_takeapart.inc \
+		include/assets/follow_me_mfa_takeapart.h
 	@if [ -d "$(PC_MINIGAME_SHEETS)" ] && \
 	    [ -f source/pc_finishing_visuals.c ] && \
 	    [ -f include/assets/pc_finishing_visuals.h ] && \
@@ -120,12 +145,25 @@ $(BUILD):
 			source/pc_finishing_visuals.c \
 			include/assets/pc_finishing_visuals.h; \
 	fi
+	@echo "Auditing final runtime visual routes for PC-only assets..."
+	@python3 tools/verify_pc_only_visuals.py
+	@echo "Auditing final runtime audio routes for PC-only assets..."
+	@python3 tools/verify_pc_only_audio.py
+	@echo "Auditing PC audio behavior fidelity..."
+	@python3 tools/verify_pc_audio_fidelity.py
+	@echo "Auditing fine PC/MFA visual geometry..."
+	@python3 tools/verify_pc_visual_fidelity.py
+	@echo "Auditing rare PC/MFA event rules..."
+	@python3 tools/verify_pc_rare_events.py
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).wuhb $(TARGET).rpx $(TARGET).elf $(TARGET).map
+	@rm -f source/generated/follow_me_mfa_visuals.inc
+	@rm -f source/generated/follow_me_mfa_collisions.inc
+	@rm -f source/generated/follow_me_mfa_takeapart.inc
 
 else
 

@@ -7,6 +7,7 @@
 #define SAVE_VERSION 1u
 #define SAVE_FILE_SIZE 16u
 #define SAVE_NIGHT_COUNT 6u
+#define SAVE_STORY_NIGHT_COUNT 5u
 #define SAVE_COMPLETED_MASK 0x3Fu
 #define SAVE_SECRET_MASK 0x3Fu
 #define SAVE_ACHIEVEMENT_MASK 0x01u
@@ -54,11 +55,30 @@ static uint8_t derive_unlocked_night(uint8_t stored_night,
     return unlocked;
 }
 
+static uint8_t derive_legacy_continue_night(uint8_t unlocked,
+                                            uint8_t completed_mask)
+{
+    /* Save v1 originally used byte 11 as zero/reserved and stored only the
+       highest unlocked night.  Migrate those files without invalidating them:
+       Nights 1-5 remain the story Continue path, while unlocked Night 6 is
+       exposed separately as Nightmare. */
+    (void) completed_mask;
+    if (unlocked < 1u) return 1u;
+    if (unlocked > SAVE_STORY_NIGHT_COUNT) return SAVE_STORY_NIGHT_COUNT;
+    return unlocked;
+}
+
 static void encode_save(const SaveData *data, uint8_t *output)
 {
     uint8_t unlocked = data->unlocked_night;
     if (unlocked < 1u) unlocked = 1u;
     if (unlocked > SAVE_NIGHT_COUNT) unlocked = SAVE_NIGHT_COUNT;
+
+    uint8_t continue_night = data->continue_night;
+    if (continue_night < 1u) continue_night = 1u;
+    if (continue_night > SAVE_STORY_NIGHT_COUNT)
+        continue_night = SAVE_STORY_NIGHT_COUNT;
+
     const uint8_t completed = data->completed_nights_mask & SAVE_COMPLETED_MASK;
     const uint8_t secrets = data->secret_minigames_mask & SAVE_SECRET_MASK;
     const uint8_t achievements = data->achievement_flags & SAVE_ACHIEVEMENT_MASK;
@@ -77,7 +97,9 @@ static void encode_save(const SaveData *data, uint8_t *output)
        progress.dat files valid while adding ten persistent achievement bits. */
     output[9] = (uint8_t) (badges & 0xFFu);
     output[10] = (uint8_t) ((badges >> 8u) & 0x03u);
-    output[11] = 0u;
+    /* Byte 11 was also reserved in v1. It now stores the independent story
+       Continue night (1-5). Zero remains accepted when reading old saves. */
+    output[11] = continue_night;
     write_u32_le(output + 12u, checksum_bytes(output, 12u));
 }
 
@@ -98,12 +120,14 @@ static bool decode_save(const uint8_t *input, SaveData *data)
     const uint8_t achievements = input[8];
     const uint16_t badges = (uint16_t) input[9]
         | ((uint16_t) input[10] << 8u);
+    const uint8_t continue_night = input[11];
+
     if (unlocked < 1u || unlocked > SAVE_NIGHT_COUNT ||
         (completed & (uint8_t) ~SAVE_COMPLETED_MASK) != 0u ||
         (secrets & (uint8_t) ~SAVE_SECRET_MASK) != 0u ||
         (achievements & (uint8_t) ~SAVE_ACHIEVEMENT_MASK) != 0u ||
         (badges & (uint16_t) ~SAVE_BADGES_MASK) != 0u ||
-        input[11] != 0u) {
+        continue_night > SAVE_STORY_NIGHT_COUNT) {
         return false;
     }
 
@@ -112,6 +136,9 @@ static bool decode_save(const uint8_t *input, SaveData *data)
     data->achievement_flags = achievements;
     data->achievements_mask = badges;
     data->unlocked_night = derive_unlocked_night(unlocked, completed);
+    data->continue_night = continue_night != 0u
+        ? continue_night
+        : derive_legacy_continue_night(data->unlocked_night, completed);
     return true;
 }
 

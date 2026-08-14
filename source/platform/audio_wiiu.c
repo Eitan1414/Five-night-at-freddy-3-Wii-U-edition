@@ -137,58 +137,13 @@ static const AudioClip kEmbeddedClips[AUDIO_CUE_COUNT] = {
     [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = {mb9_bin, mb9_bin_end},
 };
 
+/*
+ * Retail PC sounds are always taken from the verified embedded sound bank.
+ * Only the two Wii U-specific notification sounds may be overridden on SD.
+ */
 static const char *const kExternalPaths[AUDIO_CUE_COUNT] = {
-    [AUDIO_CUE_VENT_QUIET_1] = "audio/vent_quiet1.bin",
-    [AUDIO_CUE_VENT_QUIET_2] = "audio/vent_quiet2.bin",
-    [AUDIO_CUE_VENT_CLOSER_1] = "audio/vent_closer1.bin",
-    [AUDIO_CUE_VENT_LOUDER_2] = "audio/vent_louder2.bin",
-    [AUDIO_CUE_ALARM] = "audio/alarm.bin",
-    [AUDIO_CUE_BREATHING] = "audio/breathing.bin",
-    [AUDIO_CUE_WAIT] = "audio/wait.bin",
-    [AUDIO_CUE_STATIC] = "audio/static_sound.bin",
-    [AUDIO_CUE_SCREAM] = "audio/scream3.bin",
-    [AUDIO_CUE_GARBLE] = "audio/garble1.bin",
-    [AUDIO_CUE_MASK] = "audio/mask.bin",
-    [AUDIO_CUE_LURE_ECHO_1] = "audio/echo1.bin",
-    [AUDIO_CUE_LURE_ECHO_3B] = "audio/echo3b.bin",
-    [AUDIO_CUE_LURE_ECHO_4B] = "audio/echo4b.bin",
-    [AUDIO_CUE_PHONE_NIGHT_1] = "audio/phone_night1.bin",
-    [AUDIO_CUE_PHONE_NIGHT_2] = "audio/phone_night2.bin",
-    [AUDIO_CUE_PHONE_NIGHT_3] = "audio/phone_night3.bin",
-    [AUDIO_CUE_PHONE_NIGHT_4] = "audio/phone_night4.bin",
-    [AUDIO_CUE_PHONE_NIGHT_5] = "audio/phone_night5.bin",
-    [AUDIO_CUE_PHONE_NIGHT_6] = "audio/phone_night6.bin",
-    [AUDIO_CUE_SIX_AM] = "audio/six_am.bin",
-    [AUDIO_CUE_SELECT] = "audio/select.bin",
-    [AUDIO_CUE_END] = "audio/end.bin",
-    [AUDIO_CUE_CAMERA_OPEN] = "audio/crank1.bin",
-    [AUDIO_CUE_CAMERA_CLOSE] = "audio/crank2.bin",
-    [AUDIO_CUE_MAINTENANCE_CLOSE] = "audio/lever1.bin",
-    [AUDIO_CUE_MAINTENANCE_OPEN] = "audio/lever2.bin",
-    [AUDIO_CUE_GAME_OVER_AMBIENCE] = "audio/stare.bin",
-    [AUDIO_CUE_TITLE_MUSIC] = "audio/titlemusic.bin",
-    [AUDIO_CUE_START_DAY] = "audio/startday.bin",
     [AUDIO_CUE_ACHIEVEMENT] = "audio/achievement.bin",
     [AUDIO_CUE_UTINE] = "audio/utine.bin",
-    [AUDIO_CUE_OFFICE_FAN] = "audio/tablefan.bin",
-    [AUDIO_CUE_RAIN_AMBIENCE] = "audio/rainstorm2.bin",
-    [AUDIO_CUE_DANGER] = "audio/danger2b.bin",
-    [AUDIO_CUE_REPAIR_SCANNER] = "audio/scanner4.bin",
-    [AUDIO_CUE_REPAIR_DONE] = "audio/done.bin",
-    [AUDIO_CUE_MINIGAME_COLLECT] = "audio/collect.bin",
-    [AUDIO_CUE_MINIGAME_FEED] = "audio/feed.bin",
-    [AUDIO_CUE_MINIGAME_GLITCH] = "audio/glitch2.bin",
-    [AUDIO_CUE_MINIGAME_CROWD] = "audio/crowd_children.bin",
-    [AUDIO_CUE_MINIGAME_CHIMES] = "audio/clock_chimes.bin",
-    [AUDIO_CUE_MINIGAME_PARTY_FAVOR] = "audio/party_favor.bin",
-    [AUDIO_CUE_ENDING_DESOLATE] = "audio/desolate_underworld.bin",
-    [AUDIO_CUE_MINIGAME_CRUSH] = "audio/crush.bin",
-    [AUDIO_CUE_MINIGAME_BB_MUSIC] = "audio/mb1.bin",
-    [AUDIO_CUE_MINIGAME_MANGLE_MUSIC] = "audio/mb2.bin",
-    [AUDIO_CUE_MINIGAME_CHICA_MUSIC] = "audio/mb4b.bin",
-    [AUDIO_CUE_MINIGAME_STAGE01_MUSIC] = "audio/mb5.bin",
-    [AUDIO_CUE_MINIGAME_SHADOW_MUSIC] = "audio/mb8.bin",
-    [AUDIO_CUE_MINIGAME_HAPPIEST_MUSIC] = "audio/mb9.bin",
 };
 
 static AudioClip sClips[AUDIO_CUE_COUNT];
@@ -285,8 +240,8 @@ bool audio_init(void)
     memcpy(sClips, kEmbeddedClips, sizeof(sClips));
 
     if (storage_init()) {
-        for (int cue = 0; cue < AUDIO_CUE_COUNT; ++cue)
-            load_external_audio((AudioCue) cue);
+        load_external_audio(AUDIO_CUE_ACHIEVEMENT);
+        load_external_audio(AUDIO_CUE_UTINE);
     }
 
     AXInitParams params = {
