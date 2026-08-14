@@ -126,12 +126,8 @@ static void original_ui_draw_vent_map(const Game *game)
     pc_vent_map_draw_runtime_state(game);
     pc_vent_map_draw_sealing_progress();
 
-    /* D-pad/A are Wii U input adaptations.  Keep the prompt out of the PC map
-     * artwork; Monitor V2 draws the authentic Map Toggle button afterwards. */
-    graphics_draw_text(sOriginalUiPanelTargets,
-                       206, 410, 1,
-                       "D-PAD CAM   A SEAL",
-                       GRAPHICS_RGB(113, 132, 110));
+    /* No synthetic Wii U control legend is painted over the retail PC map.
+     * Monitor V2 adds only the original PC Map Toggle control afterwards. */
 
     /* Map-toggle flash stays inside the raised panel. */
     if (sOriginalUi.static_flash_frames > 0u) {
