@@ -31,11 +31,11 @@ static void wiiu_control_nonoffice_render(Game *game)
 static void (*const wiiu_base_phone_overlay)(void) = finishing_draw_phone_overlay;
 #define finishing_draw_phone_overlay_base wiiu_base_phone_overlay
 #define finishing_draw_phone_overlay wiiu_phone_overlay_with_estimated_subtitles
-#include "main_v3_parts/main_phone_subtitles.inc"
+#include "main_phone_subtitles.inc"
 #undef finishing_draw_phone_overlay
 #undef finishing_draw_phone_overlay_base
 
-#include "main_v3_parts/main_phone_subtitles_mfa_sync.inc"
+#include "main_phone_subtitles_mfa_sync.inc"
 
 #define finishing_draw_phone_overlay wiiu_phone_overlay_with_subtitles
 

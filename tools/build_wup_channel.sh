@@ -41,12 +41,50 @@ cp wup/meta.xml "$INPUT_DIR/meta/meta.xml"
 # NUSPacker requires the content directory to contain at least one file.
 printf '%s\n' "Five Nights at Freddy's 3 - Wii U Edition" > "$INPUT_DIR/content/channel.txt"
 
-python3 - "$INPUT_DIR/meta" <<'PY'
+python3 - "$INPUT_DIR" <<'PY'
 from pathlib import Path
 from PIL import Image, ImageOps, UnidentifiedImageError
+import struct
 import sys
+import xml.etree.ElementTree as ET
 
-meta = Path(sys.argv[1])
+root = Path(sys.argv[1])
+code = root / "code"
+meta = root / "meta"
+
+# Real Wii U titles use the current menu metadata schema.  The previous WUP
+# accidentally shipped a v1 meta.xml; the console could install the title but
+# then treated its menu metadata as invalid ("???" / question-mark icon).
+meta_xml = meta / "meta.xml"
+tree = ET.parse(meta_xml)
+menu = tree.getroot()
+version = menu.find("version")
+if version is None:
+    raise SystemExit("error: meta.xml is missing <version>")
+version.text = "33"
+for required_tag in ("longname_en", "longname_fr", "shortname_en", "shortname_fr", "publisher_en"):
+    node = menu.find(required_tag)
+    if node is None or not (node.text or "").strip():
+        raise SystemExit(f"error: meta.xml is missing a usable <{required_tag}>")
+tree.write(meta_xml, encoding="utf-8", xml_declaration=True)
+
+# Refuse to package obsolete/incomplete code metadata.
+def require_xml(path, expected_version, required_tags):
+    doc = ET.parse(path).getroot()
+    node = doc.find("version")
+    if node is None or node.text != str(expected_version):
+        raise SystemExit(f"error: {path.name} must use schema version {expected_version}")
+    for tag in required_tags:
+        value = doc.find(tag)
+        if value is None or not (value.text or "").strip():
+            raise SystemExit(f"error: {path.name} is missing <{tag}>")
+
+require_xml(code / "app.xml", 16, ("title_id", "sdk_version", "common_id"))
+require_xml(
+    code / "cos.xml",
+    20,
+    ("argstr", "overlay_arena", "default_stack1_size", "num_codearea_heap_blocks", "num_workarea_heap_blocks"),
+)
 
 try:
     resampling = Image.Resampling.LANCZOS
@@ -64,7 +102,7 @@ def open_rgb(source):
         return None
 
 
-def convert(source, target, size, fallback_to_icon=False):
+def convert(source, target, size, mode="RGB", fallback_to_icon=False):
     image = open_rgb(source)
     if image is not None:
         image = ImageOps.fit(image, size, method=resampling, centering=(0.5, 0.5))
@@ -83,11 +121,40 @@ def convert(source, target, size, fallback_to_icon=False):
                 y = (size[1] - icon.height) // 2
                 image.paste(icon, (x, y))
 
+    # Wii U menu metadata is strict: iconTex.tga is 128x128x32 while TV/DRC
+    # splash TGAs are 24-bit.  Pillow's default RGB TGA made the old icon 24-bit.
+    image = image.convert(mode)
     image.save(meta / target, format="TGA")
 
-convert("icon.jpg", "iconTex.tga", (128, 128))
-convert("boot-tv.jpg", "bootTvTex.tga", (1280, 720), fallback_to_icon=True)
-convert("boot-drc.jpg", "bootDrcTex.tga", (854, 480), fallback_to_icon=True)
+
+convert("icon.jpg", "iconTex.tga", (128, 128), mode="RGBA")
+convert("boot-tv.jpg", "bootTvTex.tga", (1280, 720), mode="RGB", fallback_to_icon=True)
+convert("boot-drc.jpg", "bootDrcTex.tga", (854, 480), mode="RGB", fallback_to_icon=True)
+
+
+def verify_tga(name, width, height, depth):
+    path = meta / name
+    data = path.read_bytes()
+    if len(data) < 44:
+        raise SystemExit(f"error: {name} is too small")
+    if data[2] != 2:
+        raise SystemExit(f"error: {name} must be an uncompressed true-color TGA")
+    actual_width, actual_height = struct.unpack_from("<HH", data, 12)
+    actual_depth = data[16]
+    if (actual_width, actual_height, actual_depth) != (width, height, depth):
+        raise SystemExit(
+            f"error: {name} is {actual_width}x{actual_height}x{actual_depth}; "
+            f"expected {width}x{height}x{depth}"
+        )
+    if not data.endswith(b"TRUEVISION-XFILE.\x00"):
+        raise SystemExit(f"error: {name} is missing the TGA 2.0 footer")
+    print(f"WUP TGA OK: {name} {width}x{height}x{depth}")
+
+
+verify_tga("iconTex.tga", 128, 128, 32)
+verify_tga("bootTvTex.tga", 1280, 720, 24)
+verify_tga("bootDrcTex.tga", 854, 480, 24)
+print("WUP metadata schema OK: meta=33 app=16 cos=20")
 PY
 
 if [ ! -f "$NUSPACKER_JAR" ]; then
