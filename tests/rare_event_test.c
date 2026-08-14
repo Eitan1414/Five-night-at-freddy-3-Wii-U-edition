@@ -39,6 +39,7 @@ static void test_20_and_60_second_random_clocks(void)
     assert(!system.chica_camera_visible);
     assert(!system.puppet_camera_visible);
     assert(!system.freddy_armed);
+    assert(!system.freddy_walking);
 
     (void)phantoms_update(&system, 1, false, false, CAM01, 0);
     assert(system.bb_armed);
@@ -46,6 +47,7 @@ static void test_20_and_60_second_random_clocks(void)
     assert(system.chica_camera_visible);
     assert(system.puppet_camera_visible);
     assert(!system.freddy_armed);
+    assert(!system.freddy_walking);
 
     /* Reset only the random Phantom states so the same instance can reach the
      * 60-second Freddy boundary without a forced-hour event. */
@@ -58,8 +60,13 @@ static void test_20_and_60_second_random_clocks(void)
         (void)phantoms_update(&system, 1, false, false, CAM01, 0);
 
     assert(!system.freddy_armed);
+    assert(!system.freddy_walking);
     (void)phantoms_update(&system, 1, false, false, CAM01, 0);
-    assert(system.freddy_armed);
+
+    /* The 60-second random group arms Freddy. That frame is also a one-second
+     * tick, so update_freddy() may immediately consume the armed state and
+     * begin the walk on its own Random(2) roll. Both are exact valid outcomes. */
+    assert(system.freddy_armed || system.freddy_walking);
 }
 
 static void test_midnight_never_runs_random_cycles(void)
