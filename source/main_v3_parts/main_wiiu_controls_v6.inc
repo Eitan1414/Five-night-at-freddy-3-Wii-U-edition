@@ -247,3 +247,223 @@ static void wiiu_control_update_game_v7(Game *game, const InputState *input)
 /* main.c names the final update entry through wiiu_control_update_game_v6.
  * Redirect that symbol only after V7 has captured the real V6 function above. */
 #define wiiu_control_update_game_v6 wiiu_control_update_game_v7
+
+/* Wii U options V8.
+ *
+ * V7 made the retail-PC title navigation authoritative, which also meant the
+ * older title MODE shortcut no longer reached the Wii U options handler. This
+ * final layer restores that platform shortcut and expands the menu with
+ * persistent language and subtitle preferences.
+ */
+static void wiiu_v8_cycle_language(int direction)
+{
+    int language = (int)wiiu_controls_language();
+    language = (language + direction + WIIU_LANGUAGE_COUNT) % WIIU_LANGUAGE_COUNT;
+    wiiu_controls_set_language((WiiULanguage)language);
+}
+
+static void wiiu_v8_toggle_subtitles(void)
+{
+    wiiu_controls_set_subtitles_enabled(!wiiu_controls_subtitles_enabled());
+}
+
+static void wiiu_v8_options_update(Game *game, const InputState *input)
+{
+    ++game->screen_frames;
+
+    if (input_was_pressed(input, GAME_BUTTON_BACK) ||
+        input_was_pressed(input, GAME_BUTTON_MODE)) {
+        sWiiUOptionsOpen = false;
+        game->dirty = true;
+        return;
+    }
+
+    if (input_was_pressed(input, GAME_BUTTON_UP)) {
+        sWiiUOptionsSelection = (sWiiUOptionsSelection + 3) % 4;
+        content_play_select();
+        game->dirty = true;
+    }
+    if (input_was_pressed(input, GAME_BUTTON_DOWN)) {
+        sWiiUOptionsSelection = (sWiiUOptionsSelection + 1) % 4;
+        content_play_select();
+        game->dirty = true;
+    }
+
+    if (sWiiUOptionsSelection == 0) {
+        if (input_was_pressed(input, GAME_BUTTON_LEFT)) {
+            wiiu_options_cycle(-1);
+            content_play_select();
+        }
+        if (input_was_pressed(input, GAME_BUTTON_RIGHT) ||
+            input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+            input_was_pressed(input, GAME_BUTTON_START)) {
+            wiiu_options_cycle(1);
+            content_play_select();
+        }
+    } else if (sWiiUOptionsSelection == 1) {
+        if (input_was_pressed(input, GAME_BUTTON_LEFT)) {
+            wiiu_v8_cycle_language(-1);
+            content_play_select();
+        }
+        if (input_was_pressed(input, GAME_BUTTON_RIGHT) ||
+            input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+            input_was_pressed(input, GAME_BUTTON_START)) {
+            wiiu_v8_cycle_language(1);
+            content_play_select();
+        }
+    } else if (sWiiUOptionsSelection == 2) {
+        if (input_was_pressed(input, GAME_BUTTON_LEFT) ||
+            input_was_pressed(input, GAME_BUTTON_RIGHT) ||
+            input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+            input_was_pressed(input, GAME_BUTTON_START)) {
+            wiiu_v8_toggle_subtitles();
+            content_play_select();
+        }
+    } else if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+               input_was_pressed(input, GAME_BUTTON_START)) {
+        sWiiUOptionsOpen = false;
+        content_play_select();
+    }
+
+    if (input->touch_pressed && input->touch_valid) {
+        if (wiiu_touch_in(input, 75, 126, 220, 72)) {
+            wiiu_controls_set_mode(WIIU_CONTROL_TOUCH_GAMEPAD);
+            content_play_select();
+        } else if (wiiu_touch_in(input, 317, 126, 220, 72)) {
+            wiiu_controls_set_mode(WIIU_CONTROL_TV_ONLY);
+            content_play_select();
+        } else if (wiiu_touch_in(input, 559, 126, 220, 72)) {
+            wiiu_controls_set_mode(WIIU_CONTROL_MIRROR);
+            content_play_select();
+        } else if (wiiu_touch_in(input, 75, 226, 704, 54)) {
+            wiiu_v8_cycle_language(1);
+            sWiiUOptionsSelection = 1;
+            content_play_select();
+        } else if (wiiu_touch_in(input, 75, 294, 704, 54)) {
+            wiiu_v8_toggle_subtitles();
+            sWiiUOptionsSelection = 2;
+            content_play_select();
+        } else if (wiiu_touch_in(input, 307, 374, 240, 50)) {
+            sWiiUOptionsOpen = false;
+            content_play_select();
+        }
+    }
+
+    game->dirty = true;
+}
+
+static void wiiu_v8_draw_mode_card(int x, const char *label,
+                                   WiiUControlMode mode,
+                                   const char *line1,
+                                   const char *line2)
+{
+    const bool active = wiiu_controls_mode() == mode;
+    const uint32_t border = active
+        ? GRAPHICS_RGB(194, 255, 77)
+        : GRAPHICS_RGB(125, 145, 122);
+    graphics_draw_rect(GRAPHICS_TARGET_BOTH, x, 126, 220, 72,
+                       GRAPHICS_RGB(1, 4, 2));
+    graphics_draw_frame(GRAPHICS_TARGET_BOTH, x, 126, 220, 72, 3, border);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, x + 14, 140, 2, label, border);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, x + 14, 170, 1, line1,
+                       GRAPHICS_RGB(180, 195, 176));
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, x + 116, 170, 1, line2,
+                       GRAPHICS_RGB(180, 195, 176));
+}
+
+static void wiiu_v8_draw_setting_row(int y, const char *label,
+                                     const char *value, bool selected)
+{
+    const uint32_t border = selected
+        ? GRAPHICS_RGB(194, 255, 77)
+        : GRAPHICS_RGB(105, 125, 103);
+    graphics_draw_rect(GRAPHICS_TARGET_BOTH, 75, y, 704, 54,
+                       GRAPHICS_RGB(1, 4, 2));
+    graphics_draw_frame(GRAPHICS_TARGET_BOTH, 75, y, 704, 54, 2, border);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 98, y + 18, 2, label, border);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 590, y + 18, 2, value, border);
+}
+
+static void wiiu_draw_options_v8(Game *game)
+{
+    (void)game;
+    const bool french = wiiu_controls_language() == WIIU_LANGUAGE_FRENCH;
+
+    graphics_clear(GRAPHICS_TARGET_BOTH, COLOUR_BLACK);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       french ? 270 : 235, 34, 4,
+                       french ? "OPTIONS WII U" : "WII U OPTIONS",
+                       COLOUR_WHITE);
+
+    const uint32_t panel_colour = sWiiUOptionsSelection == 0
+        ? GRAPHICS_RGB(194, 255, 77)
+        : GRAPHICS_RGB(145, 166, 141);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 75, 94, 2,
+                       french ? "AFFICHAGE" : "PANEL CONTROL",
+                       panel_colour);
+
+    wiiu_v8_draw_mode_card(75, "TOUCH", WIIU_CONTROL_TOUCH_GAMEPAD,
+                           "TV: GAME", "DRC: TOUCH");
+    wiiu_v8_draw_mode_card(317, french ? "TV SEULE" : "TV ONLY",
+                           WIIU_CONTROL_TV_ONLY,
+                           "TV: GAME", "DRC: BLACK");
+    wiiu_v8_draw_mode_card(559, french ? "IDENTIQUE" : "IDENTICAL",
+                           WIIU_CONTROL_MIRROR,
+                           "TV + DRC", "SAME");
+
+    wiiu_v8_draw_setting_row(226,
+                             french ? "LANGUE" : "LANGUAGE",
+                             wiiu_controls_language_name(wiiu_controls_language()),
+                             sWiiUOptionsSelection == 1);
+    wiiu_v8_draw_setting_row(294,
+                             french ? "SOUS-TITRES" : "SUBTITLES",
+                             wiiu_controls_subtitles_enabled()
+                                 ? (french ? "OUI" : "ON")
+                                 : (french ? "NON" : "OFF"),
+                             sWiiUOptionsSelection == 2);
+
+    const uint32_t back_colour = sWiiUOptionsSelection == 3
+        ? GRAPHICS_RGB(194, 255, 77) : COLOUR_WHITE;
+    graphics_draw_frame(GRAPHICS_TARGET_BOTH, 307, 374, 240, 50, 2,
+                        back_colour);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH,
+                       french ? 382 : 385, 391, 2,
+                       french ? "RETOUR" : "BACK", back_colour);
+    graphics_draw_text(GRAPHICS_TARGET_BOTH, 169, 448, 1,
+                       french
+                           ? "HAUT/BAS - GAUCHE/DROITE/A - B/R RETOUR"
+                           : "UP/DOWN - LEFT/RIGHT/A - B/R BACK",
+                       GRAPHICS_RGB(112, 132, 109));
+    graphics_present(GRAPHICS_TARGET_BOTH);
+}
+
+static void wiiu_control_update_game_v8(Game *game, const InputState *input)
+{
+    if (game == NULL || input == NULL) {
+        wiiu_control_update_game_v7(game, input);
+        return;
+    }
+
+    if (sWiiUOptionsOpen) {
+        wiiu_v8_options_update(game, input);
+        return;
+    }
+
+    if (game->screen == SCREEN_TITLE &&
+        input_was_pressed(input, GAME_BUTTON_MODE)) {
+        sWiiUOptionsOpen = true;
+        sWiiUOptionsSelection = 0;
+        content_play_select();
+        game->dirty = true;
+        return;
+    }
+
+    wiiu_control_update_game_v7(game, input);
+}
+
+/* main.c still names V6 as its final entry point, so retarget that alias once
+ * more. original_ui_03.inc is included later and therefore also sees the new
+ * options renderer alias below. */
+#undef wiiu_control_update_game_v6
+#define wiiu_control_update_game_v6 wiiu_control_update_game_v8
+#define wiiu_draw_options wiiu_draw_options_v8
