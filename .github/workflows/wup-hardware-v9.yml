@@ -25,7 +25,7 @@ jobs:
       - name: Install packaging tools
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends git curl unzip python3-pil openjdk-17-jre-headless
+          apt-get install -y --no-install-recommends git curl unzip ffmpeg python3-pil openjdk-17-jre-headless
 
       - name: Download corrected RPX from build 828
         shell: bash
@@ -39,7 +39,6 @@ jobs:
           mkdir -p /tmp/fnaf3-v9
           unzip -q /tmp/fnaf3-v9.zip -d /tmp/fnaf3-v9
           test -s /tmp/fnaf3-v9/fnaf3-wiiu.rpx
-          echo "Corrected RPX:"
           sha256sum /tmp/fnaf3-v9/fnaf3-wiiu.rpx
 
       - name: Prepare hardware-working channel tree
@@ -49,15 +48,23 @@ jobs:
           rm -rf /tmp/NUSspli build/wup-fnaf3-v9 dist/wup-fnaf3-v9
           git clone --depth 1 https://github.com/V10lator/NUSspli.git /tmp/NUSspli
 
-          # The Aug-04 optimization commit damaged the JPEG streams. Recover
-          # the original splash assets from the commit that first added them.
           SPLASH_COMMIT=ccd0bfc082e39743b071b953106c4414535d5acd
           curl -L --fail --retry 3 \
             "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SPLASH_COMMIT}/boot-tv.jpg" \
-            -o /tmp/fnaf3-boot-tv.jpg
+            -o /tmp/fnaf3-boot-tv-old.jpg
           curl -L --fail --retry 3 \
             "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${SPLASH_COMMIT}/boot-drc.jpg" \
-            -o /tmp/fnaf3-boot-drc.jpg
+            -o /tmp/fnaf3-boot-drc-old.jpg
+
+          # The historical JPEGs contain enough picture data for ffmpeg's MJPEG
+          # decoder even though Pillow/libjpeg rejects their broken tail. Decode
+          # one frame to a clean PNG before generating Wii U TGAs.
+          ffmpeg -hide_banner -loglevel warning -err_detect ignore_err \
+            -i /tmp/fnaf3-boot-tv-old.jpg -frames:v 1 -y /tmp/fnaf3-boot-tv.png
+          ffmpeg -hide_banner -loglevel warning -err_detect ignore_err \
+            -i /tmp/fnaf3-boot-drc-old.jpg -frames:v 1 -y /tmp/fnaf3-boot-drc.png
+          test -s /tmp/fnaf3-boot-tv.png
+          test -s /tmp/fnaf3-boot-drc.png
 
           mkdir -p build/wup-fnaf3-v9/code build/wup-fnaf3-v9/content dist/wup-fnaf3-v9
           cp -a /tmp/NUSspli/meta/menu build/wup-fnaf3-v9/meta
@@ -117,13 +124,13 @@ jobs:
           icon = ImageOps.fit(icon, (128, 128), method=rs)
           icon.save(root/'meta'/'iconTex.tga', format='TGA')
 
-          tv = Image.open('/tmp/fnaf3-boot-tv.jpg').convert('RGB')
-          print('Original TV splash:', tv.size)
+          tv = Image.open('/tmp/fnaf3-boot-tv.png').convert('RGB')
+          print('Recovered TV splash:', tv.size)
           tv = ImageOps.fit(tv, (1280, 720), method=rs)
           tv.save(root/'meta'/'bootTvTex.tga', format='TGA')
 
-          drc = Image.open('/tmp/fnaf3-boot-drc.jpg').convert('RGB')
-          print('Original DRC splash:', drc.size)
+          drc = Image.open('/tmp/fnaf3-boot-drc.png').convert('RGB')
+          print('Recovered DRC splash:', drc.size)
           drc = ImageOps.fit(drc, (854, 480), method=rs)
           drc.save(root/'meta'/'bootDrcTex.tga', format='TGA')
 
@@ -136,7 +143,6 @@ jobs:
           assert ar.find('version').text == '1'
           assert cr.find('version').text == '1'
           assert mr.find('version').text == '1'
-          print('FNAF3 V9 channel ready with original pre-optimization splash art')
           PY
 
       - name: Pack with NUSPacker
