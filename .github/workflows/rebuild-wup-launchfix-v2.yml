@@ -1,0 +1,77 @@
+name: Rebuild Wii U WUP Launch Fix v2
+
+on:
+  push:
+    branches:
+      - fix/restore-phone-subtitles
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  package-wup:
+    runs-on: ubuntu-latest
+    env:
+      WIIU_COMMON_KEY: ${{ secrets.ENC_KEY }}
+      GITHUB_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Checkout corrected WUP packager
+        uses: actions/checkout@v4
+
+      - name: Install WUP tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends curl unzip openjdk-17-jre-headless python3-pil
+
+      - name: Verify WUP key is configured
+        run: |
+          test -n "$WIIU_COMMON_KEY"
+          test "${#WIIU_COMMON_KEY}" -eq 32
+
+      - name: Apply real-channel launch flags
+        run: |
+          sed -i 's#<launching_flag type="hexBinary" length="4">00000004</launching_flag>#<launching_flag type="hexBinary" length="4">00000005</launching_flag>#' wup/meta.xml
+          sed -i 's#<closing_msg type="unsignedInt" length="4">1</closing_msg>#<closing_msg type="unsignedInt" length="4">0</closing_msg>#' wup/meta.xml
+          sed -i 's#<reserved_flag0 type="hexBinary" length="4">00010002</reserved_flag0>#<reserved_flag0 type="hexBinary" length="4">00010001</reserved_flag0>#' wup/meta.xml
+          grep -F '<launching_flag type="hexBinary" length="4">00000005</launching_flag>' wup/meta.xml
+          grep -F '<closing_msg type="unsignedInt" length="4">0</closing_msg>' wup/meta.xml
+          grep -F '<reserved_flag0 type="hexBinary" length="4">00010001</reserved_flag0>' wup/meta.xml
+
+      - name: Download verified RPX from green build 797
+        run: |
+          curl -L --fail --retry 3 \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/actions/artifacts/9231588438/zip \
+            -o /tmp/fnaf3-homebrew.zip
+          mkdir -p /tmp/fnaf3-homebrew
+          unzip -q /tmp/fnaf3-homebrew.zip -d /tmp/fnaf3-homebrew
+          cp /tmp/fnaf3-homebrew/fnaf3-wiiu.rpx ./fnaf3-wiiu.rpx
+          test -s fnaf3-wiiu.rpx
+
+      - name: Build launch-fixed WUP channel
+        run: sh tools/build_wup_channel.sh
+
+      - name: Validate WUP package
+        run: |
+          python3 tools/validate_wup.py \
+            dist/fnaf3-wiiu-wup \
+            build/wup-channel/code/app.xml \
+            build/wup-channel/meta/meta.xml
+
+      - name: Verify final launch metadata
+        run: |
+          grep -F '<version type="unsignedInt" length="4">33</version>' build/wup-channel/meta/meta.xml
+          grep -F '<launching_flag type="hexBinary" length="4">00000005</launching_flag>' build/wup-channel/meta/meta.xml
+          grep -F '<closing_msg type="unsignedInt" length="4">0</closing_msg>' build/wup-channel/meta/meta.xml
+          grep -F '<reserved_flag0 type="hexBinary" length="4">00010001</reserved_flag0>' build/wup-channel/meta/meta.xml
+          grep -F "Five Nights at Freddy's 3 - Wii U Edition" build/wup-channel/meta/meta.xml
+
+      - name: Upload launch-fixed WUP
+        uses: actions/upload-artifact@v4
+        with:
+          name: fnaf3-wiiu-wup-launchfix-v2
+          if-no-files-found: error
+          path: dist/fnaf3-wiiu-wup/*
