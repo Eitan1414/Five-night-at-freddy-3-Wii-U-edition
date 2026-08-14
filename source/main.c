@@ -5,7 +5,6 @@
 #include "assets/monitor_v2_assets.h"
 #include "assets/office_assets.h"
 #include "assets/achievement_assets.h"
-#include "assets/phantom_chica_user_jumpscare.h"
 #include "assets/pc_core_visuals.h"
 #include "assets/pc_compat_visuals.h"
 #include "assets/pc_character_visuals.h"

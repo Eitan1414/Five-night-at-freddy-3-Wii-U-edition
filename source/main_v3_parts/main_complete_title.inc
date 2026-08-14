@@ -30,6 +30,9 @@ static void complete_draw_title(const Game *game)
     const int load_y = 330;
     const int nightmare_y = 376;
     const int extra_y = 422;
+    const int credits_text_y = 454;
+    const int credits_cursor_y = 448;
+    const bool bonus_rows = progress_save_is_night_completed(5);
 
     /* Exact PC NEW GAME object (General Sprites image 592). */
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
@@ -40,7 +43,7 @@ static void complete_draw_title(const Game *game)
                      content_x + 67, load_y, 152, 31,
                      &gPcCompatTitleLoadGameTexture);
 
-    if (progress_save_is_night_completed(5)) {
+    if (bonus_rows) {
         texture_draw_rle(GRAPHICS_TARGET_BOTH,
                          content_x + 67, nightmare_y, 161, 31,
                          &gPcCompatTitleNightmareTexture);
@@ -48,6 +51,14 @@ static void complete_draw_title(const Game *game)
                          content_x + 67, extra_y, 91, 31,
                          &gPcCompatTitleExtraTexture);
     }
+
+    /* Credits is Wii U-specific navigation, so there is no retail PC title
+     * sprite to rip for it. Draw it with the project's PC-title-matched pixel
+     * alphabet instead of borrowing any PSX menu art. It remains available
+     * before and after the Night 5 bonus rows unlock. */
+    graphics_draw_fnaf3_menu_text(GRAPHICS_TARGET_BOTH,
+                                  content_x + 67, credits_text_y, 1,
+                                  "CREDITS", COLOUR_WHITE);
 
     /* The LOAD GAME night value is still rendered through the compatibility
      * bitmap font. Do not claim an MFA counter match until the title-frame
@@ -59,12 +70,19 @@ static void complete_draw_title(const Game *game)
                        content_x + 226, load_y + 9, 2,
                        night_number, COLOUR_WHITE);
 
-    /* Exact glowing PC cursor block (image 833). Nightmare and Extra are two
-     * distinct menu rows after Night 5, matching the original title routing. */
+    /* Exact glowing PC cursor block (image 833). Nightmare and Extra remain
+     * separate PC rows; the final position selects the Wii U Credits row. */
     int marker_y = new_y;
-    if (game->title_selection == 1) marker_y = load_y;
-    else if (game->title_selection == 2) marker_y = nightmare_y;
-    else if (game->title_selection == 3) marker_y = extra_y;
+    if (game->title_selection == 1) {
+        marker_y = load_y;
+    } else if (bonus_rows && game->title_selection == 2) {
+        marker_y = nightmare_y;
+    } else if (bonus_rows && game->title_selection == 3) {
+        marker_y = extra_y;
+    } else if ((!bonus_rows && game->title_selection == 2) ||
+               (bonus_rows && game->title_selection == 4)) {
+        marker_y = credits_cursor_y;
+    }
     texture_draw_rle(GRAPHICS_TARGET_BOTH,
                      content_x + 36, marker_y, 21, 31,
                      &gPcCompatTitleCursorTexture);

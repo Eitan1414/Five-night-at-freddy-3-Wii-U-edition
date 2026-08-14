@@ -113,3 +113,137 @@ static void wiiu_control_draw_gamepad_v6(const Game *game)
 }
 
 #define wiiu_control_draw_gamepad wiiu_control_draw_gamepad_v6
+
+/* Final title routing pass.
+ *
+ * The PC visual layer already exposes distinct NEW GAME / LOAD GAME /
+ * NIGHTMARE / EXTRA rows, while the historical Wii U handler still wrapped
+ * three selections. Keep the retail rows intact, add one Wii U CREDITS row,
+ * and make the input routing agree with what is actually rendered.
+ */
+static bool sWiiUTitleCreditsDirect = false;
+
+static int wiiu_v7_title_item_count(void)
+{
+    return progress_save_is_night_completed(5) ? 5 : 3;
+}
+
+static void wiiu_v7_start_title_night(Game *game, int night)
+{
+    sWiiUTitleCreditsDirect = false;
+    sFinishing.mode = FINISHING_NONE;
+    finishing_stop_phone();
+    content_play_select();
+    content_stop_title_music();
+    reset_night(game, night);
+    audio_play(AUDIO_CUE_START_DAY, 0.82f, false);
+}
+
+static void wiiu_v7_open_title_extras(Game *game)
+{
+    sWiiUTitleCreditsDirect = false;
+    finishing_stop_phone();
+    sFinishing.mode = FINISHING_EXTRAS;
+    sFinishing.extras_page = EXTRAS_PAGE_MAIN;
+    sFinishing.extras_selection = 0;
+    sFinishing.extras_index = 0;
+    game->screen = SCREEN_PLACEHOLDER;
+    game->screen_frames = 0u;
+    game->dirty = true;
+    content_play_select();
+}
+
+static void wiiu_v7_open_title_credits(Game *game)
+{
+    finishing_stop_phone();
+    sWiiUTitleCreditsDirect = true;
+    sFinishing.mode = FINISHING_EXTRAS;
+    sFinishing.extras_page = EXTRAS_PAGE_CREDITS;
+    sFinishing.extras_selection = 0;
+    sFinishing.extras_index = 0;
+    game->screen = SCREEN_PLACEHOLDER;
+    game->screen_frames = 0u;
+    game->dirty = true;
+    content_play_select();
+}
+
+static void wiiu_v7_update_title(Game *game, const InputState *input)
+{
+    ++game->screen_frames;
+    const int count = wiiu_v7_title_item_count();
+    if (game->title_selection < 0 || game->title_selection >= count)
+        game->title_selection = 0;
+
+    const int before = game->title_selection;
+    if (input_was_pressed(input, GAME_BUTTON_UP))
+        game->title_selection = (game->title_selection + count - 1) % count;
+    if (input_was_pressed(input, GAME_BUTTON_DOWN))
+        game->title_selection = (game->title_selection + 1) % count;
+    if (before != game->title_selection) {
+        content_play_select();
+        game->dirty = true;
+    }
+
+    if (input_was_pressed(input, GAME_BUTTON_CONFIRM) ||
+        input_was_pressed(input, GAME_BUTTON_START)) {
+        const bool bonus_rows = progress_save_is_night_completed(5);
+        if (game->title_selection == 0) {
+            wiiu_v7_start_title_night(game, 1);
+            return;
+        }
+        if (game->title_selection == 1) {
+            wiiu_v7_start_title_night(game, progress_save_continue_night());
+            return;
+        }
+        if (bonus_rows && game->title_selection == 2) {
+            wiiu_v7_start_title_night(game, 6);
+            return;
+        }
+        if (bonus_rows && game->title_selection == 3) {
+            wiiu_v7_open_title_extras(game);
+            return;
+        }
+        wiiu_v7_open_title_credits(game);
+        return;
+    }
+
+    if ((game->screen_frames % 9u) == 0u)
+        game->dirty = true;
+}
+
+static void wiiu_control_update_game_v7(Game *game, const InputState *input)
+{
+    if (game == NULL || input == NULL) {
+        wiiu_control_update_game_v6(game, input);
+        return;
+    }
+
+    /* Direct title Credits is intentionally a one-screen branch. B returns
+     * straight to the title instead of detouring through Extras. Credits
+     * opened from Extras still use the original Extras back path. */
+    if (sWiiUTitleCreditsDirect &&
+        game->screen == SCREEN_PLACEHOLDER &&
+        sFinishing.mode == FINISHING_EXTRAS &&
+        sFinishing.extras_page == EXTRAS_PAGE_CREDITS) {
+        ++game->screen_frames;
+        if (input_was_pressed(input, GAME_BUTTON_BACK)) {
+            sWiiUTitleCreditsDirect = false;
+            content_play_select();
+            finishing_return_to_title(game);
+            content_start_title_music();
+        }
+        return;
+    }
+
+    if (game->screen == SCREEN_TITLE) {
+        sWiiUTitleCreditsDirect = false;
+        wiiu_v7_update_title(game, input);
+        return;
+    }
+
+    wiiu_control_update_game_v6(game, input);
+}
+
+/* main.c names the final update entry through wiiu_control_update_game_v6.
+ * Redirect that symbol only after V7 has captured the real V6 function above. */
+#define wiiu_control_update_game_v6 wiiu_control_update_game_v7
