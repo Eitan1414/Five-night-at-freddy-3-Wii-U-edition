@@ -1,9 +1,7 @@
 static void follow_me_pc_update_hunt(void)
 {
     /* MFA events 110..113: Purple Guy moves 30 PC pixels every 100 ms,
-     * independently on X and Y, toward the hit box.  Six 60-Hz updates are
-     * exactly 100 ms; scale the source step for the centered 640x480 Wii U
-     * viewport instead of moving five Wii U pixels every frame. */
+     * independently on X and Y, toward the hit box. */
     if ((sFollowMePc.phase_frames % 6u) == 0u) {
         const int step = follow_me_pc_grid_scale(30);
         if (sFollowMePc.purple_x < sFollowMePc.player_x)
@@ -18,9 +16,10 @@ static void follow_me_pc_update_hunt(void)
 
     if (follow_me_pc_near(sFollowMePc.player_x, sFollowMePc.player_y,
                           sFollowMePc.purple_x, sFollowMePc.purple_y, 27)) {
+        /* Events 114..117 switch to the take-apart/parts objects. No `crush`
+         * sample is fired here in the MFA; that sample belongs to Night 5. */
         sFollowMePc.phase = FOLLOW_PHASE_DISMANTLED;
         sFollowMePc.phase_frames = 1u;
-        audio_play(AUDIO_CUE_MINIGAME_CRUSH, 0.75f, false);
     }
 }
 
@@ -114,7 +113,9 @@ static void follow_me_pc_update(Game *game, const InputState *input)
 
     if (sFollowMePc.phase == FOLLOW_PHASE_DISMANTLED) {
         ++sFollowMePc.phase_frames;
-        if (sFollowMePc.phase_frames >= 150u) {
+        /* Event 118 increments the take-apart counter once per tick; event 119
+         * ends the frame as soon as that counter reaches 100. */
+        if (sFollowMePc.phase_frames >= 100u) {
             memset(&sFollowMePc, 0, sizeof(sFollowMePc));
             finishing_complete_minigame(game);
             return;
@@ -142,10 +143,6 @@ static void follow_me_pc_update(Game *game, const InputState *input)
         } else if (sFollowMePc.phase == FOLLOW_PHASE_ERR) {
             ++sFollowMePc.phase_frames;
 
-            /* Event 75 sets ERR value to 200. Events 76/77 keep it visible
-             * while the value is positive and subtract one per tick. Event
-             * 107 arms the trigger afterwards; event 108 creates `man 1` only
-             * when the hit box overlaps trigger 353 at source (501,387). */
             if (sFollowMePc.phase_frames >= 200u &&
                 follow_me_pc_near(sFollowMePc.player_x,
                                   sFollowMePc.player_y,
@@ -153,9 +150,6 @@ static void follow_me_pc_update(Game *game, const InputState *input)
                                   follow_me_pc_grid_y(387), 28)) {
                 sFollowMePc.phase = FOLLOW_PHASE_HUNT;
                 sFollowMePc.phase_frames = 0u;
-
-                /* Event 108 creates man1 relative to leave-top (499,-1) with
-                 * offset (+3,+15): exact source start (502,14). */
                 sFollowMePc.purple_x = follow_me_pc_grid_x(502);
                 sFollowMePc.purple_y = follow_me_pc_grid_y(14);
                 pc_minigame_sfx_play(PC_MINIGAME_SFX_CRAZY_GARBLE,
