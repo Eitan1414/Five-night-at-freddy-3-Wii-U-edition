@@ -207,6 +207,44 @@ static const FollowMeMfaTexture *follow_me_pc_spring_texture(void)
     }
 }
 
+static uint32_t sFollowMfaBrudRng = 0xB10DCAFEu;
+static uint32_t sFollowMfaBrudLastTimer = 0xFFFFFFFFu;
+static int sFollowMfaBrudAnchor;
+
+static void follow_me_pc_draw_spring_brud(void)
+{
+    /* Events 182..184:
+     * - `brud` is always moved (0,+10) first;
+     * - condition -7 is CND_EXTSTOPPED, so the previous-frame brud is then
+     *   destroyed (the object has no movement);
+     * - while Active4 state==4 and timer B<100, Pick one of the five
+     *   `make brud` occurrences and create one image-502 brud at its position.
+     * Because event184 runs after the destroy event, the new particle is visible
+     * for the current rendered frame only. */
+    if (sFollowMfaSpringState != 4 ||
+        sFollowMfaSpringTimer == 0u ||
+        sFollowMfaSpringTimer >= 100u) {
+        sFollowMfaBrudLastTimer = 0xFFFFFFFFu;
+        return;
+    }
+
+    static const int anchors[5][2] = {
+        {838, 261}, {782, 325}, {884, 323}, {836, 405}, {838, 308}
+    };
+
+    if (sFollowMfaBrudLastTimer != sFollowMfaSpringTimer) {
+        if (sFollowMfaSpringTimer == 1u)
+            sFollowMfaBrudRng = 0xB10DCAFEu ^ sFollowMePc.frames;
+        sFollowMfaBrudRng = sFollowMfaBrudRng * 1664525u + 1013904223u;
+        sFollowMfaBrudAnchor = (int)(sFollowMfaBrudRng % 5u);
+        sFollowMfaBrudLastTimer = sFollowMfaSpringTimer;
+    }
+
+    follow_me_pc_draw_mfa(&gFollowMfaBrud,
+                          anchors[sFollowMfaBrudAnchor][0],
+                          anchors[sFollowMfaBrudAnchor][1]);
+}
+
 static FollowMePcSprite follow_me_pc_mfa_shadow_sprite(void)
 {
     int base = FOLLOW_ME_PC_SHADOW_0;
@@ -262,6 +300,7 @@ static void follow_me_pc_draw(const Game *game)
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK) {
         /* Active4 remains at the event157 source anchor throughout states1..6. */
         follow_me_pc_draw_mfa(follow_me_pc_spring_texture(), 828, 462);
+        follow_me_pc_draw_spring_brud();
     }
 
     if (sFollowMePc.phase == FOLLOW_PHASE_DISMANTLED) {
