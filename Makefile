@@ -116,6 +116,9 @@ $(BUILD):
 		echo "Set PC_GENERAL_SPRITES to the extracted DataDump3 directory." >&2; \
 		exit 1; \
 	fi
+	@echo "Generating exact PC night-intro visuals..."
+	@python3 tools/convert_pc_night_intro_visuals.py \
+		"$(PC_GENERAL_SPRITES)" source/pc_night_intro_visuals.c
 	@echo "Generating exact Follow Me MFA visuals from PC image-bank assets..."
 	@mkdir -p source/generated
 	@python3 tools/convert_pc_follow_me_mfa_visuals.py \
