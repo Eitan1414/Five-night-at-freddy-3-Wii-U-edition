@@ -12,6 +12,8 @@
 #include "platform/pc_minigame_sfx.h"
 #include "platform/runtime_seed.h"
 
+void startup_intro_run(void);
+
 #include "main_v3_parts/main_finishing_prelude.inc"
 #include "main_v3_parts/main_complete_prelude.inc"
 
@@ -240,13 +242,22 @@ static void pc_audio_shutdown_with_extra_sfx(void)
 #include "main_v3_parts/main_wiiu_controls_v6.inc"
 #undef pc_system_fidelity_update_game
 
+static bool wiiu_audio_init_with_startup_intro(void)
+{
+    const bool available = audio_init();
+    startup_intro_run();
+    return available;
+}
+
 #define update_game wiiu_control_update_game_v6
 #define fnaf3_full_audio_render_game wiiu_control_nonoffice_render
 #define draw_office_tv draw_authentic_office_tv
 #define draw_ventilation_overlay pc_draw_ventilation_overlay
+#define audio_init wiiu_audio_init_with_startup_intro
 #define audio_shutdown pc_audio_shutdown_with_extra_sfx
 #include "main_v3_parts/main_original_ui_03.inc"
 #undef audio_shutdown
+#undef audio_init
 #undef draw_ventilation_overlay
 #undef draw_office_tv
 #undef fnaf3_full_audio_render_game
