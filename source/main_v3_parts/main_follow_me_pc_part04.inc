@@ -39,23 +39,105 @@ static void follow_me_pc_draw_safe_room_ghosts(void)
             follow_me_pc_grid_y(source_positions[index][1]), 3);
 }
 
-static void follow_me_pc_draw_rain(uint32_t frame)
+typedef struct FollowMeMfaRainDrop {
+    bool active;
+    int source_x;
+    int source_y;
+    int alterable_a;
+} FollowMeMfaRainDrop;
+
+static FollowMeMfaRainDrop sFollowMfaRainDrops[2];
+static uint32_t sFollowMfaRainLastFrame;
+static uint32_t sFollowMfaRainRng = 0xA341316Cu;
+static int sFollowMfaRainChapter = -1;
+
+static uint32_t follow_me_pc_rain_random(void)
 {
-    /* Original PC image-bank object. The exact drop-fall creation logic is a
-     * separate environment pass; these are the 12 original MFA anchors. */
-    static const int pc_x[12] = {
+    /* The event sheet uses Fusion Random(3) and `Pick one of raindrop`.
+     * Preserve their probabilities and selection behavior; as elsewhere in the
+     * Wii U port, the exact private Fusion RNG stream is not claimed. */
+    sFollowMfaRainRng = sFollowMfaRainRng * 1664525u + 1013904223u;
+    return sFollowMfaRainRng;
+}
+
+static void follow_me_pc_rain_reset(void)
+{
+    memset(sFollowMfaRainDrops, 0, sizeof(sFollowMfaRainDrops));
+    sFollowMfaRainLastFrame = 0u;
+    sFollowMfaRainChapter = sFollowMePc.chapter;
+    sFollowMfaRainRng = 0xA341316Cu ^
+        ((uint32_t)(sFollowMePc.chapter + 1) * 0x9E3779B9u);
+}
+
+static void follow_me_pc_rain_tick(uint32_t frame)
+{
+    static const int anchor_x[12] = {
         44, 126, 208, 290, 372, 454,
         536, 618, 700, 782, 870, 946
     };
-    static const int pc_y0[12] = {
+    static const int anchor_y[12] = {
         -25, -25, -25, -25, -25, -25,
         -25, -25, -25, -25, -27, -23
     };
 
-    for (int index = 0; index < 12; ++index) {
-        const uint32_t phase = (frame * 4u + (uint32_t) index * 61u) % 850u;
-        const int pc_y = pc_y0[index] + (int) phase;
-        follow_me_pc_draw_mfa(&gFollowMfaRaindrop, pc_x[index], pc_y);
+    /* Event 70: if Number of `drop fall` <= 1, every 1000 ms,
+     * Random(3)==1, Pick one of the 12 `raindrop` occurrences, then create
+     * `drop fall` at the selected occurrence with source offset (0,+1). */
+    if ((frame % 60u) == 0u) {
+        int count = 0;
+        for (int index = 0; index < 2; ++index)
+            if (sFollowMfaRainDrops[index].active) ++count;
+
+        if (count <= 1 && (follow_me_pc_rain_random() % 3u) == 1u) {
+            const int anchor = (int)(follow_me_pc_rain_random() % 12u);
+            for (int index = 0; index < 2; ++index) {
+                FollowMeMfaRainDrop *drop = &sFollowMfaRainDrops[index];
+                if (drop->active) continue;
+                drop->active = true;
+                drop->source_x = anchor_x[anchor];
+                drop->source_y = anchor_y[anchor] + 1;
+                drop->alterable_a = 0;
+                break;
+            }
+        }
+    }
+
+    /* Events 71/72 are later in the same Clickteam event sheet, so a drop
+     * created on a 1000-ms boundary also receives this 200-ms movement step
+     * immediately. A starts at 0; each step subtracts 1 and moves (+1,+30),
+     * then the object is destroyed when A <= -20. */
+    if ((frame % 12u) == 0u) {
+        for (int index = 0; index < 2; ++index) {
+            FollowMeMfaRainDrop *drop = &sFollowMfaRainDrops[index];
+            if (!drop->active || drop->alterable_a <= -20) continue;
+            --drop->alterable_a;
+            drop->source_x += 1;
+            drop->source_y += 30;
+            if (drop->alterable_a <= -20)
+                drop->active = false;
+        }
+    }
+}
+
+static void follow_me_pc_draw_rain(uint32_t frame)
+{
+    /* The 12 image-273 `raindrop` instances live just above the frame and are
+     * selection anchors, not twelve continuously falling sprites. Render only
+     * the image-368 `drop fall` instances created by events 70..72. */
+    if (sFollowMfaRainChapter != sFollowMePc.chapter ||
+        frame < sFollowMfaRainLastFrame)
+        follow_me_pc_rain_reset();
+
+    while (sFollowMfaRainLastFrame < frame) {
+        ++sFollowMfaRainLastFrame;
+        follow_me_pc_rain_tick(sFollowMfaRainLastFrame);
+    }
+
+    for (int index = 0; index < 2; ++index) {
+        const FollowMeMfaRainDrop *drop = &sFollowMfaRainDrops[index];
+        if (!drop->active) continue;
+        follow_me_pc_draw_mfa(&gFollowMfaDropFall,
+                              drop->source_x, drop->source_y);
     }
 }
 
@@ -162,9 +244,9 @@ static void follow_me_pc_draw(const Game *game)
     follow_me_pc_draw_safe_room_ghosts();
 
     if (sFollowMePc.phase == FOLLOW_PHASE_HUNT) {
-        const int frame = (int) ((sFollowMePc.frames / 7u) & 1u);
+        const int actor_frame = (int) ((sFollowMePc.frames / 7u) & 1u);
         follow_me_pc_draw_sprite((FollowMePcSprite)
-            (FOLLOW_ME_PC_PURPLE_WALK_0 + frame),
+            (FOLLOW_ME_PC_PURPLE_WALK_0 + actor_frame),
             sFollowMePc.purple_x, sFollowMePc.purple_y, 3);
     } else if (sFollowMePc.phase == FOLLOW_PHASE_GHOST_CHASE) {
         /* Event157 actors at their actual MFA coordinates. */
