@@ -1,20 +1,30 @@
 /* MFA-derived Follow Me room grid and edge transitions.
- *
- * Source: fivenights3-94.mfa, frame `cutscenes` (1024x768).
- * The original event sheet starts `vertical` at 2 and `horizontal` at 3.
- * Chapter-specific start events then reposition Bonnie, Chica, Foxy and the
- * fifth child exactly as the PC project does. Leaving an edge increments or
- * decrements the matching counter and re-enters from the opposite leave object.
- */
+ * Source: fivenights3-94.mfa, frame `cutscenes` (1024x768). */
 
 static int sFollowMfaVertical = 2;
 static int sFollowMfaHorizontal = 3;
+static int sFollowMfaEntryDirection = 2;
+
+/* Shadow Freddy is created by events 95..104. The three source objects are
+ * `shadow right`, `shadow down` and `shadow up`. */
+static int sFollowMfaShadowKind;
+static int sFollowMfaShadowSourceX;
+static int sFollowMfaShadowSourceY;
+static uint32_t sFollowMfaShadowMoveClock;
+static uint32_t sFollowMfaFollowTextTicks;
 
 enum {
     FOLLOW_MFA_WALL_UP    = 1u << 0,
     FOLLOW_MFA_WALL_DOWN  = 1u << 1,
     FOLLOW_MFA_WALL_LEFT  = 1u << 2,
     FOLLOW_MFA_WALL_RIGHT = 1u << 3,
+};
+
+enum {
+    FOLLOW_MFA_SHADOW_NONE = 0,
+    FOLLOW_MFA_SHADOW_RIGHT,
+    FOLLOW_MFA_SHADOW_DOWN,
+    FOLLOW_MFA_SHADOW_UP,
 };
 
 static int follow_me_pc_grid_scale(int value)
@@ -33,8 +43,6 @@ static int follow_me_pc_grid_y(int source_y)
     return follow_me_pc_grid_scale(source_y);
 }
 
-/* Events 9..24 in the original cutscenes frame. Event action 27 enables the
- * corresponding edge barrier for the current (vertical,horizontal) pair. */
 static unsigned follow_me_pc_mfa_walls(int vertical, int horizontal)
 {
     if (vertical == 1 && horizontal == 5)
@@ -67,16 +75,100 @@ static unsigned follow_me_pc_mfa_walls(int vertical, int horizontal)
     return 0u;
 }
 
+static bool follow_me_pc_mfa_guide_for_cell(int *kind, int *x, int *y)
+{
+    if (sFollowMePc.chapter >= 5) return false;
+
+    /* Exact event 95. */
+    if (sFollowMfaVertical == 2 && sFollowMfaHorizontal == 4) {
+        *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
+    }
+    /* Events 96,97: only when hit-box alterable value != 4. */
+    if (((sFollowMfaVertical == 3 && sFollowMfaHorizontal == 3) ||
+         (sFollowMfaVertical == 3 && sFollowMfaHorizontal == 2)) &&
+        sFollowMfaEntryDirection != 4) {
+        *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
+    }
+    /* Exact event 98. */
+    if (sFollowMfaVertical == 2 && sFollowMfaHorizontal == 5) {
+        *kind = FOLLOW_MFA_SHADOW_UP; *x = 520; *y = 202; return true;
+    }
+    /* Events 99..101: entry-direction condition != 3. */
+    if (((sFollowMfaVertical == 3 && sFollowMfaHorizontal == 4) ||
+         (sFollowMfaVertical == 4 && sFollowMfaHorizontal == 4) ||
+         (sFollowMfaVertical == 5 && sFollowMfaHorizontal == 4)) &&
+        sFollowMfaEntryDirection != 3) {
+        *kind = FOLLOW_MFA_SHADOW_UP; *x = 520; *y = 202; return true;
+    }
+    /* Events 102,103: entry-direction condition != 4. */
+    if (((sFollowMfaVertical == 5 && sFollowMfaHorizontal == 3) ||
+         (sFollowMfaVertical == 5 && sFollowMfaHorizontal == 2)) &&
+        sFollowMfaEntryDirection != 4) {
+        *kind = FOLLOW_MFA_SHADOW_RIGHT; *x = 816; *y = 376; return true;
+    }
+    /* Event 104: entry-direction condition != 1. */
+    if (sFollowMfaVertical == 4 && sFollowMfaHorizontal == 2 &&
+        sFollowMfaEntryDirection != 1) {
+        *kind = FOLLOW_MFA_SHADOW_DOWN; *x = 514; *y = 564; return true;
+    }
+    return false;
+}
+
+static void follow_me_pc_mfa_spawn_guide(void)
+{
+    int kind = FOLLOW_MFA_SHADOW_NONE;
+    int x = 0;
+    int y = 0;
+    if (!follow_me_pc_mfa_guide_for_cell(&kind, &x, &y)) return;
+
+    sFollowMfaShadowKind = kind;
+    sFollowMfaShadowSourceX = x;
+    sFollowMfaShadowSourceY = y;
+    sFollowMfaShadowMoveClock = 0u;
+
+    /* Events 95..104 set `follow me` alterable value to 200; events 105/106
+     * hide at zero and subtract one per game tick while it is visible. */
+    sFollowMfaFollowTextTicks = 200u;
+}
+
+static void follow_me_pc_mfa_step_guide(void)
+{
+    if (sFollowMfaFollowTextTicks > 0u)
+        --sFollowMfaFollowTextTicks;
+
+    if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_NONE) return;
+
+    /* Event 88 moves the three guide objects by exactly 30 source pixels every
+     * 290 ms.  At 60 Hz, adding 1000 per frame against 290*60 preserves the
+     * original average period without using floating point. */
+    sFollowMfaShadowMoveClock += 1000u;
+    while (sFollowMfaShadowMoveClock >= 17400u) {
+        sFollowMfaShadowMoveClock -= 17400u;
+        if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_RIGHT)
+            sFollowMfaShadowSourceX += 30;
+        else if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_DOWN)
+            sFollowMfaShadowSourceY += 30;
+        else if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_UP)
+            sFollowMfaShadowSourceY -= 30;
+    }
+
+    if (sFollowMfaShadowSourceX > 1055 ||
+        sFollowMfaShadowSourceY < -80 ||
+        sFollowMfaShadowSourceY > 850)
+        sFollowMfaShadowKind = FOLLOW_MFA_SHADOW_NONE;
+}
+
 static void follow_me_pc_reset(int chapter)
 {
     follow_me_pc_reset_legacy(chapter);
 
-    /* Base Start-of-Frame state: events 8 and 61. */
     sFollowMfaVertical = 2;
     sFollowMfaHorizontal = 3;
+    sFollowMfaEntryDirection = 2; /* Start-of-frame hit-box alterable value. */
+    sFollowMfaShadowKind = FOLLOW_MFA_SHADOW_NONE;
+    sFollowMfaShadowMoveClock = 0u;
+    sFollowMfaFollowTextTicks = 0u;
 
-    /* Exact chapter start positions from events 129, 130, 136 and 137.
-     * Chapter 1 keeps the Start-of-Frame (500,272) position. */
     int source_x = 500;
     int source_y = 272;
     if (chapter == 2) {
@@ -98,15 +190,20 @@ static void follow_me_pc_reset(int chapter)
     sFollowMePc.player_x = follow_me_pc_grid_x(source_x);
     sFollowMePc.player_y = follow_me_pc_grid_y(source_y);
     sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE; /* legacy storage only */
+
+    /* Chapter 4 starts directly in an event-97 guide cell. */
+    follow_me_pc_mfa_spawn_guide();
 }
 
 static void follow_me_pc_move_player(const InputState *input)
 {
-    /* Preserve the already-tested Wii U input cadence; geometry and routing
-     * now follow the MFA grid. */
     const int speed = 4;
     int dx = 0;
     int dy = 0;
+
+    if (sFollowMePc.phase == FOLLOW_PHASE_GUIDE)
+        follow_me_pc_mfa_step_guide();
+
     if (input_is_held(input, GAME_BUTTON_LEFT)) dx -= speed;
     if (input_is_held(input, GAME_BUTTON_RIGHT)) dx += speed;
     if (input_is_held(input, GAME_BUTTON_UP)) dy -= speed;
@@ -122,11 +219,10 @@ static void follow_me_pc_move_player(const InputState *input)
 
     const unsigned walls = follow_me_pc_mfa_walls(
         sFollowMfaVertical, sFollowMfaHorizontal);
-
     int next_x = sFollowMePc.player_x + dx;
     int next_y = sFollowMePc.player_y + dy;
+    bool changed_cell = false;
 
-    /* `leave left/right/top/bottom` instances are -1/1023/-1/771. */
     const int left_edge = follow_me_pc_grid_x(-1);
     const int right_edge = follow_me_pc_grid_x(1023);
     const int top_edge = follow_me_pc_grid_y(-1);
@@ -134,17 +230,19 @@ static void follow_me_pc_move_player(const InputState *input)
 
     if (next_x <= left_edge) {
         if ((walls & FOLLOW_MFA_WALL_LEFT) == 0u) {
-            --sFollowMfaHorizontal; /* original Horizontal -= 1 */
-            /* leave left (-1,369) + (+880,0) = (879,369) */
+            --sFollowMfaHorizontal;
+            sFollowMfaEntryDirection = 4;
             next_x = follow_me_pc_grid_x(879);
+            changed_cell = true;
         } else {
             next_x = left_edge + 1;
         }
     } else if (next_x >= right_edge) {
         if ((walls & FOLLOW_MFA_WALL_RIGHT) == 0u) {
-            ++sFollowMfaHorizontal; /* original Horizontal += 1 */
-            /* leave right (1023,377) + (-881,0) = (142,377) */
+            ++sFollowMfaHorizontal;
+            sFollowMfaEntryDirection = 2;
             next_x = follow_me_pc_grid_x(142);
+            changed_cell = true;
         } else {
             next_x = right_edge - 1;
         }
@@ -152,17 +250,19 @@ static void follow_me_pc_move_player(const InputState *input)
 
     if (next_y <= top_edge) {
         if ((walls & FOLLOW_MFA_WALL_UP) == 0u) {
-            --sFollowMfaVertical; /* original Vertical -= 1 */
-            /* leave top (499,-1) + (0,+665) = (499,664) */
+            --sFollowMfaVertical;
+            sFollowMfaEntryDirection = 1;
             next_y = follow_me_pc_grid_y(664);
+            changed_cell = true;
         } else {
             next_y = top_edge + 1;
         }
     } else if (next_y >= bottom_edge) {
         if ((walls & FOLLOW_MFA_WALL_DOWN) == 0u) {
-            ++sFollowMfaVertical; /* original Vertical += 1 */
-            /* leave bottom (525,771) + (0,-649) = (525,122) */
+            ++sFollowMfaVertical;
+            sFollowMfaEntryDirection = 3;
             next_y = follow_me_pc_grid_y(122);
+            changed_cell = true;
         } else {
             next_y = bottom_edge - 1;
         }
@@ -170,10 +270,12 @@ static void follow_me_pc_move_player(const InputState *input)
 
     sFollowMePc.player_x = next_x;
     sFollowMePc.player_y = next_y;
+
+    if (changed_cell)
+        follow_me_pc_mfa_spawn_guide();
 }
 
 static void follow_me_pc_update_room_transitions(void)
 {
-    /* Transitions are performed by the four original MFA leave-edge rules in
-     * follow_me_pc_move_player(); the old seven-room graph stays disabled. */
+    /* Edge transitions now happen directly in follow_me_pc_move_player(). */
 }
