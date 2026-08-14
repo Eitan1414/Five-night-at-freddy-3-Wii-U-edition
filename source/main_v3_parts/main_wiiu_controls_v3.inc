@@ -38,3 +38,31 @@ static void (*const wiiu_base_phone_overlay)(void) = finishing_draw_phone_overla
 #include "main_v3_parts/main_phone_subtitles_mfa_sync.inc"
 
 #define finishing_draw_phone_overlay wiiu_phone_overlay_with_subtitles
+
+/* The historical phone timer values predate the absolute 60 Hz frame clock and
+ * outlive the embedded retail-PC WAVs. Clamp the runtime timer to the exact
+ * 60 Hz durations measured from the MFA PCM resources so the call overlay and
+ * mute state end with the voice instead of lingering after playback. */
+static const uint32_t kMfaPhoneRuntimeFrames[NIGHT_COUNT] = {
+    9787u, 7760u, 4580u, 3695u, 3264u, 2550u
+};
+
+static void wiiu_control_update_game_v2_mfa_phone(Game *game,
+                                                   const InputState *input)
+{
+    wiiu_control_update_game_v2(game, input);
+
+    if (!sFinishing.phone_active ||
+        sFinishing.phone_night < 1 ||
+        sFinishing.phone_night > NIGHT_COUNT) {
+        return;
+    }
+
+    const uint32_t exact_frames =
+        kMfaPhoneRuntimeFrames[sFinishing.phone_night - 1];
+    sFinishing.phone_duration = exact_frames;
+    if (sFinishing.phone_frames >= exact_frames)
+        finishing_stop_phone();
+}
+
+#define wiiu_control_update_game_v2 wiiu_control_update_game_v2_mfa_phone
