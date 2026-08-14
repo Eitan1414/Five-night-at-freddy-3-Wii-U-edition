@@ -24,10 +24,8 @@ static void follow_me_pc_draw_safe_room_ghosts(void)
 
 static void follow_me_pc_draw_rain(uint32_t frame)
 {
-    /* MFA object `raindrop` uses original PC image-bank ID 273 and has 12
-     * instances across the 1024x768 cutscenes frame. Keep those source X
-     * positions and the exact sprite. Event-sheet timing is handled in the
-     * next pass; this pass only removes the rectangle placeholder art. */
+    /* Original PC image-bank object. The spawn/fall event-sheet logic is the
+     * next environment pass; retain the exact 12 source instance anchors now. */
     static const int pc_x[12] = {
         44, 126, 208, 290, 372, 454,
         536, 618, 700, 782, 870, 946
@@ -46,7 +44,6 @@ static void follow_me_pc_draw_rain(uint32_t frame)
 
 static void follow_me_pc_draw_springlock_blood(void)
 {
-    /* The four MFA blood objects all use original PC image-bank ID 364. */
     static const int pc_positions[4][2] = {
         {316, 308}, {711, 308}, {316, 468}, {711, 468}
     };
@@ -62,27 +59,46 @@ static FollowMePcSprite follow_me_pc_spring_frame(void)
     return (FollowMePcSprite) (FOLLOW_ME_PC_SPRING_0 + (int) frame);
 }
 
+static FollowMePcSprite follow_me_pc_mfa_shadow_sprite(void)
+{
+    /* The six recovered Shadow Freddy frames are the two-frame pairs for the
+     * three MFA objects in handle order: right 347, down 348, up 349. */
+    int base = FOLLOW_ME_PC_SHADOW_0;
+    if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_DOWN)
+        base = FOLLOW_ME_PC_SHADOW_2;
+    else if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_UP)
+        base = FOLLOW_ME_PC_SHADOW_4;
+    return (FollowMePcSprite) (base + (int) ((sFollowMePc.frames / 9u) & 1u));
+}
+
 static void follow_me_pc_draw(const Game *game)
 {
     follow_me_pc_draw_room(game);
     follow_me_pc_draw_remains();
     follow_me_pc_draw_rain(sFollowMePc.frames);
 
-    if (sFollowMePc.frames < 180u && sFollowMePc.phase == FOLLOW_PHASE_GUIDE)
-        follow_me_pc_draw_env(FOLLOW_ME_ENV_WASD, 20, 372, 1);
+    /* Start-of-frame places the real `controls` Active relative to move-down:
+     * (501,427)+(1,-269) = (502,158). Event 63 hides it at exactly 5000 ms. */
+    if (sFollowMePc.frames < 300u)
+        follow_me_pc_draw_mfa(&gFollowMfaControls, 502, 158);
 
-    if (sFollowMePc.chapter < 5 && sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
-        sFollowMePc.room != FOLLOW_ROOM_SHOW_STAGE) {
-        const int shadow_frame = (int) ((sFollowMePc.frames / 9u) & 1u);
-        follow_me_pc_draw_sprite((FollowMePcSprite)
-            (FOLLOW_ME_PC_SHADOW_0 + shadow_frame),
-            sFollowMePc.shadow_x, sFollowMePc.shadow_y, 3);
-        /* Exact MFA `follow me` Active: image ID 1005, instance (10,660). */
+    if (sFollowMePc.chapter < 5 &&
+        sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
+        sFollowMfaShadowKind != FOLLOW_MFA_SHADOW_NONE) {
+        follow_me_pc_draw_sprite(follow_me_pc_mfa_shadow_sprite(),
+                                 follow_me_pc_grid_x(sFollowMfaShadowSourceX),
+                                 follow_me_pc_grid_y(sFollowMfaShadowSourceY),
+                                 3);
+    }
+
+    if (sFollowMePc.chapter < 5 &&
+        sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
+        sFollowMfaFollowTextTicks > 0u) {
+        /* Exact Active 351 instance and PC image 1005. */
         follow_me_pc_draw_mfa(&gFollowMfaFollowText, 10, 660);
     }
 
     if (sFollowMePc.phase == FOLLOW_PHASE_ERR) {
-        /* Exact ERR Active: image ID 371, instance (222,618). */
         follow_me_pc_draw_mfa(&gFollowMfaErr, 222, 618);
     }
 
