@@ -1,0 +1,137 @@
+name: Publish v1.0
+
+on:
+  workflow_run:
+    workflows:
+      - Build Wii U Homebrew
+    types:
+      - completed
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: v1.0
+      RELEASE_TITLE: Five Nights at Freddy's 3 — Wii U Edition v1.0
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout exact successful main revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Stop if v1.0 is already published
+        id: release_guard
+        shell: bash
+        run: |
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; nothing to publish."
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download successful homebrew artifact
+        if: steps.release_guard.outputs.exists != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: fnaf3-wiiu
+          path: artifacts/homebrew
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Download successful WUP artifact
+        if: steps.release_guard.outputs.exists != 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: fnaf3-wiiu-wup
+          path: artifacts/wup
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Verify release inputs
+        if: steps.release_guard.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .github/release-notes-v1.0.md
+          test -f artifacts/homebrew/fnaf3-wiiu.wuhb
+          test -f artifacts/homebrew/fnaf3-wiiu.rpx
+          test -f artifacts/wup/title.tmd
+          test -f artifacts/wup/title.tik
+          test -f artifacts/wup/title.cert
+          find artifacts/wup -maxdepth 1 -name '*.app' -print -quit | grep -q .
+          find artifacts/wup -maxdepth 1 -name '*.h3' -print -quit | grep -q .
+
+      - name: Package v1.0 distribution
+        if: steps.release_guard.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf release-out
+          mkdir -p release-out/fnaf3-wiiu
+          cp artifacts/homebrew/fnaf3-wiiu.wuhb release-out/fnaf3-wiiu/fnaf3-wiiu.wuhb
+          cp artifacts/homebrew/fnaf3-wiiu.wuhb release-out/fnaf3-wiiu.wuhb
+          cp artifacts/homebrew/fnaf3-wiiu.rpx release-out/fnaf3-wiiu.rpx
+
+          cat > release-out/fnaf3-wiiu/INSTALL.txt <<'EOF'
+          Five Nights at Freddy's 3 — Wii U Edition v1.0
+
+          Aroma / WUHB installation:
+          Copy this entire fnaf3-wiiu folder to SD:/wiiu/apps/
+          Final executable path:
+          SD:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
+          EOF
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import zipfile
+
+          out = Path('release-out')
+
+          with zipfile.ZipFile(out / 'fnaf3-wiiu-v1.0.zip', 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+              base = out / 'fnaf3-wiiu'
+              for path in sorted(base.rglob('*')):
+                  if path.is_file():
+                      z.write(path, path.relative_to(out))
+
+          with zipfile.ZipFile(out / 'fnaf3-wiiu-v1.0-wup.zip', 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
+              base = Path('artifacts/wup')
+              for path in sorted(base.iterdir()):
+                  if path.is_file():
+                      z.write(path, path.name)
+          PY
+
+          sha256sum \
+            release-out/fnaf3-wiiu-v1.0.zip \
+            release-out/fnaf3-wiiu.wuhb \
+            release-out/fnaf3-wiiu.rpx \
+            release-out/fnaf3-wiiu-v1.0-wup.zip \
+            > release-out/SHA256SUMS.txt
+
+          cat release-out/SHA256SUMS.txt
+
+      - name: Publish stable v1.0 release
+        if: steps.release_guard.outputs.exists != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create "$RELEASE_TAG" \
+            --target "${{ github.event.workflow_run.head_sha }}" \
+            --title "$RELEASE_TITLE" \
+            --notes-file .github/release-notes-v1.0.md \
+            release-out/fnaf3-wiiu-v1.0.zip \
+            release-out/fnaf3-wiiu.wuhb \
+            release-out/fnaf3-wiiu.rpx \
+            release-out/fnaf3-wiiu-v1.0-wup.zip \
+            release-out/SHA256SUMS.txt
