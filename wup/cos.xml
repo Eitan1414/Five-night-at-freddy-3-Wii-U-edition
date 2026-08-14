@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <app type="complex" access="777">
-  <version type="unsignedInt" length="4">1</version>
+  <version type="unsignedInt" length="4">20</version>
   <cmdFlags type="unsignedInt" length="4">0</cmdFlags>
   <argstr type="string" length="4096">fnaf3-wiiu.rpx</argstr>
   <avail_size type="hexBinary" length="4">00000000</avail_size>
@@ -8,6 +8,7 @@
   <codegen_core type="hexBinary" length="4">00000001</codegen_core>
   <max_size type="hexBinary" length="4">40000000</max_size>
   <max_codesize type="hexBinary" length="4">04000000</max_codesize>
+  <overlay_arena type="hexBinary" length="4">00000001</overlay_arena>
   <permissions type="complex">
     <p0 type="complex"><group type="unsignedInt" length="4">1</group><mask type="hexBinary" length="8">FFFFFFFFFFFFFFFF</mask></p0>
     <p1 type="complex"><group type="unsignedInt" length="4">3</group><mask type="hexBinary" length="8">FFFFFFFFFFFFFFFF</mask></p1>
@@ -26,7 +27,7 @@
     <p14 type="complex"><group type="unsignedInt" length="4">22</group><mask type="hexBinary" length="8">FFFFFFFFFFFFFFFF</mask></p14>
   </permissions>
   <default_stack0_size type="hexBinary" length="4">00000000</default_stack0_size>
-  <default_stack1_size type="hexBinary" length="4">00000000</default_stack1_size>
+  <default_stack1_size type="hexBinary" length="4">00040000</default_stack1_size>
   <default_stack2_size type="hexBinary" length="4">00000000</default_stack2_size>
   <default_redzone0_size type="hexBinary" length="4">00000000</default_redzone0_size>
   <default_redzone1_size type="hexBinary" length="4">00000000</default_redzone1_size>
@@ -34,4 +35,6 @@
   <exception_stack0_size type="hexBinary" length="4">00001000</exception_stack0_size>
   <exception_stack1_size type="hexBinary" length="4">00001000</exception_stack1_size>
   <exception_stack2_size type="hexBinary" length="4">00001000</exception_stack2_size>
+  <num_codearea_heap_blocks type="unsignedInt" length="4">0</num_codearea_heap_blocks>
+  <num_workarea_heap_blocks type="unsignedInt" length="4">0</num_workarea_heap_blocks>
 </app>
