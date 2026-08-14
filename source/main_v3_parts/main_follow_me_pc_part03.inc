@@ -140,6 +140,19 @@ static void follow_me_pc_draw_layer1_room_mfa(void)
         follow_me_pc_draw_mfa(&gFollowMfaHallway, 716, -3);
     }
 
+    /* Event 40: after the `new frame` reset, table fan handle 324 is created
+     * only for vertical=5,horizontal=3. It is created relative to leave-top
+     * (499,-1) with offset (+1,+185), giving exact source (500,184).
+     * Its only animation frame is image 326, hotspot (175,151). */
+    if (follow_me_pc_mfa_cell(5, 3))
+        follow_me_pc_draw_mfa(&gFollowMfaTableFan, 500, 184);
+
+    /* Event 63: gift handle 331 exists only for vertical=2,horizontal=1 and is
+     * created relative to leave-top with (-101,+343), source (398,342).
+     * Its exact frame is image 340, hotspot (223,189). */
+    if (follow_me_pc_mfa_cell(2, 1))
+        follow_me_pc_draw_mfa(&gFollowMfaGift, 398, 342);
+
     if (follow_me_pc_mfa_cell(1, 5)) {
         follow_me_pc_draw_mfa(&gFollowMfaArcade, 557, 208);
         follow_me_pc_draw_mfa(&gFollowMfaArcade, 381, 210);
@@ -153,7 +166,7 @@ static void follow_me_pc_draw_layer1_room_mfa(void)
 
 static void follow_me_pc_draw_secret_clues_mfa(void)
 {
-    /* Events 186..189 enable these only in source cell (4,2).  The image IDs,
+    /* Events 186..189 enable these only in source cell (4,2). The image IDs,
      * hotspots and transparency keys below are generated from the actual MFA
      * image-bank metadata, so there is no reconstructed text/geometry left. */
     if (!follow_me_pc_mfa_cell(4, 2)) return;
