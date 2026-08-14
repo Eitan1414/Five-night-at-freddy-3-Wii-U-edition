@@ -1,29 +1,44 @@
 # Five Nights at Freddy's 3 — Wii U Edition
 
-An unofficial **Five Nights at Freddy's 3** port made specifically for the **Nintendo Wii U**, with support for **Aroma**, the Wii U GamePad and a number of features created especially for this edition.
+An unofficial **Five Nights at Freddy's 3** port made specifically for the **Nintendo Wii U**, with support for **Aroma**, the Wii U GamePad and Wii U-specific presentation and control features.
 
 > This is a fan-made project. It is not affiliated with, endorsed by, or supported by the original developers, publishers, Nintendo, or the respective rights holders.
+
+## Stable release
+
+**v1.0 is now available.**
+
+➡️ [Download Five Nights at Freddy's 3 — Wii U Edition v1.0](../../releases/tag/v1.0)
+
+The release provides both:
+
+- an **Aroma / WUHB** package, recommended for most users;
+- an **installable WUP Channel** package generated and structurally validated by CI.
+
+The final v1.0 publication build also passed the Springtrap, Phantom and final fidelity/stress validation suite before release.
 
 ## About the Wii U Edition
 
 The goal of this project is to make FNaF 3 feel at home on Wii U rather than simply placing the game on another platform.
 
-The port includes Wii U-specific controls, TV/GamePad rendering, adapted menus, persistent progression, additional Extras content and several quality-of-life improvements while keeping the core FNaF 3 experience recognizable.
+The port includes Wii U-specific controls, TV/GamePad rendering, persistent progression, adapted menus, Extras content and quality-of-life additions while keeping the main FNaF 3 gameplay aligned with the PC/MFA behavior used as the project's reference.
 
 ## Features
 
 - Full **Night 1–6** progression
-- Springtrap AI, ventilation routes, audio lure and system failures
+- PC/MFA-derived Springtrap AI, ventilation routes, audio lure and system failures
 - **Phantom Freddy, Foxy, Chica, Balloon Boy, Mangle and Puppet**
 - Camera and maintenance systems adapted for Wii U controls
 - TV + **Wii U GamePad** support
+- Native GamePad touch support and multiple TV/GamePad display modes
 - Phone calls and game audio support
 - Persistent save data and progression
-- Follow Me sequences and secret minigames
-- Multiple endings, including the Good Ending progression
-- **Extras** menu with additional content
-- Animatronic and jumpscare galleries
-- Secret Minigame replay menu
+- Continue and Nightmare/Night 6 progression
+- **Follow Me 1–5** sequences
+- Secret minigames and Good Ending progression
+- Multiple endings
+- **Extras** menu with galleries and replayable minigames
+- **Credits** directly accessible from the title screen
 - **Cheats** menu with:
   - Fast Nights
   - Radar
@@ -44,36 +59,50 @@ The Wii U Edition also includes its own achievement system:
 - A special final trophy called **Utine** after completing all nine achievements
 - Dedicated Utine unlock presentation, animation and sound
 
-The additional UI uses a visual style designed to blend with FNaF 3 while keeping the original Extras presentation intact.
-
 ## Installation
 
-### Recommended: Aroma / WUHB
+### Recommended — Aroma / WUHB
 
 You need a Wii U configured to run **Aroma** homebrew.
 
-1. Download the Wii U Edition release package.
-2. Open your Wii U SD card on a computer.
-3. Copy the provided `fnaf3-wiiu` folder into:
+1. Open the [v1.0 release](../../releases/tag/v1.0).
+2. Download `fnaf3-wiiu-v1.0.zip`.
+3. Extract the archive.
+4. Copy the included `fnaf3-wiiu` folder to:
 
 ```text
 SD:/wiiu/apps/
 ```
 
-The final structure should contain at least:
+The final executable path should be:
 
 ```text
 SD:/wiiu/apps/fnaf3-wiiu/fnaf3-wiiu.wuhb
 ```
 
-If the release contains additional files or folders, keep their original structure and copy them alongside the `.wuhb` file.
-
-4. Safely eject the SD card.
-5. Insert it into the Wii U.
+5. Insert the SD card into the Wii U.
 6. Start the console with Aroma.
-7. Launch **Five Nights at Freddy's 3 — Wii U Edition** from the Wii U homebrew environment.
+7. Launch **Five Nights at Freddy's 3 — Wii U Edition**.
 
-Save data is handled automatically by the port.
+The Aroma build stores its progress in the app folder on the SD card.
+
+### Installable WUP Channel
+
+The v1.0 release also contains:
+
+```text
+fnaf3-wiiu-v1.0-wup.zip
+```
+
+This archive contains the encrypted Wii U Channel package (`.app`, `.h3`, ticket, certificate and TMD files). Keep every extracted file together and install the folder with a WUP installer compatible with your Wii U environment.
+
+The Channel build uses native Wii U save storage and includes migration support for the legacy SD save when available.
+
+The WUP package is generated and structurally validated by GitHub Actions. The Aroma/WUHB build remains the recommended fallback if a console-specific Channel installation issue is encountered.
+
+### Release checksums
+
+The v1.0 release includes `SHA256SUMS.txt` so downloaded packages can be verified before installation.
 
 ## Controls
 
@@ -112,11 +141,26 @@ Save data is handled automatically by the port.
 - **A / +:** open, replay or toggle
 - **B:** back
 
+## Validation
+
+The v1.0 release path includes automated checks for:
+
+- Springtrap AI fidelity
+- Phantom AI fidelity
+- PC-only visual/audio routing
+- rare/random MFA-derived Phantom events
+- Wii U WUHB/RPX compilation
+- installable WUP generation and structural validation
+
+The final host stress harness executes **4,147,200 synthetic 60 Hz state-transition frames across Nights 1–6** with AddressSanitizer and UndefinedBehaviorSanitizer enabled.
+
+Automated validation does not replace every possible physical-console scenario, so hardware-specific bug reports remain useful.
+
 ## How the port was created
 
 This Wii U Edition was developed as a dedicated adaptation for Nintendo Wii U.
 
-Code for platform integration, rendering, input handling, save management, audio playback and Wii U-specific features was written or adapted specifically for this project. Existing versions of FNaF 3 were used as behavioural and visual reference where appropriate.
+Code for platform integration, rendering, input handling, save management, audio playback and Wii U-specific features was written or adapted specifically for this project. Existing versions of FNaF 3 were used as behavioral and visual reference where appropriate.
 
 For copyright and project-safety reasons, the public documentation intentionally does **not** describe proprietary asset extraction procedures, internal game-data layouts, private development resources or other information that is unnecessary for players to install and use the port.
 
@@ -132,9 +176,9 @@ The Wii U-specific codebase is built with the standard Wii U homebrew developmen
 
 ## Project status
 
-The port currently includes the complete main gameplay flow, Extras content, secret progression, achievements and Wii U-specific presentation systems.
+**Five Nights at Freddy's 3 — Wii U Edition v1.0 is released and is the current stable version.**
 
-Development is now primarily focused on final polish, hardware testing, small visual adjustments and release preparation.
+Future development can focus on bug fixes, hardware-specific improvements and optional post-v1.0 enhancements without reopening the completed core porting milestone.
 
 ## Disclaimer
 
