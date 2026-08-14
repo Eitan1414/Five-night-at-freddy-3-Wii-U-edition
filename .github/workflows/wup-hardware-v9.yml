@@ -104,18 +104,36 @@ jobs:
           except AttributeError:
               resampling = Image.LANCZOS
 
-          def open_repo_image(path):
-              p = Path(path)
-              raw = p.read_bytes()
+          def try_image(raw, label, depth):
+              print(f'{label}: decode depth {depth}, {len(raw)} bytes, head={raw[:12].hex()}')
               try:
                   im = Image.open(BytesIO(raw))
                   im.load()
+                  print(f'{label}: image decoded at depth {depth}: {im.format} {im.size}')
                   return im
               except Exception:
-                  decoded = base64.b64decode(raw, validate=False)
-                  im = Image.open(BytesIO(decoded))
-                  im.load()
-                  return im
+                  return None
+
+          def open_repo_image(path):
+              label = str(path)
+              raw = Path(path).read_bytes()
+              for depth in range(6):
+                  image = try_image(raw, label, depth)
+                  if image is not None:
+                      return image
+
+                  compact = b''.join(raw.split())
+                  # Accept optional data-URI wrappers too.
+                  if b',' in compact[:128] and compact.lower().startswith(b'data:'):
+                      compact = compact.split(b',', 1)[1]
+                  try:
+                      decoded = base64.b64decode(compact, validate=False)
+                  except Exception as exc:
+                      raise RuntimeError(f'{label}: cannot base64 decode at depth {depth}: {exc}')
+                  if not decoded or decoded == raw:
+                      break
+                  raw = decoded
+              raise RuntimeError(f'{label}: no decodable image after nested decoding')
 
           icon = open_repo_image('icon.jpg').convert('RGBA')
           icon = ImageOps.fit(icon, (128, 128), method=resampling)
