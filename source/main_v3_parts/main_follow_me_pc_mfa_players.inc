@@ -104,8 +104,12 @@ static FollowMePcSprite follow_me_pc_mfa_shadow_exact_sprite(
 
 static bool follow_me_pc_mfa_is_child2_position(int x, int y)
 {
+    /* Keep this helper independent from follow_me_pc_mfa_cell(), which is
+     * defined in the later scenery include. The grid counters are already
+     * available here from main_follow_me_pc_mfa_grid.inc. */
     if (!sFollowMfaFinaleSpiritsVisible ||
-        !follow_me_pc_mfa_cell(1, 5) ||
+        sFollowMfaVertical != 1 ||
+        sFollowMfaHorizontal != 5 ||
         y != follow_me_pc_grid_y(692))
         return false;
 
