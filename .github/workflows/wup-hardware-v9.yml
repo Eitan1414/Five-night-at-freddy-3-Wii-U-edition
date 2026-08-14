@@ -58,10 +58,12 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          from PIL import Image, ImageOps
+          from PIL import Image, ImageOps, ImageFile
           from io import BytesIO
           import base64
           import xml.etree.ElementTree as ET
+
+          ImageFile.LOAD_TRUNCATED_IMAGES = True
 
           root = Path('build/wup-fnaf3-v9')
           title_id = '000500001337F3A5'
@@ -111,7 +113,8 @@ jobs:
                   im.load()
                   print(f'{label}: image decoded at depth {depth}: {im.format} {im.size}')
                   return im
-              except Exception:
+              except Exception as exc:
+                  print(f'{label}: image decode depth {depth} failed: {exc}')
                   return None
 
           def open_repo_image(path):
@@ -122,18 +125,24 @@ jobs:
                   if image is not None:
                       return image
 
+                  # A genuine JPEG signature means the repository file is an
+                  # image stream, not base64 text. Do not decode arbitrary JPEG
+                  # bytes into garbage; LOAD_TRUNCATED_IMAGES above handles the
+                  # non-standard/truncated project JPEGs.
+                  if raw.startswith(b'\xff\xd8\xff'):
+                      break
+
                   compact = b''.join(raw.split())
-                  # Accept optional data-URI wrappers too.
                   if b',' in compact[:128] and compact.lower().startswith(b'data:'):
                       compact = compact.split(b',', 1)[1]
                   try:
                       decoded = base64.b64decode(compact, validate=False)
-                  except Exception as exc:
-                      raise RuntimeError(f'{label}: cannot base64 decode at depth {depth}: {exc}')
+                  except Exception:
+                      break
                   if not decoded or decoded == raw:
                       break
                   raw = decoded
-              raise RuntimeError(f'{label}: no decodable image after nested decoding')
+              raise RuntimeError(f'{label}: no decodable image after image/base64 decoding')
 
           icon = open_repo_image('icon.jpg').convert('RGBA')
           icon = ImageOps.fit(icon, (128, 128), method=resampling)
