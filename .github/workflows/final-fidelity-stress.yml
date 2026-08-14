@@ -1,0 +1,81 @@
+name: Final Fidelity and Stress Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - 'source/**'
+      - 'include/**'
+      - 'tests/**'
+      - 'tools/verify_pc_audio_fidelity.py'
+      - 'tools/verify_pc_visual_fidelity.py'
+      - 'tools/verify_pc_rare_events.py'
+      - 'tools/verify_pc_only_audio.py'
+      - 'tools/verify_pc_only_visuals.py'
+      - 'tools/prepare_generated_assets.sh'
+      - 'Makefile'
+      - '.github/workflows/final-fidelity-stress.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fidelity-audits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Audit PC audio behavior
+        run: python3 tools/verify_pc_audio_fidelity.py
+
+      - name: Audit fine PC visual geometry
+        run: python3 tools/verify_pc_visual_fidelity.py
+
+      - name: Audit rare MFA events
+        run: python3 tools/verify_pc_rare_events.py
+
+      - name: Audit PC-only audio routes
+        run: python3 tools/verify_pc_only_audio.py
+
+  rare-events:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile deterministic rare-event tests
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O2 \
+            -Iinclude \
+            source/game/phantom_ai.c \
+            tests/rare_event_test.c \
+            -o /tmp/fnaf3-rare-events
+
+      - name: Run deterministic rare-event tests
+        run: /tmp/fnaf3-rare-events
+
+  runtime-stress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile AI/panel stress harness with sanitizers
+        run: |
+          cc -std=c11 -Wall -Wextra -Werror -O1 -g \
+            -fsanitize=address,undefined -fno-omit-frame-pointer \
+            -Iinclude \
+            source/game/springtrap_ai.c \
+            source/game/phantom_ai.c \
+            tests/runtime_stress_test.c \
+            -o /tmp/fnaf3-runtime-stress
+
+      - name: Run multi-night transition stress test
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: /tmp/fnaf3-runtime-stress
