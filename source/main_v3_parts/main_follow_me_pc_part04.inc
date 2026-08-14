@@ -1,7 +1,7 @@
 static void follow_me_pc_draw_remains(void)
 {
     /* Events 120..123 recreate the previously dismantled suits in source cell
-     * (2,5).  These are the exact creation positions relative to leave-top. */
+     * (2,5). These are the exact creation positions relative to leave-top. */
     if (!follow_me_pc_mfa_cell(2, 5)) return;
 
     if (sFollowMePc.chapter >= 2)
@@ -24,18 +24,25 @@ static void follow_me_pc_draw_remains(void)
 
 static void follow_me_pc_draw_safe_room_ghosts(void)
 {
-    if (sFollowMePc.room != FOLLOW_ROOM_SAFE_ROOM) return;
+    /* Event 157 makes the four `child 2` instances visible in cell (1,5).
+     * Event 181 destroys them when the springlock state reaches 5. */
+    if (!follow_me_pc_mfa_cell(1, 5) ||
+        !sFollowMfaFinaleSpiritsVisible) return;
 
-    static const int xs[4] = {155, 285, 570, 700};
+    static const int source_positions[4][2] = {
+        {352, 692}, {443, 692}, {562, 692}, {673, 692}
+    };
     for (int index = 0; index < 4; ++index)
         follow_me_pc_draw_sprite((FollowMePcSprite)
-            (FOLLOW_ME_PC_GHOST_2 + (index & 1)), xs[index], 424, 3);
+            (FOLLOW_ME_PC_GHOST_2 + (index & 1)),
+            follow_me_pc_grid_x(source_positions[index][0]),
+            follow_me_pc_grid_y(source_positions[index][1]), 3);
 }
 
 static void follow_me_pc_draw_rain(uint32_t frame)
 {
-    /* Original PC image-bank object. The exact drop-fall creation logic is
-     * handled in the next environment pass; these are the 12 MFA anchors. */
+    /* Original PC image-bank object. The exact drop-fall creation logic is a
+     * separate environment pass; these are the 12 original MFA anchors. */
     static const int pc_x[12] = {
         44, 126, 208, 290, 372, 454,
         536, 618, 700, 782, 870, 946
@@ -52,21 +59,70 @@ static void follow_me_pc_draw_rain(uint32_t frame)
     }
 }
 
-static void follow_me_pc_draw_springlock_blood(void)
+static void follow_me_pc_draw_mfa_at_wii(const FollowMeMfaTexture *asset,
+                                         int x, int y)
 {
-    static const int pc_positions[4][2] = {
-        {316, 308}, {711, 308}, {316, 468}, {711, 468}
-    };
-    for (int index = 0; index < 4; ++index)
-        follow_me_pc_draw_mfa(&gFollowMfaBlood,
-                              pc_positions[index][0], pc_positions[index][1]);
+    if (asset == NULL || asset->texture.width == 0u ||
+        asset->texture.height == 0u) return;
+    texture_draw_rle(GRAPHICS_TARGET_BOTH,
+                     x - asset->hotspot_x,
+                     y - asset->hotspot_y,
+                     (int)asset->texture.width,
+                     (int)asset->texture.height,
+                     &asset->texture);
 }
 
-static FollowMePcSprite follow_me_pc_spring_frame(void)
+static bool follow_me_pc_finale_anim_second(uint32_t ticks, int speed)
 {
-    uint32_t frame = sFollowMePc.phase_frames / 28u;
-    if (frame > 8u) frame = 8u;
-    return (FollowMePcSprite) (FOLLOW_ME_PC_SPRING_0 + (int) frame);
+    if (ticks == 0u || speed <= 0) return false;
+    const uint32_t advances =
+        (ticks * (uint32_t)speed - 1u) / 100u;
+    return (advances & 1u) != 0u;
+}
+
+static const FollowMeMfaTexture *follow_me_pc_finale_man_texture(void)
+{
+    const bool second = follow_me_pc_finale_anim_second(
+        sFollowMePc.phase_frames, 20);
+    /* Handle 363 `man`: direction 0 = images 453/454, direction 16 = 455/456. */
+    if (sFollowMePc.purple_target == 1 || sFollowMePc.purple_target == 2)
+        return second ? &gFollowMfaFinalManLeft1 : &gFollowMfaFinalManLeft0;
+    return second ? &gFollowMfaFinalManRight1 : &gFollowMfaFinalManRight0;
+}
+
+static const FollowMeMfaTexture *follow_me_pc_finale_run_texture(void)
+{
+    /* Handle 368 `man run`, animation 0, speed 20: images 458/460. */
+    return follow_me_pc_finale_anim_second(sFollowMePc.phase_frames, 20)
+        ? &gFollowMfaFinalManRun1 : &gFollowMfaFinalManRun0;
+}
+
+static const FollowMeMfaTexture *follow_me_pc_spring_texture(void)
+{
+    /* Handle 369 `Active 4`, exact animations selected by events 167..172:
+     * 12->[472], 13->[473], 14->[486,489] speed5,
+     * 15->[490,494] speed50, 16->[495,496] speed50,
+     * 17->[497,498] speed25. */
+    switch (sFollowMfaSpringState) {
+        case 1:
+            return &gFollowMfaSpring12;
+        case 2:
+            return &gFollowMfaSpring13;
+        case 3:
+            return follow_me_pc_finale_anim_second(sFollowMfaSpringTimer, 5)
+                ? &gFollowMfaSpring14B : &gFollowMfaSpring14A;
+        case 4:
+            return follow_me_pc_finale_anim_second(sFollowMfaSpringTimer, 50)
+                ? &gFollowMfaSpring15B : &gFollowMfaSpring15A;
+        case 5:
+            return follow_me_pc_finale_anim_second(sFollowMfaSpringTimer, 50)
+                ? &gFollowMfaSpring16B : &gFollowMfaSpring16A;
+        case 6:
+            return follow_me_pc_finale_anim_second(sFollowMfaSpringTimer, 25)
+                ? &gFollowMfaSpring17B : &gFollowMfaSpring17A;
+        default:
+            return &gFollowMfaFinalSuitIdle;
+    }
 }
 
 static FollowMePcSprite follow_me_pc_mfa_shadow_sprite(void)
@@ -103,8 +159,7 @@ static void follow_me_pc_draw(const Game *game)
         sFollowMePc.phase_frames < 200u)
         follow_me_pc_draw_mfa(&gFollowMfaErr, 222, 618);
 
-    if (sFollowMePc.chapter == 5 && sFollowMePc.room == FOLLOW_ROOM_SAFE_ROOM)
-        follow_me_pc_draw_safe_room_ghosts();
+    follow_me_pc_draw_safe_room_ghosts();
 
     if (sFollowMePc.phase == FOLLOW_PHASE_HUNT) {
         const int frame = (int) ((sFollowMePc.frames / 7u) & 1u);
@@ -112,27 +167,19 @@ static void follow_me_pc_draw(const Game *game)
             (FOLLOW_ME_PC_PURPLE_WALK_0 + frame),
             sFollowMePc.purple_x, sFollowMePc.purple_y, 3);
     } else if (sFollowMePc.phase == FOLLOW_PHASE_GHOST_CHASE) {
-        const int frame = (int) ((sFollowMePc.frames / 6u) % 6u);
-        follow_me_pc_draw_sprite((FollowMePcSprite)
-            (FOLLOW_ME_PC_PURPLE_PANIC_0 + frame),
-            sFollowMePc.purple_x, sFollowMePc.purple_y, 3);
-        follow_me_pc_draw_sprite(FOLLOW_ME_PC_SPRING_0, 742, 235, 3);
+        /* Event157 actors at their actual MFA coordinates. */
+        follow_me_pc_draw_mfa_at_wii(follow_me_pc_finale_man_texture(),
+                                     sFollowMePc.purple_x,
+                                     sFollowMePc.purple_y);
+        follow_me_pc_draw_mfa(&gFollowMfaFinalSuitIdle, 828, 462);
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SUIT) {
-        if (follow_me_pc_near(sFollowMePc.purple_x, sFollowMePc.purple_y,
-                              742, 235, 12)) {
-            follow_me_pc_draw_sprite(FOLLOW_ME_PC_SPRING_0, 742, 235, 3);
-        } else {
-            const int frame = (int) ((sFollowMePc.frames / 6u) % 6u);
-            follow_me_pc_draw_sprite((FollowMePcSprite)
-                (FOLLOW_ME_PC_PURPLE_PANIC_0 + frame),
-                sFollowMePc.purple_x, sFollowMePc.purple_y, 3);
-            follow_me_pc_draw_sprite(FOLLOW_ME_PC_SPRING_0, 742, 235, 3);
-        }
+        follow_me_pc_draw_mfa_at_wii(follow_me_pc_finale_run_texture(),
+                                     sFollowMePc.purple_x,
+                                     sFollowMePc.purple_y);
+        follow_me_pc_draw_mfa(&gFollowMfaFinalSuitIdle, 828, 462);
     } else if (sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK) {
-        follow_me_pc_draw_sprite(follow_me_pc_spring_frame(), 742, 235, 3);
-        if (sFollowMePc.phase_frames >= 112u &&
-            ((sFollowMePc.phase_frames / 7u) & 1u) != 0u)
-            follow_me_pc_draw_springlock_blood();
+        /* Active4 remains at the event157 source anchor throughout states1..6. */
+        follow_me_pc_draw_mfa(follow_me_pc_spring_texture(), 828, 462);
     }
 
     if (sFollowMePc.phase == FOLLOW_PHASE_DISMANTLED) {
@@ -141,9 +188,13 @@ static void follow_me_pc_draw(const Game *game)
         follow_me_pc_draw_sprite(wreck, sFollowMePc.player_x,
                                  sFollowMePc.player_y + 12, 2);
     } else if (sFollowMePc.chapter == 5) {
-        follow_me_pc_draw_sprite(follow_me_pc_player_sprite(),
-                                 sFollowMePc.player_x,
-                                 sFollowMePc.player_y, 3);
+        /* Event181 destroys `child` at springlock state5. */
+        if (!(sFollowMePc.phase == FOLLOW_PHASE_SPRINGLOCK &&
+              sFollowMfaSpringState >= 5)) {
+            follow_me_pc_draw_sprite(follow_me_pc_player_sprite(),
+                                     sFollowMePc.player_x,
+                                     sFollowMePc.player_y, 3);
+        }
     } else if (sFollowMePc.phase != FOLLOW_PHASE_SPRINGLOCK &&
                sFollowMePc.phase != FOLLOW_PHASE_SUIT) {
         follow_me_pc_draw_sprite(follow_me_pc_player_sprite(),
@@ -151,9 +202,7 @@ static void follow_me_pc_draw(const Game *game)
                                  sFollowMePc.player_y, 3);
     }
 
-    if (sFinishing.minigame_replay)
-        graphics_draw_text(GRAPHICS_TARGET_BOTH, 640, 446, 1,
-                           "B: EXTRAS", COLOUR_WHITE);
-
+    /* Replay still accepts B/Back in the update path, but the original PC
+     * Follow Me frame contains no Wii-U-only `B: EXTRAS` overlay. */
     graphics_present(GRAPHICS_TARGET_BOTH);
 }
