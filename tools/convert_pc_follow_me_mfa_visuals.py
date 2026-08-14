@@ -38,6 +38,46 @@ ASSETS = (
     ("Controls", 348, 128, 80, (0, 0, 0)),
     ("Blocked", 372, 65, 200, (0, 0, 0)),
 
+    # Exact playable animatronic frames from the MFA Active objects. The source
+    # canvases are 200x200; converting the whole canvas by 5/8 preserves the
+    # Clickteam hotspot and removes the old cropped-texture *3 approximation.
+    # Active 297 (Freddy), directions E/N/W/S.
+    ("PlayerFreddyRight0", 21, 106, 99, (0, 0, 0)),
+    ("PlayerFreddyRight1", 22, 106, 101, (0, 0, 0)),
+    ("PlayerFreddyUp0", 23, 104, 101, (0, 0, 0)),
+    ("PlayerFreddyUp1", 24, 103, 102, (0, 0, 0)),
+    ("PlayerFreddyLeft0", 25, 93, 99, (0, 0, 0)),
+    ("PlayerFreddyLeft1", 26, 93, 101, (0, 0, 0)),
+    ("PlayerFreddyDown0", 27, 104, 99, (0, 0, 0)),
+    ("PlayerFreddyDown1", 28, 103, 99, (0, 0, 0)),
+    # Active 356 `bonnie walk`.
+    ("PlayerBonnieRight0", 402, 101, 92, (0, 0, 0)),
+    ("PlayerBonnieRight1", 403, 101, 94, (0, 0, 0)),
+    ("PlayerBonnieUp0", 404, 105, 95, (0, 0, 0)),
+    ("PlayerBonnieUp1", 405, 104, 95, (0, 0, 0)),
+    ("PlayerBonnieLeft0", 406, 98, 92, (0, 0, 0)),
+    ("PlayerBonnieLeft1", 407, 98, 94, (0, 0, 0)),
+    ("PlayerBonnieDown0", 408, 105, 93, (0, 0, 0)),
+    ("PlayerBonnieDown1", 409, 104, 93, (0, 0, 0)),
+    # Active 358 `chica walk`.
+    ("PlayerChicaRight0", 412, 105, 108, (0, 0, 0)),
+    ("PlayerChicaRight1", 413, 104, 108, (0, 0, 0)),
+    ("PlayerChicaUp0", 414, 104, 110, (0, 0, 0)),
+    ("PlayerChicaUp1", 415, 103, 110, (0, 0, 0)),
+    ("PlayerChicaLeft0", 416, 105, 108, (0, 0, 0)),
+    ("PlayerChicaLeft1", 417, 104, 108, (0, 0, 0)),
+    ("PlayerChicaDown0", 418, 105, 108, (0, 0, 0)),
+    ("PlayerChicaDown1", 419, 104, 108, (0, 0, 0)),
+    # Active 361 `foxy walk`.
+    ("PlayerFoxyRight0", 444, 104, 98, (0, 0, 0)),
+    ("PlayerFoxyRight1", 445, 104, 99, (0, 0, 0)),
+    ("PlayerFoxyUp0", 446, 104, 102, (0, 0, 0)),
+    ("PlayerFoxyUp1", 447, 104, 103, (0, 0, 0)),
+    ("PlayerFoxyLeft0", 448, 105, 98, (0, 0, 0)),
+    ("PlayerFoxyLeft1", 449, 105, 98, (0, 0, 0)),
+    ("PlayerFoxyDown0", 450, 103, 102, (0, 0, 0)),
+    ("PlayerFoxyDown1", 451, 102, 102, (0, 0, 0)),
+
     # Exact secret-room clue objects, handles 373..384. Image IDs, hotspots
     # and colour keys are read directly from the MFA image bank.
     ("ClueBBDouble", 1007, -3, 0, (90, 90, 90)),
