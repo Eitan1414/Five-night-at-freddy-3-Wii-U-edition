@@ -23,7 +23,7 @@ def require(text: str, marker: str, context: str) -> None:
 
 phantom = read("source/game/phantom_ai_parts/part00.inc")
 systems = read("source/main_v3_parts/main_pc_system_fidelity.inc")
-camera = read("source/main_v3_parts/main_pc_camera_fidelity.inc")
+camera = read("source/main_v3_parts/main_pc_camera_fidelity.inc") + "\n" + read("source/main_v3_parts/main_pc_camera_fidelity_base.inc")
 
 # Random Phantom clocks and the source rule excluding 12 AM.
 require(phantom, "#define EVERY_20_SECONDS (20u * FRAMES_PER_SECOND)", "20-second Phantom clock")
