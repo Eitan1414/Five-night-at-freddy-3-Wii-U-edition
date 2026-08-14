@@ -147,6 +147,8 @@ $(BUILD):
 	fi
 	@echo "Auditing final runtime visual routes for PC-only assets..."
 	@python3 tools/verify_pc_only_visuals.py
+	@echo "Auditing final runtime audio routes for PC-only assets..."
+	@python3 tools/verify_pc_only_audio.py
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 
