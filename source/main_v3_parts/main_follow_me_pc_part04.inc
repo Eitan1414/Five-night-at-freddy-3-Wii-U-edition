@@ -24,8 +24,8 @@ static void follow_me_pc_draw_safe_room_ghosts(void)
 
 static void follow_me_pc_draw_rain(uint32_t frame)
 {
-    /* Original PC image-bank object. The spawn/fall event-sheet logic is the
-     * next environment pass; retain the exact 12 source instance anchors now. */
+    /* Original PC image-bank object. The exact drop-fall creation logic is
+     * handled in the next environment pass; these are the 12 MFA anchors. */
     static const int pc_x[12] = {
         44, 126, 208, 290, 372, 454,
         536, 618, 700, 782, 870, 946
@@ -61,8 +61,7 @@ static FollowMePcSprite follow_me_pc_spring_frame(void)
 
 static FollowMePcSprite follow_me_pc_mfa_shadow_sprite(void)
 {
-    /* The six recovered Shadow Freddy frames are the two-frame pairs for the
-     * three MFA objects in handle order: right 347, down 348, up 349. */
+    /* Recovered two-frame pairs for handles 347/348/349. */
     int base = FOLLOW_ME_PC_SHADOW_0;
     if (sFollowMfaShadowKind == FOLLOW_MFA_SHADOW_DOWN)
         base = FOLLOW_ME_PC_SHADOW_2;
@@ -77,13 +76,13 @@ static void follow_me_pc_draw(const Game *game)
     follow_me_pc_draw_remains();
     follow_me_pc_draw_rain(sFollowMePc.frames);
 
-    /* Start-of-frame places the real `controls` Active relative to move-down:
-     * (501,427)+(1,-269) = (502,158). Event 63 hides it at exactly 5000 ms. */
+    /* Event 8 places controls at source (502,158); event 63 hides at 5000 ms. */
     if (sFollowMePc.frames < 300u)
         follow_me_pc_draw_mfa(&gFollowMfaControls, 502, 158);
 
+    /* Shadow Freddy and Active 351 are independent Active objects; they keep
+     * updating if the player has already triggered the ERR overlay. */
     if (sFollowMePc.chapter < 5 &&
-        sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
         sFollowMfaShadowKind != FOLLOW_MFA_SHADOW_NONE) {
         follow_me_pc_draw_sprite(follow_me_pc_mfa_shadow_sprite(),
                                  follow_me_pc_grid_x(sFollowMfaShadowSourceX),
@@ -91,16 +90,14 @@ static void follow_me_pc_draw(const Game *game)
                                  3);
     }
 
-    if (sFollowMePc.chapter < 5 &&
-        sFollowMePc.phase == FOLLOW_PHASE_GUIDE &&
-        sFollowMfaFollowTextTicks > 0u) {
-        /* Exact Active 351 instance and PC image 1005. */
+    if (sFollowMePc.chapter < 5 && sFollowMfaFollowTextTicks > 0u)
         follow_me_pc_draw_mfa(&gFollowMfaFollowText, 10, 660);
-    }
 
-    if (sFollowMePc.phase == FOLLOW_PHASE_ERR) {
+    /* Event 75 starts ERR at value 200; events 76/77 hide it at zero and
+     * subtract one every game tick. */
+    if (sFollowMePc.phase == FOLLOW_PHASE_ERR &&
+        sFollowMePc.phase_frames < 200u)
         follow_me_pc_draw_mfa(&gFollowMfaErr, 222, 618);
-    }
 
     if (sFollowMePc.chapter == 5 && sFollowMePc.room == FOLLOW_ROOM_SAFE_ROOM)
         follow_me_pc_draw_safe_room_ghosts();
