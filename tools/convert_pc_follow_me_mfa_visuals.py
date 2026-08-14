@@ -49,7 +49,6 @@ ASSETS = (
 
     # Final Follow Me (chapter 5). These are the actual frames referenced by
     # handles 363 (`man`), 368 (`man run`) and 369 (`Active 4`) in the MFA.
-    # No hand-drawn Purple Guy / Spring Bonnie reconstruction is used here.
     ("FinalManRight0", 453, 104, 94, (0, 0, 0)),
     ("FinalManRight1", 454, 108, 99, (0, 0, 0)),
     ("FinalManLeft0", 455, 95, 94, (0, 0, 0)),
@@ -67,6 +66,8 @@ ASSETS = (
     ("Spring16B", 496, 102, 196, (0, 0, 0)),
     ("Spring17A", 497, 101, 162, (0, 0, 0)),
     ("Spring17B", 498, 101, 160, (0, 0, 0)),
+    # Handle 370 `brud`, created by event184 around the springlock body.
+    ("Brud", 502, 12, 12, (0, 0, 0)),
 )
 
 
