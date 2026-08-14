@@ -14,36 +14,18 @@ static uint32_t map_buttons(uint32_t raw)
 {
     uint32_t mapped = 0u;
 
-    /* Real-Wii-U hardware feedback showed the physical D-pad axes reversed in
-     * this SDL/wut input path. Correct only the digital cross here; keep the
-     * left-stick emulation directions natural so analog navigation is not
-     * inverted as a side effect. */
-    if ((raw & VPAD_BUTTON_UP) != 0u) {
-        mapped |= GAME_BUTTON_DOWN;
-    }
-    if ((raw & VPAD_BUTTON_DOWN) != 0u) {
+    if ((raw & (VPAD_BUTTON_UP | VPAD_STICK_L_EMULATION_UP)) != 0u) {
         mapped |= GAME_BUTTON_UP;
     }
-    if ((raw & VPAD_BUTTON_LEFT) != 0u) {
-        mapped |= GAME_BUTTON_RIGHT;
-    }
-    if ((raw & VPAD_BUTTON_RIGHT) != 0u) {
-        mapped |= GAME_BUTTON_LEFT;
-    }
-
-    if ((raw & VPAD_STICK_L_EMULATION_UP) != 0u) {
-        mapped |= GAME_BUTTON_UP;
-    }
-    if ((raw & VPAD_STICK_L_EMULATION_DOWN) != 0u) {
+    if ((raw & (VPAD_BUTTON_DOWN | VPAD_STICK_L_EMULATION_DOWN)) != 0u) {
         mapped |= GAME_BUTTON_DOWN;
     }
-    if ((raw & VPAD_STICK_L_EMULATION_LEFT) != 0u) {
+    if ((raw & (VPAD_BUTTON_LEFT | VPAD_STICK_L_EMULATION_LEFT)) != 0u) {
         mapped |= GAME_BUTTON_LEFT;
     }
-    if ((raw & VPAD_STICK_L_EMULATION_RIGHT) != 0u) {
+    if ((raw & (VPAD_BUTTON_RIGHT | VPAD_STICK_L_EMULATION_RIGHT)) != 0u) {
         mapped |= GAME_BUTTON_RIGHT;
     }
-
     if ((raw & VPAD_BUTTON_A) != 0u) {
         mapped |= GAME_BUTTON_CONFIRM;
     }
