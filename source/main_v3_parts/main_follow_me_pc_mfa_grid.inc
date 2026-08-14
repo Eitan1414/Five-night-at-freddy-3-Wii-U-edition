@@ -1,11 +1,10 @@
 /* MFA-derived Follow Me room grid and edge transitions.
  *
  * Source: fivenights3-94.mfa, frame `cutscenes` (1024x768).
- * The original event sheet starts `vertical` at 2 and `horizontal` at 3,
- * with the player hit box at (500,272).  Leaving an edge increments/decrements
- * the matching counter and positions the hit box relative to the opposite
- * leave object.  Coordinates below are the exact event-sheet results after
- * the existing 1024x768 -> centered 640x480 Wii U transform.
+ * The original event sheet starts `vertical` at 2 and `horizontal` at 3.
+ * Chapter-specific start events then reposition Bonnie, Chica, Foxy and the
+ * fifth child exactly as the PC project does. Leaving an edge increments or
+ * decrements the matching counter and re-enters from the opposite leave object.
  */
 
 static int sFollowMfaVertical = 2;
@@ -34,9 +33,8 @@ static int follow_me_pc_grid_y(int source_y)
     return follow_me_pc_grid_scale(source_y);
 }
 
-/* Events 9..24 in the original cutscenes frame.  Event action 27 makes the
- * corresponding edge barrier active for the current (vertical,horizontal)
- * counter pair. */
+/* Events 9..24 in the original cutscenes frame. Event action 27 enables the
+ * corresponding edge barrier for the current (vertical,horizontal) pair. */
 static unsigned follow_me_pc_mfa_walls(int vertical, int horizontal)
 {
     if (vertical == 1 && horizontal == 5)
@@ -73,19 +71,39 @@ static void follow_me_pc_reset(int chapter)
 {
     follow_me_pc_reset_legacy(chapter);
 
-    /* Original Start-of-Frame event: vertical=2, horizontal=3 and hit box at
-     * source (500,272). */
+    /* Base Start-of-Frame state: events 8 and 61. */
     sFollowMfaVertical = 2;
     sFollowMfaHorizontal = 3;
-    sFollowMePc.player_x = follow_me_pc_grid_x(500);
-    sFollowMePc.player_y = follow_me_pc_grid_y(272);
-    sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE; /* legacy field; no longer routing */
+
+    /* Exact chapter start positions from events 129, 130, 136 and 137.
+     * Chapter 1 keeps the Start-of-Frame (500,272) position. */
+    int source_x = 500;
+    int source_y = 272;
+    if (chapter == 2) {
+        source_x = 342;
+        source_y = 212;
+    } else if (chapter == 3) {
+        source_x = 658;
+        source_y = 212;
+    } else if (chapter == 4) {
+        sFollowMfaVertical = 3;
+        sFollowMfaHorizontal = 2;
+        source_x = 268;
+        source_y = 420;
+    } else if (chapter >= 5) {
+        source_x = 496;
+        source_y = 494;
+    }
+
+    sFollowMePc.player_x = follow_me_pc_grid_x(source_x);
+    sFollowMePc.player_y = follow_me_pc_grid_y(source_y);
+    sFollowMePc.room = FOLLOW_ROOM_SHOW_STAGE; /* legacy storage only */
 }
 
 static void follow_me_pc_move_player(const InputState *input)
 {
-    /* Preserve the already-tested Wii U input cadence; only geometry/routing
-     * changes in this pass. */
+    /* Preserve the already-tested Wii U input cadence; geometry and routing
+     * now follow the MFA grid. */
     const int speed = 4;
     int dx = 0;
     int dy = 0;
@@ -108,7 +126,7 @@ static void follow_me_pc_move_player(const InputState *input)
     int next_x = sFollowMePc.player_x + dx;
     int next_y = sFollowMePc.player_y + dy;
 
-    /* `leave left/right/top/bottom` are at source -1/1023/-1/771. */
+    /* `leave left/right/top/bottom` instances are -1/1023/-1/771. */
     const int left_edge = follow_me_pc_grid_x(-1);
     const int right_edge = follow_me_pc_grid_x(1023);
     const int top_edge = follow_me_pc_grid_y(-1);
@@ -117,7 +135,7 @@ static void follow_me_pc_move_player(const InputState *input)
     if (next_x <= left_edge) {
         if ((walls & FOLLOW_MFA_WALL_LEFT) == 0u) {
             --sFollowMfaHorizontal; /* original Horizontal -= 1 */
-            /* leave left (-1,369) + event offset (+880,0) = (879,369) */
+            /* leave left (-1,369) + (+880,0) = (879,369) */
             next_x = follow_me_pc_grid_x(879);
         } else {
             next_x = left_edge + 1;
@@ -125,7 +143,7 @@ static void follow_me_pc_move_player(const InputState *input)
     } else if (next_x >= right_edge) {
         if ((walls & FOLLOW_MFA_WALL_RIGHT) == 0u) {
             ++sFollowMfaHorizontal; /* original Horizontal += 1 */
-            /* leave right (1023,377) + event offset (-881,0) = (142,377) */
+            /* leave right (1023,377) + (-881,0) = (142,377) */
             next_x = follow_me_pc_grid_x(142);
         } else {
             next_x = right_edge - 1;
@@ -135,7 +153,7 @@ static void follow_me_pc_move_player(const InputState *input)
     if (next_y <= top_edge) {
         if ((walls & FOLLOW_MFA_WALL_UP) == 0u) {
             --sFollowMfaVertical; /* original Vertical -= 1 */
-            /* leave top (499,-1) + event offset (0,+665) = (499,664) */
+            /* leave top (499,-1) + (0,+665) = (499,664) */
             next_y = follow_me_pc_grid_y(664);
         } else {
             next_y = top_edge + 1;
@@ -143,7 +161,7 @@ static void follow_me_pc_move_player(const InputState *input)
     } else if (next_y >= bottom_edge) {
         if ((walls & FOLLOW_MFA_WALL_DOWN) == 0u) {
             ++sFollowMfaVertical; /* original Vertical += 1 */
-            /* leave bottom (525,771) + event offset (0,-649) = (525,122) */
+            /* leave bottom (525,771) + (0,-649) = (525,122) */
             next_y = follow_me_pc_grid_y(122);
         } else {
             next_y = bottom_edge - 1;
@@ -156,6 +174,6 @@ static void follow_me_pc_move_player(const InputState *input)
 
 static void follow_me_pc_update_room_transitions(void)
 {
-    /* Transitions are now performed by the four original MFA leave-edge events
-     * in follow_me_pc_move_player().  Do not execute the old seven-room graph. */
+    /* Transitions are performed by the four original MFA leave-edge rules in
+     * follow_me_pc_move_player(); the old seven-room graph stays disabled. */
 }
