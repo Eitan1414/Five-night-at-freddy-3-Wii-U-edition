@@ -1,5 +1,6 @@
 #include "assets/follow_me_pc_env_assets.h"
 #include "assets/follow_me_mfa_visuals.h"
+#include "assets/follow_me_mfa_collisions.h"
 
 #define follow_me_pc_reset follow_me_pc_reset_legacy
 #define follow_me_pc_move_player follow_me_pc_move_player_legacy
@@ -11,9 +12,8 @@
 
 #include "main_follow_me_pc_mfa_grid.inc"
 
-/* Keep the recovered cropped renderer as a fallback for objects not yet fully
- * audited, while replacing the four playable animatronics below it with the
- * original 200x200 MFA canvases/hotspots. */
+/* Keep the recovered cropped renderer as a fallback for enum paths not used by
+ * the audited MFA renderer. */
 #define follow_me_pc_player_sprite follow_me_pc_player_sprite_legacy
 #define follow_me_pc_draw_sprite follow_me_pc_draw_sprite_legacy
 #include "main_follow_me_pc_part02.inc"
