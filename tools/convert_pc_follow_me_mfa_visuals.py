@@ -35,7 +35,7 @@ ASSETS = (
     ("Controls", 348, 128, 80, (0, 0, 0)),
     ("Blocked", 372, 65, 200, (0, 0, 0)),
 
-    # Exact secret-room clue objects, handles 373..384.  Image IDs, hotspots
+    # Exact secret-room clue objects, handles 373..384. Image IDs, hotspots
     # and colour keys are read directly from the MFA image bank.
     ("ClueBBDouble", 1007, -3, 0, (90, 90, 90)),
     ("Clue6", 1009, 43, 35, (0, 0, 0)),
@@ -46,6 +46,27 @@ ASSETS = (
     ("Clue14", 1016, -3, 0, (90, 90, 90)),
     ("Clue15", 1006, -3, 0, (90, 90, 90)),
     ("Clue16", 173, 54, 112, (0, 0, 0)),
+
+    # Final Follow Me (chapter 5). These are the actual frames referenced by
+    # handles 363 (`man`), 368 (`man run`) and 369 (`Active 4`) in the MFA.
+    # No hand-drawn Purple Guy / Spring Bonnie reconstruction is used here.
+    ("FinalManRight0", 453, 104, 94, (0, 0, 0)),
+    ("FinalManRight1", 454, 108, 99, (0, 0, 0)),
+    ("FinalManLeft0", 455, 95, 94, (0, 0, 0)),
+    ("FinalManLeft1", 456, 91, 99, (0, 0, 0)),
+    ("FinalManRun0", 458, 106, 101, (0, 0, 0)),
+    ("FinalManRun1", 460, 103, 105, (0, 0, 0)),
+    ("FinalSuitIdle", 471, 73, 150, (0, 0, 0)),
+    ("Spring12", 472, 73, 150, (0, 0, 0)),
+    ("Spring13", 473, 54, 274, (0, 0, 0)),
+    ("Spring14A", 486, 51, 275, (0, 0, 0)),
+    ("Spring14B", 489, 51, 270, (0, 0, 0)),
+    ("Spring15A", 490, 104, 271, (0, 0, 0)),
+    ("Spring15B", 494, 104, 271, (0, 0, 0)),
+    ("Spring16A", 495, 102, 199, (0, 0, 0)),
+    ("Spring16B", 496, 102, 196, (0, 0, 0)),
+    ("Spring17A", 497, 101, 162, (0, 0, 0)),
+    ("Spring17B", 498, 101, 160, (0, 0, 0)),
 )
 
 
