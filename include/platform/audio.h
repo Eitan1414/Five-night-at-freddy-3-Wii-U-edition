@@ -36,7 +36,7 @@ typedef enum AudioCue {
     AUDIO_CUE_ACHIEVEMENT,
     AUDIO_CUE_UTINE,
 
-    /* Optional full original sound-pack overrides. */
+    /* Embedded original PC sound-pack cues. */
     AUDIO_CUE_OFFICE_FAN,
     AUDIO_CUE_RAIN_AMBIENCE,
     AUDIO_CUE_DANGER,
