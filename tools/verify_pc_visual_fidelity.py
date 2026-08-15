@@ -23,6 +23,9 @@ def require(text: str, marker: str, context: str) -> None:
 
 main = read("source/main.c")
 camera = read("source/main_v3_parts/main_pc_camera_fidelity.inc")
+maintenance = read("source/main_v3_parts/main_original_ui_03.inc")
+monitor_assets = read("source/renderer/monitor_fidelity_assets.c")
+monitor_header = read("include/assets/monitor_fidelity_assets.h")
 characters = read("source/main_v3_parts/main_pc_character_override.inc")
 title = read("source/main_v3_parts/main_complete_title.inc")
 
@@ -73,7 +76,54 @@ if camera.index("pc_camera_draw_shadow_cupcake(game);") > camera.index("pc_camer
 # labels/buttons remain readable during camera switches.
 if camera.index("pc_camera_draw_static(game);") > camera.index("pc_camera_draw_map(game);"):
     fail("camera-switch static draw order changed: map must remain above static")
-require(camera, "original_ui_draw_texture(map_id, sOriginalUiPanelTargets,\n                             591, 177, 252, 235);", "PC camera-map geometry")
+for marker in (
+    "#define PC_CAMERA_MAP_X 591",
+    "#define PC_CAMERA_MAP_Y 177",
+    "#define PC_CAMERA_MAP_W 252",
+    "#define PC_CAMERA_MAP_H 235",
+    "#define PC_CAMERA_MAP_SOURCE_X 1559",
+    "#define PC_CAMERA_MAP_SOURCE_Y 360",
+    "#define PC_CAMERA_MAP_SOURCE_W 430",
+    "#define PC_CAMERA_MAP_SOURCE_H 400",
+    "1644, 1859, 1940, 1940, 1776, 1637, 1637, 1742, 1808, 1916",
+    "676, 648, 606, 541, 557, 565, 499, 477, 434, 470",
+    "MONITOR_FIDELITY_NODE_SELECTED",
+    "MONITOR_FIDELITY_CAM01_LABEL + camera",
+    "pc_camera_draw_exact_selection(game);",
+):
+    require(camera, marker, "exact PC camera selection")
+if "pc_camera_draw_selection_outline" in camera:
+    fail("synthetic Wii U selected-camera outline returned")
+
+# The exact monitor bundle contains MFA image 82 for the selected node,
+# image handles 83..92 for CAM labels, 596 for >>>, 600 for lowercase exit,
+# and 611/612/629/632/637 for the moving reboot progress block.
+for marker in (
+    "MONITOR_FIDELITY_NODE_SELECTED = 0",
+    "MONITOR_FIDELITY_CAM01_LABEL",
+    "MONITOR_FIDELITY_CAM10_LABEL",
+    "MONITOR_FIDELITY_MAINT_CURSOR",
+    "MONITOR_FIDELITY_MAINT_EXIT",
+    "MONITOR_FIDELITY_PROGRESS_0",
+    "MONITOR_FIDELITY_PROGRESS_4",
+):
+    require(monitor_header, marker, "monitor fidelity texture ids")
+for marker in (
+    'memcmp(data, "F3MF", 4u)',
+    "MONITOR_FIDELITY_UNCOMPRESSED_SIZE 39062u",
+    "monitor_fidelity_assets_b64",
+):
+    require(monitor_assets, marker, "monitor fidelity bundle loader")
+for marker in (
+    "MONITOR_FIDELITY_MAINT_CURSOR",
+    "MONITOR_FIDELITY_MAINT_EXIT",
+    "MONITOR_FIDELITY_PROGRESS_0 + frame",
+    "original_ui_draw_maintenance_progress(game);",
+    '3, "exit"',
+):
+    require(maintenance, marker, "exact PC System Restart presentation")
+if '3, "EXIT"' in maintenance:
+    fail("uppercase generated EXIT returned instead of MFA image 600")
 
 # Office character placement is sourced from decoded MFA hotspots/path vectors.
 for marker in (
@@ -139,4 +189,4 @@ for marker in (
 ):
     require(main, marker, "final PC visual layer")
 
-print("PC visual fidelity audit passed: camera/office geometry, hotspots, draw order, title and jumpscare routes are locked")
+print("PC visual fidelity audit passed: exact monitor selection/System Restart sprites, camera/office geometry, title and jumpscare routes are locked")
