@@ -1,3 +1,5 @@
+#include "assets/monitor_fidelity_assets.h"
+
 /*
  * Stable PC camera fidelity layer for real Wii U hardware.
  *
@@ -23,6 +25,39 @@ static uint32_t sPcHallucinationFrames = 0u;
 #define PC_CAMERA_FEED_H 340
 #define PC_CAMERA_SOURCE_W 825
 #define PC_CAMERA_SOURCE_H 650
+
+/* fivenights3-94.mfa camera-map object `map` is image 532/574, 430x400,
+ * instance (1770,560), hotspot (211,200). Its source top-left is therefore
+ * (1559,360). The ten 60x40 camera buttons use image 81 normally and image 82
+ * while selected. Image 82 is the exact lime PC highlight supplied below by
+ * monitor_fidelity_assets; its hotspot is (29,19). */
+#define PC_CAMERA_MAP_X 591
+#define PC_CAMERA_MAP_Y 177
+#define PC_CAMERA_MAP_W 252
+#define PC_CAMERA_MAP_H 235
+#define PC_CAMERA_MAP_SOURCE_X 1559
+#define PC_CAMERA_MAP_SOURCE_Y 360
+#define PC_CAMERA_MAP_SOURCE_W 430
+#define PC_CAMERA_MAP_SOURCE_H 400
+
+static const int kPcCameraNodeInstanceX[CAMERA_COUNT] = {
+    1644, 1859, 1940, 1940, 1776, 1637, 1637, 1742, 1808, 1916
+};
+static const int kPcCameraNodeInstanceY[CAMERA_COUNT] = {
+    676, 648, 606, 541, 557, 565, 499, 477, 434, 470
+};
+
+/* Exact MFA instances for image-bank handles 83..92 (CAM 01..CAM 10 text).
+ * The first nine label images have hotspot (-2,-2); CAM10 uses (-1,-2). */
+static const int kPcCameraLabelInstanceX[CAMERA_COUNT] = {
+    1619, 1835, 1916, 1917, 1753, 1614, 1614, 1719, 1785, 1894
+};
+static const int kPcCameraLabelInstanceY[CAMERA_COUNT] = {
+    662, 634, 592, 527, 543, 551, 485, 463, 421, 456
+};
+static const int kPcCameraLabelHotspotX[CAMERA_COUNT] = {
+    -2, -2, -2, -2, -2, -2, -2, -2, -2, -1
+};
 
 typedef struct PcShadowCupcakeLayout {
     int camera;
@@ -228,19 +263,66 @@ static void pc_camera_fidelity_redraw_viewport(const Game *game)
         pc_camera_draw_compact_phantom(game, phantom);
 }
 
-static void pc_camera_draw_selection_outline(const Game *game)
+static int pc_camera_map_x(int source_x)
+{
+    return PC_CAMERA_MAP_X +
+        ((source_x - PC_CAMERA_MAP_SOURCE_X) * PC_CAMERA_MAP_W +
+         PC_CAMERA_MAP_SOURCE_W / 2) / PC_CAMERA_MAP_SOURCE_W;
+}
+
+static int pc_camera_map_y(int source_y)
+{
+    return PC_CAMERA_MAP_Y +
+        ((source_y - PC_CAMERA_MAP_SOURCE_Y) * PC_CAMERA_MAP_H +
+         PC_CAMERA_MAP_SOURCE_H / 2) / PC_CAMERA_MAP_SOURCE_H;
+}
+
+static int pc_camera_map_w(int source_w)
+{
+    return (source_w * PC_CAMERA_MAP_W + PC_CAMERA_MAP_SOURCE_W / 2) /
+           PC_CAMERA_MAP_SOURCE_W;
+}
+
+static int pc_camera_map_h(int source_h)
+{
+    return (source_h * PC_CAMERA_MAP_H + PC_CAMERA_MAP_SOURCE_H / 2) /
+           PC_CAMERA_MAP_SOURCE_H;
+}
+
+static void pc_camera_draw_exact_selection(const Game *game)
 {
     const int camera = game->selected_camera;
     if (camera < 0 || camera >= CAMERA_COUNT) return;
 
-    /* The extracted PC map already contains CAM01..CAM10 labels and node art.
-     * Wii U D-pad navigation only needs a non-destructive selected-node cue;
-     * never paint opaque boxes or duplicate C01/C02 text over the source map. */
-    const MapPoint point = kOriginalCameraUiPoints[camera];
-    graphics_draw_frame(sOriginalUiPanelTargets,
-                        point.x - 21, point.y - 10,
-                        42, 20, 2,
-                        GRAPHICS_RGB(194, 255, 77));
+    const TextureRle *selected =
+        monitor_fidelity_texture(MONITOR_FIDELITY_NODE_SELECTED);
+    const TextureRle *label = monitor_fidelity_texture(
+        (MonitorFidelityTextureId)(MONITOR_FIDELITY_CAM01_LABEL + camera));
+    if (selected == NULL || label == NULL) return;
+
+    /* Node object image 82: 60x40, hotspot (29,19). */
+    const int node_left = kPcCameraNodeInstanceX[camera] - 29;
+    const int node_top = kPcCameraNodeInstanceY[camera] - 19;
+    texture_draw_rle(sOriginalUiPanelTargets,
+                     pc_camera_map_x(node_left),
+                     pc_camera_map_y(node_top),
+                     pc_camera_map_w(60),
+                     pc_camera_map_h(40),
+                     selected);
+
+    /* CAM01..09 labels: 29x25 / hotspot(-2,-2). CAM10: 30x25 /
+     * hotspot(-1,-2). Repaint only the selected label because image 82 is
+     * opaque by design and therefore correctly covers the idle gray button. */
+    const int label_width = camera == 9 ? 30 : 29;
+    const int label_left =
+        kPcCameraLabelInstanceX[camera] - kPcCameraLabelHotspotX[camera];
+    const int label_top = kPcCameraLabelInstanceY[camera] + 2;
+    texture_draw_rle(sOriginalUiPanelTargets,
+                     pc_camera_map_x(label_left),
+                     pc_camera_map_y(label_top),
+                     pc_camera_map_w(label_width),
+                     pc_camera_map_h(25),
+                     label);
 }
 
 static void pc_camera_draw_map(const Game *game)
@@ -251,8 +333,13 @@ static void pc_camera_draw_map(const Game *game)
             : ORIGINAL_UI_CAMERA_MAP_BASE;
 
     original_ui_draw_texture(map_id, sOriginalUiPanelTargets,
-                             591, 177, 252, 235);
-    pc_camera_draw_selection_outline(game);
+                             PC_CAMERA_MAP_X, PC_CAMERA_MAP_Y,
+                             PC_CAMERA_MAP_W, PC_CAMERA_MAP_H);
+
+    /* The old port drew a synthetic 42x20 lime outline. Retail PC instead
+     * switches the selected camera button to image 82 (60x40) and leaves the
+     * CAM label above it. Recreate that exact Clickteam object composition. */
+    pc_camera_draw_exact_selection(game);
     original_ui_draw_radar(game);
 }
 
