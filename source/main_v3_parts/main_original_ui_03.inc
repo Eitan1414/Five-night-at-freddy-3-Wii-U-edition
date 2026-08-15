@@ -1,3 +1,5 @@
+#include "assets/monitor_fidelity_assets.h"
+
 static OriginalUiTextureId original_ui_maintenance_texture(const Game *game,
                                                             int item)
 {
@@ -47,10 +49,60 @@ static void original_ui_draw_maintenance_sprite(OriginalUiTextureId id,
 
 static void original_ui_draw_maintenance_cursor(int x, int y)
 {
+    /* fivenights3-94.mfa object `cursor`: General Sprites image 596,
+     * native 73x31 with hotspot (36,15). The old Wii U renderer fabricated
+     * the >>> shape from three rectangles, which lost the original glow. */
+    const TextureRle *cursor =
+        monitor_fidelity_texture(MONITOR_FIDELITY_MAINT_CURSOR);
+    if (cursor != NULL) {
+        texture_draw_rle(sOriginalUiPanelTargets,
+                         x, y + 6, 43, 18, cursor);
+        return;
+    }
+
+    /* Safety fallback only if the exact embedded MFA bundle cannot load. */
     const uint32_t colour = GRAPHICS_RGB(224, 238, 219);
     graphics_draw_rect(sOriginalUiPanelTargets, x, y + 13, 18, 3, colour);
     graphics_draw_rect(sOriginalUiPanelTargets, x + 12, y + 8, 3, 13, colour);
     graphics_draw_rect(sOriginalUiPanelTargets, x + 15, y + 11, 3, 7, colour);
+}
+
+static void original_ui_draw_maintenance_exit(int x, int y)
+{
+    /* Exact lowercase PC `exit` sprite: MFA image 600, 96x39. */
+    const TextureRle *exit_texture =
+        monitor_fidelity_texture(MONITOR_FIDELITY_MAINT_EXIT);
+    if (exit_texture != NULL) {
+        texture_draw_rle(sOriginalUiPanelTargets,
+                         x, y + 4, 84, 34, exit_texture);
+        return;
+    }
+
+    graphics_draw_text(sOriginalUiPanelTargets,
+                       x, y + 8, 3, "exit",
+                       GRAPHICS_RGB(153, 171, 151));
+}
+
+static void original_ui_draw_maintenance_progress(const Game *game)
+{
+    /* MFA object `progress bar` cycles exact images 611,612,629,632,637.
+     * They contain one glowing white block travelling across a transparent
+     * 165x50 canvas; the former port replaced this with generated dot glyphs. */
+    const int frame = (int)((game->night_frames / 6u) % 5u);
+    const TextureRle *progress = monitor_fidelity_texture(
+        (MonitorFidelityTextureId)(MONITOR_FIDELITY_PROGRESS_0 + frame));
+    if (progress != NULL) {
+        texture_draw_rle(sOriginalUiPanelTargets,
+                         615, 383, 97, 29, progress);
+        return;
+    }
+
+    const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
+    for (int dot = 0; dot < dots; ++dot) {
+        graphics_draw_rect(sOriginalUiPanelTargets,
+                           640 + dot * 13, 395, 6, 6,
+                           COLOUR_WHITE);
+    }
 }
 
 static void original_ui_draw_maintenance(const Game *game)
@@ -86,10 +138,7 @@ static void original_ui_draw_maintenance(const Game *game)
         if (selected) original_ui_draw_maintenance_cursor(252, y);
 
         if (item == MAINT_EXIT) {
-            graphics_draw_text(sOriginalUiPanelTargets,
-                               291, y + 8, 3, "EXIT",
-                               selected ? COLOUR_WHITE
-                                        : GRAPHICS_RGB(153, 171, 151));
+            original_ui_draw_maintenance_exit(291, y);
             continue;
         }
 
@@ -101,12 +150,7 @@ static void original_ui_draw_maintenance(const Game *game)
     if (game->repairing) {
         original_ui_draw_maintenance_sprite(ORIGINAL_UI_MAINT_RESTART,
                                             352, 376, 330, 31);
-        const int dots = 1 + (int)((game->repair_frames / 20u) % 3u);
-        for (int dot = 0; dot < dots; ++dot) {
-            graphics_draw_rect(sOriginalUiPanelTargets,
-                               640 + dot * 13, 395, 6, 6,
-                               COLOUR_WHITE);
-        }
+        original_ui_draw_maintenance_progress(game);
     }
     /* Physical/touch bindings remain active, but the PC System Restart panel
      * no longer carries the Wii U-only `UP/DOWN A REBOOT B CLOSE` legend. */
@@ -255,6 +299,7 @@ int main(int argc, char **argv)
     sTitleMusicPlaying = false;
     sOriginalUi.assets_ready = original_ui_assets_init();
     sMonitorV2.assets_ready = monitor_v2_assets_init();
+    (void) monitor_fidelity_assets_init();
 
     Game game;
     game_init(&game);
