@@ -1,25 +1,30 @@
 #pragma once
 
+#include <stdbool.h>
+
 #include "renderer/texture.h"
 
-extern const TextureRle gPcMonitorNodeSelectedTexture;
-extern const TextureRle gPcMonitorCam01LabelTexture;
-extern const TextureRle gPcMonitorCam02LabelTexture;
-extern const TextureRle gPcMonitorCam03LabelTexture;
-extern const TextureRle gPcMonitorCam04LabelTexture;
-extern const TextureRle gPcMonitorCam05LabelTexture;
-extern const TextureRle gPcMonitorCam06LabelTexture;
-extern const TextureRle gPcMonitorCam07LabelTexture;
-extern const TextureRle gPcMonitorCam08LabelTexture;
-extern const TextureRle gPcMonitorCam09LabelTexture;
-extern const TextureRle gPcMonitorCam10LabelTexture;
-extern const TextureRle gPcMaintCursorTexture;
-extern const TextureRle gPcMaintExitTexture;
-extern const TextureRle gPcMaintProgress0Texture;
-extern const TextureRle gPcMaintProgress1Texture;
-extern const TextureRle gPcMaintProgress2Texture;
-extern const TextureRle gPcMaintProgress3Texture;
-extern const TextureRle gPcMaintProgress4Texture;
+typedef enum MonitorFidelityTextureId {
+    MONITOR_FIDELITY_NODE_SELECTED = 0,
+    MONITOR_FIDELITY_CAM01_LABEL,
+    MONITOR_FIDELITY_CAM02_LABEL,
+    MONITOR_FIDELITY_CAM03_LABEL,
+    MONITOR_FIDELITY_CAM04_LABEL,
+    MONITOR_FIDELITY_CAM05_LABEL,
+    MONITOR_FIDELITY_CAM06_LABEL,
+    MONITOR_FIDELITY_CAM07_LABEL,
+    MONITOR_FIDELITY_CAM08_LABEL,
+    MONITOR_FIDELITY_CAM09_LABEL,
+    MONITOR_FIDELITY_CAM10_LABEL,
+    MONITOR_FIDELITY_MAINT_CURSOR,
+    MONITOR_FIDELITY_MAINT_EXIT,
+    MONITOR_FIDELITY_PROGRESS_0,
+    MONITOR_FIDELITY_PROGRESS_1,
+    MONITOR_FIDELITY_PROGRESS_2,
+    MONITOR_FIDELITY_PROGRESS_3,
+    MONITOR_FIDELITY_PROGRESS_4,
+    MONITOR_FIDELITY_TEXTURE_COUNT
+} MonitorFidelityTextureId;
 
-extern const TextureRle *const gPcMonitorCameraLabelTextures[10];
-extern const TextureRle *const gPcMaintProgressTextures[5];
+bool monitor_fidelity_assets_init(void);
+const TextureRle *monitor_fidelity_texture(MonitorFidelityTextureId id);
